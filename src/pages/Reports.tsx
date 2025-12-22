@@ -6,7 +6,7 @@ export default function Reports() {
     const [dateRange, setDateRange] = useState('7d');
 
     const [reports, setReports] = useState<any[]>([]);
-    const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.4:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.10:5140";
 
     useEffect(() => {
         fetch(`${API_URL}/api/reports`)

@@ -18,7 +18,7 @@ export default function Agents() {
     const [agents, setAgents] = useState<AgentReport[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.4:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.10:5140";
 
     useEffect(() => {
         fetchAgents();
@@ -120,7 +120,9 @@ export default function Agents() {
 
         // 2. SignalR for Live Screen (and new events)
         const connection = new HubConnectionBuilder()
-            .withUrl(`${API_URL}/streamHub`)
+            .withUrl(`${API_URL}/streamHub`, {
+                accessTokenFactory: () => token || ""
+            })
             .withAutomaticReconnect()
             .build();
 
