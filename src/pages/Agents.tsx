@@ -1,4 +1,4 @@
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2 } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -62,7 +62,10 @@ export default function Agents() {
         }
     };
 
+    const [isDownloading, setIsDownloading] = useState(false);
+
     const handleDownload = async (os: string) => {
+        setIsDownloading(true);
         try {
             const res = await fetch(`${API_URL}/api/downloads/agent?os=${os}`, {
                 headers: {
@@ -84,6 +87,27 @@ export default function Agents() {
         } catch (e) {
             console.error("Download error:", e);
             alert("Failed to download agent. Please try again.");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/api/agents/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                fetchAgents(); // Refresh list
+            } else {
+                alert("Failed to delete agent");
+            }
+        } catch (e) {
+            console.error("Delete failed", e);
         }
     };
 
@@ -289,7 +313,8 @@ export default function Agents() {
                             </div>
 
                             {/* Instructions */}
-                            <div className="space-y-4">
+                            <div className="space-y-6">
+                                {/* Step 1 */}
                                 <div className="flex items-start gap-4">
                                     <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold text-white shrink-0">1</div>
                                     <div className="flex-1">
@@ -299,25 +324,52 @@ export default function Agents() {
                                         </p>
                                         <button
                                             onClick={() => handleDownload(deployOS)}
-                                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold text-sm mb-4"
+                                            disabled={isDownloading}
+                                            className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold text-sm ${isDownloading ? 'opacity-75 cursor-not-allowed' : ''}`}
                                         >
-                                            <Download size={16} />
-                                            Download Installer ({deployOS === 'windows' ? '.exe' : '.sh'})
+                                            {isDownloading ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                                    Preparing Download...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Download size={16} />
+                                                    Download Installer ({deployOS === 'windows' ? '.exe' : '.sh'})
+                                                </>
+                                            )}
                                         </button>
-                                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-white shrink-0">2</div>
-                                        <div className="flex-1">
-                                            <h3 className="text-white font-bold mb-1">Install & Run</h3>
-                                            <p className="text-gray-400 text-sm mb-3">
-                                                Run the installation script with <span className="text-red-400 font-bold">Administrator / Root</span> privileges.
-                                            </p>
+
+                                        {/* Browser Warning Tip */}
+                                        <div className="mt-2 bg-yellow-500/10 border border-yellow-500/20 rounded p-2 flex items-start gap-2">
+                                            <AlertTriangle className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
+                                            <div className="text-xs text-yellow-200/80">
+                                                <p className="font-bold">Browser Warning?</p>
+                                                <p>If you see "Commonly not downloaded", click the <span className="text-white font-mono bg-white/10 px-1 rounded">...</span> menu and select <b>Keep</b> or <b>Run Anyway</b>. Our installer is self-signed for internal use.</p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="p-4 bg-gray-800/50 border-t border-gray-800 text-center">
-                                        <p className="text-xs text-gray-500">
-                                            <AlertTriangle className="w-3 h-3 inline mr-1" />
-                                            This agent runs as a system service and requires elevated permissions.
+                                </div>
+
+                                {/* Step 2 */}
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center font-bold text-white shrink-0">2</div>
+                                    <div className="flex-1">
+                                        <h3 className="text-white font-bold mb-1">Install & Run</h3>
+                                        <p className="text-gray-400 text-sm mb-2">
+                                            Run the installation script with <span className="text-red-400 font-bold">Administrator / Root</span> privileges.
                                         </p>
+                                        <div className="p-3 bg-gray-950 rounded border border-gray-800 font-mono text-xs text-green-400">
+                                            {deployOS === 'windows' ? '> ./watch-sec-setup.exe' : '$ sudo ./watch-sec-install.sh'}
+                                        </div>
                                     </div>
+                                </div>
+
+                                <div className="p-4 bg-gray-800/50 border-t border-gray-800 text-center rounded-lg">
+                                    <p className="text-xs text-gray-500">
+                                        <AlertTriangle className="w-3 h-3 inline mr-1" />
+                                        This agent runs as a system service and requires elevated permissions.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -367,7 +419,7 @@ export default function Agents() {
                         ) : agents.map(agent => {
                             const online = isOnline(agent.timestamp);
                             return (
-                                <tr key={agent.agentId} className="hover:bg-gray-700/50 transition-colors">
+                                <tr key={agent.agentId} className="hover:bg-gray-700/50 transition-colors group">
                                     <td className="p-4 font-bold text-white flex items-center gap-2">
                                         <Server className="w-4 h-4 text-gray-500" />
                                         {agent.agentId}
@@ -382,7 +434,25 @@ export default function Agents() {
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <div className="flex gap-3">
+                                        <div className="text-xs space-y-1">
+                                            <div className="flex justify-between w-32">
+                                                <span className="text-gray-500">CPU:</span>
+                                                <span className={`${agent.cpuUsage > 80 ? 'text-red-400 font-bold' : 'text-gray-300'}`}>{agent.cpuUsage.toFixed(1)}%</span>
+                                            </div>
+                                            <div className="flex justify-between w-32">
+                                                <span className="text-gray-500">MEM:</span>
+                                                <span className="text-gray-300">{agent.memoryUsage.toFixed(0)} MB</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-gray-400 text-sm">
+                                        {new Date(agent.timestamp).toLocaleString()}
+                                    </td>
+                                    <td className="p-4 text-gray-400 font-mono text-xs">
+                                        {agent.tenantId}
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex gap-3 items-center">
                                             <button
                                                 onClick={() => handleViewLogs(agent.agentId)}
                                                 className="text-gray-400 hover:text-white text-sm font-medium hover:underline flex items-center gap-1"
@@ -396,6 +466,13 @@ export default function Agents() {
                                                 title="Live Monitor"
                                             >
                                                 <Monitor className="w-4 h-4" /> Monitor
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(agent.id)}
+                                                className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+                                                title="Delete Agent"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </td>

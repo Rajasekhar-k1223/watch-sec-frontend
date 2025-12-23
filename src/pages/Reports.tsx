@@ -19,18 +19,34 @@ export default function Reports() {
         try {
             const res = await fetch(`${API_URL}/api/reports/generate`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
                 body: JSON.stringify({ type: reportType, range: dateRange })
             });
+
             if (res.ok) {
-                alert("Report generation started!");
-                // Refresh list (mock refresh)
-                fetch(`${API_URL}/api/reports`)
-                    .then(res => res.json())
-                    .then(data => setReports(data));
+                // 1. Convert to Blob
+                const blob = await res.blob();
+
+                // 2. Create Download Link
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Report_${reportType}_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                alert("Report generated and downloaded successfully!");
+            } else {
+                alert("Failed to generate report.");
             }
         } catch (e) {
             console.error(e);
+            alert("Error generating report.");
         }
     };
 

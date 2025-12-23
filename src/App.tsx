@@ -3,8 +3,12 @@ import DashboardLayout from './layouts/DashboardLayout';
 import LiveMonitor from './pages/LiveMonitor';
 import Dashboard from './pages/Dashboard';
 import Tenants from './pages/Tenants';
-import Agents from './pages/Agents';
 import Admin from './pages/Admin';
+import Agents from './pages/Agents';
+import SystemAudit from './pages/SystemAudit';
+import Billing from './pages/Billing';
+import Settings from './pages/Settings';
+import EmployeeDashboard from './pages/EmployeeDashboard';
 import CentralServer from './pages/CentralServer';
 import MailProcessing from './pages/MailProcessing';
 import IcapServer from './pages/IcapServer';
@@ -13,6 +17,9 @@ import SpeechRecognition from './pages/SpeechRecognition';
 import Login from './pages/Login';
 import Policies from './pages/Policies';
 import Reports from './pages/Reports';
+import Productivity from './pages/Productivity';
+import Register from './pages/Register';
+import Landing from './pages/Landing';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -26,30 +33,36 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
+          {/* Protected Dashboard Routes */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<DashboardLayout />}>
-              {/* Default to Status Monitor (Dashboard) */}
-              <Route index element={<Navigate to="/status" replace />} />
-
-              <Route path="status" element={<Dashboard />} />
-              <Route path="central-server" element={<CentralServer />} />
-              <Route path="users" element={<Admin />} />
-              <Route path="tenants" element={<Tenants />} />
-              <Route path="agents" element={<Agents />} />
-              <Route path="mail" element={<MailProcessing />} />
-              <Route path="icap" element={<IcapServer />} />
-              <Route path="image-recognition" element={<ImageRecognition />} />
-              <Route path="speech-recognition" element={<SpeechRecognition />} />
-              <Route path="events" element={<LiveMonitor />} />
-              <Route path="policies" element={<Policies />} />
-              <Route path="reports" element={<Reports />} /> {/* Added Reports route */}
+            <Route element={<DashboardLayout />}>
+              <Route path="/status" element={<Dashboard />} />
+              <Route path="/central-server" element={<CentralServer />} />
+              <Route path="/users" element={<Admin />} />
+              <Route path="/tenants" element={<Tenants />} />
+              <Route path="/agents" element={<Agents />} />
+              <Route path="/mail" element={<MailProcessing />} />
+              <Route path="/icap" element={<IcapServer />} />
+              <Route path="/image-recognition" element={<ImageRecognition />} />
+              <Route path="/speech-recognition" element={<SpeechRecognition />} />
+              <Route path="/events" element={<LiveMonitor />} />
+              <Route path="/policies" element={<Policies />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/audit" element={<SystemAudit />} />
+              <Route path="/billing" element={<Billing />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/my-dashboard" element={<EmployeeDashboard />} />
+              <Route path="/productivity" element={<Productivity />} />
             </Route>
           </Route>
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+    </AuthProvider >
   );
 }
 
