@@ -45,6 +45,23 @@ export default function Agents() {
     const [showDeployModal, setShowDeployModal] = useState(false);
     const [deployOS, setDeployOS] = useState<'windows' | 'linux' | 'mac'>('windows');
 
+    // OTP Token Logic
+    const [showOtpModal, setShowOtpModal] = useState(false);
+    const [otpToken, setOtpToken] = useState<string | null>(null);
+
+    const handleGenerateToken = async () => {
+        try {
+            const res = await fetch(`${API_URL}/api/install/token`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                setOtpToken(data.token);
+                setShowOtpModal(true);
+            }
+        } catch (e) {
+            console.error("Failed to generate OTP", e);
+        }
+    };
+
     const handleDownload = async (os: string) => {
         try {
             const res = await fetch(`${API_URL}/api/downloads/agent?os=${os}`, {
@@ -207,13 +224,22 @@ export default function Agents() {
                 <div className="flex gap-3 items-center">
                     {/* RBAC: Only TenantAdmin can deploy */}
                     {user?.role === 'TenantAdmin' && (
-                        <button
-                            onClick={() => setShowDeployModal(true)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20"
-                        >
-                            <Download size={18} />
-                            Deploy New Agent
-                        </button>
+                        <>
+                            <button
+                                onClick={() => setShowDeployModal(true)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20"
+                            >
+                                <Download size={18} />
+                                Deploy New Agent
+                            </button>
+                            <button
+                                onClick={handleGenerateToken}
+                                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold border border-gray-600"
+                            >
+                                <AlertTriangle size={18} className="text-yellow-500" />
+                                Generate OTP
+                            </button>
+                        </>
                     )}
 
                     <div className="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700">
@@ -295,6 +321,30 @@ export default function Agents() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* OTP MODAL */}
+            {showOtpModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
+                    <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-8 max-w-sm w-full text-center">
+                        <h2 className="text-xl font-bold text-white mb-4">Installation PIN</h2>
+                        <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 mb-4">
+                            <span className="text-4xl font-mono mobile-nums text-blue-400 font-bold tracking-widest">
+                                {otpToken?.substring(0, 3)}-{otpToken?.substring(3)}
+                            </span>
+                            <p className="text-gray-500 text-xs mt-2">Valid for 30 minutes</p>
+                        </div>
+                        <p className="text-gray-400 text-sm mb-6">
+                            Provide this code to remote employees to authorize installation on non-domain devices.
+                        </p>
+                        <button
+                            onClick={() => setShowOtpModal(false)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg"
+                        >
+                            Close
+                        </button>
                     </div>
                 </div>
             )}
