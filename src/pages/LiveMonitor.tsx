@@ -29,7 +29,7 @@ export default function LiveMonitor() {
     const selectedAgentId = searchParams.get('agentId');
 
     const connectionRef = useRef<HubConnection>(null);
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
 
     // 1. Initial Data Fetch
     useEffect(() => {

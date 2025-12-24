@@ -17,7 +17,7 @@ export default function Settings() {
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [weeklyReport, setWeeklyReport] = useState(false);
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();

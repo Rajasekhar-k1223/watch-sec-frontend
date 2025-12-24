@@ -21,7 +21,7 @@ export default function Tenants() {
 
     // Toggle for Mock Mode
     const USE_MOCK = false;
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
 
     useEffect(() => {
         if (!USE_MOCK) {

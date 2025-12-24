@@ -13,7 +13,7 @@ export default function Register() {
 
     const { login } = useAuth();
     const navigate = useNavigate();
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
 
     const plans = [
         { id: 'Starter', name: 'Starter', price: '$0', limit: '5 Agents', color: 'blue' },

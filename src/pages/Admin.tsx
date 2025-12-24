@@ -14,7 +14,7 @@ export default function Admin() {
     const [users, setUsers] = useState<UserDto[]>([]);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
 
     useEffect(() => {
         fetchUsers();

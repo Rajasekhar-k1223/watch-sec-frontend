@@ -25,7 +25,7 @@ export const NetworkTopology: React.FC = () => {
             try {
                 // Mock or Real? Real endpoint exists: /api/dashboard/topology
                 // For dev/demo if backend is empty, fallback to mock data
-                const res = await fetch('http://localhost:5140/api/dashboard/topology');
+                const res = await fetch('https://192.168.1.10:7033/api/dashboard/topology');
 
                 let data: NetworkNode[] = [];
                 if (res.ok) {

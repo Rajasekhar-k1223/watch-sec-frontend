@@ -17,7 +17,7 @@ export default function Billing() {
     const [loading, setLoading] = useState(false);
 
     // Fallback URL logic included in fetch
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
 
     const fetchBilling = async () => {
         if (!user?.tenantId) return;
