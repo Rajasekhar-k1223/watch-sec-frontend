@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Lock, Bell, User, Check, AlertCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 export default function Settings() {
-    const { user } = useAuth();
+    // const { user } = useAuth(); // Removed unused
     const [activeTab, setActiveTab] = useState('security');
 
     // Security State
@@ -17,7 +18,7 @@ export default function Settings() {
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [weeklyReport, setWeeklyReport] = useState(false);
 
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();

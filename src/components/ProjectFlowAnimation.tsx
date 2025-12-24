@@ -41,16 +41,16 @@ export default function ProjectFlowAnimation() {
         const packets: Packet[] = [];
 
         // Define paths
-        const paths = {
-            main: [
-                { from: 0, to: 3 }, // Agent -> Gateway
-                { from: 3, to: 4 }, // Gateway -> Analysis
-                { from: 4, to: 6 }  // Analysis -> Dashboard
-            ],
-            storage: [
-                { from: 4, to: 5 }  // Analysis -> DB
-            ]
-        };
+        // const _paths = {
+        //     main: [
+        //         { from: 0, to: 3 }, // Agent -> Gateway
+        //         { from: 3, to: 4 }, // Gateway -> Analysis
+        //         { from: 4, to: 6 }  // Analysis -> Dashboard
+        //     ],
+        //     storage: [
+        //         { from: 4, to: 5 }  // Analysis -> DB
+        //     ]
+        // };
 
         const spawnPacket = (startNodeIndex: number) => {
             // Path: Start -> Gateway -> Analysis -> Dashboard

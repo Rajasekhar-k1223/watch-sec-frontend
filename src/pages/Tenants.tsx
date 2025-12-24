@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { API_URL } from '../config';
 
 interface Tenant {
     id: number;
@@ -20,8 +21,9 @@ export default function Tenants() {
     const [newTenantName, setNewTenantName] = useState("");
 
     // Toggle for Mock Mode
+    // Toggle for Mock Mode
     const USE_MOCK = false;
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         if (!USE_MOCK) {

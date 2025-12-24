@@ -1,5 +1,6 @@
 import { Image, Search, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 interface OCRLog {
     id: string;
@@ -14,7 +15,7 @@ interface OCRLog {
 export default function ImageRecognition() {
     const [logs, setLogs] = useState<OCRLog[]>([]);
     const [loading, setLoading] = useState(true);
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const fetchLogs = async () => {
         setLoading(true);

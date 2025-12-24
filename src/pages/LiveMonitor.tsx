@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import { HubConnectionBuilder, HubConnection } from '@microsoft/signalr';
+import { io } from 'socket.io-client';
 import { useSearchParams } from 'react-router-dom';
+import { API_URL } from '../config';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { ArrowLeft, Monitor, Activity, ShieldAlert, Cpu } from 'lucide-react';
 
@@ -29,7 +30,7 @@ export default function LiveMonitor() {
     const selectedAgentId = searchParams.get('agentId');
 
     const connectionRef = useRef<HubConnection>(null);
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     // 1. Initial Data Fetch
     useEffect(() => {
@@ -100,21 +101,28 @@ export default function LiveMonitor() {
         }
     }, [selectedAgentId]);
 
-    // 3. SignalR
+    // 3. Socket.IO
     useEffect(() => {
-        const connection = new HubConnectionBuilder()
-            .withUrl(`${API_URL}/streamHub`)
-            .withAutomaticReconnect()
-            .build();
+        // Socket.IO Connection
+        const socket = io(API_URL, {
+            transports: ['websocket']
+        });
 
-        connection.on("ReceiveScreen", (agentId, base64Image) => {
+        socket.on("connect", () => {
+            // console.log("Connected to Stream");
+            if (selectedAgentId) { // Use selectedAgentId from component state
+                socket.emit("join_room", { room: selectedAgentId });
+            }
+        });
+
+        socket.on("ReceiveScreen", (agentId: string, base64Image: string) => {
             // Optimization: Only update screen if in Grid OR if specific agent selected
             if (!selectedAgentId || selectedAgentId === agentId) {
                 setScreens(prev => ({ ...prev, [agentId]: base64Image }));
             }
         });
 
-        connection.on("ReceiveEvent", (agentId, type, details, timestamp) => {
+        socket.on("ReceiveEvent", (agentId: string, type: string, details: string, timestamp: string) => {
             setEvents(prev => {
                 const agentEvents = prev[agentId] || [];
                 const newEvents = [{ type, details, timestamp }, ...agentEvents].slice(0, 50); // Keep more history

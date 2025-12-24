@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import { Shield, Lock, User as UserIcon, Building2, Check, ArrowRight } from 'lucide-react';
 
 export default function Register() {
@@ -13,7 +14,7 @@ export default function Register() {
 
     const { login } = useAuth();
     const navigate = useNavigate();
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const plans = [
         { id: 'Starter', name: 'Starter', price: '$0', limit: '5 Agents', color: 'blue' },

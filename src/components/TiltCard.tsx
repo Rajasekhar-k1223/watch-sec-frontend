@@ -1,4 +1,5 @@
-import { useRef, useState, MouseEvent } from 'react';
+import { useRef, useState } from 'react';
+import type { MouseEvent } from 'react';
 
 interface TiltCardProps {
     children: React.ReactNode;

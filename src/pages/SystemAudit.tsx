@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ShieldCheck, Clock, Search } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 interface AuditLog {
     id: number;
@@ -16,11 +17,11 @@ export default function SystemAudit() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const { user } = useAuth();
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         const fetchLogs = async () => {
-            const res = await fetch(`${API_URL}/api/audit?tenantId=${user?.tenantId || ''}}`);
+            const res = await fetch(`${API_URL}/api/audit?tenantId=${user?.tenantId || ''}`);
             if (res.ok) {
                 setLogs(await res.json());
             }

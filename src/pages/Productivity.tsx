@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { PieChart, Pie, Cell, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { Brain, Clock, Coffee, AlertTriangle, Monitor } from 'lucide-react';
+import { API_URL } from '../config';
 
 interface ProductivityData {
     score: number;
@@ -30,7 +31,7 @@ export default function Productivity() {
     const [data, setData] = useState<ProductivityData | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.10:5140";
+
 
     // 1. Fetch Agents List First
     useEffect(() => {

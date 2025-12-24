@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import { Shield, Lock, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 export default function Login() {
@@ -12,7 +13,7 @@ export default function Login() {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

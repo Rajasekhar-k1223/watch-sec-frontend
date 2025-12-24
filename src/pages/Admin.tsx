@@ -1,6 +1,7 @@
 import { Shield, Lock, Mail, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 interface UserDto {
     id: number;
@@ -14,7 +15,7 @@ export default function Admin() {
     const [users, setUsers] = useState<UserDto[]>([]);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         fetchUsers();
@@ -77,7 +78,7 @@ export default function Admin() {
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
-                                                    {user.username.charAt(0).toUpperCase()}
+                                                    {(user.username || '?').charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
                                                     <p className="text-white font-medium text-sm">{user.username}</p>

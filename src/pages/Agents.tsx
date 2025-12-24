@@ -1,7 +1,8 @@
 import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2 } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { HubConnectionBuilder } from '@microsoft/signalr';
+import { io } from 'socket.io-client';
+import { API_URL } from '../config';
 
 interface AgentReport {
     id: number;
@@ -18,7 +19,7 @@ export default function Agents() {
     const [agents, setAgents] = useState<AgentReport[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://192.168.1.10:5140";
+
 
     useEffect(() => {
         fetchAgents();
@@ -135,7 +136,12 @@ export default function Agents() {
 
                 // 2. Fetch Metrics History (MySQL)
                 const historyRes = await fetch(`${API_URL}/api/history/${selectedAgentId}`);
-                const historyData: AgentReport[] = await historyRes.json();
+                let historyData: AgentReport[] = await historyRes.json();
+
+                if (!Array.isArray(historyData)) {
+                    console.error("History data is not an array:", historyData);
+                    historyData = [];
+                }
 
                 // 3. Merge and Sort
                 // Map history items to "Event-like" structure
@@ -160,34 +166,38 @@ export default function Agents() {
         fetchData();
 
         // 2. SignalR for Live Screen (and new events)
-        const connection = new HubConnectionBuilder()
-            .withUrl(`${API_URL}/streamHub`, {
-                accessTokenFactory: () => token || ""
-            })
-            .withAutomaticReconnect()
-            .build();
+        // 2. Socket.IO for Live Screen (and new events)
+        const socket = io(API_URL, {
+            query: { token: token },
+            transports: ['websocket']
+        });
 
-        connection.on("ReceiveScreen", (agentId, base64) => {
-            // console.log(`[Stream] Rx from ${agentId}, Size: ${base64.length}`);
+        socket.on("connect", () => {
+            console.log("[Socket] Connected:", socket.id);
+            if (selectedAgentId) {
+                socket.emit("join_room", { room: selectedAgentId });
+            }
+        });
+
+        socket.on("ReceiveScreen", (agentId: string, base64: string) => {
+            // Backend emits (agentId, dataUri)
             if (selectedAgentId && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
                 setLiveScreen(base64);
             }
         });
 
-        connection.on("ReceiveEvent", (agentId, type, details, timestamp) => {
+        socket.on("ReceiveEvent", (agentId: string, type: string, details: string, timestamp: string) => {
             if (agentId === selectedAgentId) {
                 setEvents(prev => [{ type, details, timestamp }, ...prev]);
             }
         });
 
-        connection.start().catch(e => console.error("SignalR Error", e));
-
         return () => {
-            connection.stop();
+            socket.disconnect();
             setLiveScreen(null);
             setEvents([]);
         };
-    }, [selectedAgentId]);
+    }, [selectedAgentId, token]);
 
     const handleViewLogs = (agentId: string) => {
         setSelectedAgentId(agentId);

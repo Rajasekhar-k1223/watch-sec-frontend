@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CreditCard, Check, Zap, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 
 interface BillingInfo {
     id: number;
@@ -17,7 +18,7 @@ export default function Billing() {
     const [loading, setLoading] = useState(false);
 
     // Fallback URL logic included in fetch
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const fetchBilling = async () => {
         if (!user?.tenantId) return;

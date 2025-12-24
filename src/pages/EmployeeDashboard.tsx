@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Activity, ShieldCheck, Clock, CheckCircle, Smartphone } from 'lucide-react';
+import { Activity, Clock, CheckCircle, Smartphone } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_URL } from '../config';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 export default function EmployeeDashboard() {
     const { user } = useAuth();
     const [stats, setStats] = useState<any>(null);
-    const API_URL = import.meta.env.VITE_API_URL || "https://192.168.1.10:7033";
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         const fetchStats = async () => {
