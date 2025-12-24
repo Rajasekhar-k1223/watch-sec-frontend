@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { io } from 'socket.io-client';
+import { HubConnection, HubConnectionBuilder, HttpTransportType } from '@microsoft/signalr';
 import { useSearchParams } from 'react-router-dom';
-import { API_URL } from '../config';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { ArrowLeft, Monitor, Activity, ShieldAlert, Cpu } from 'lucide-react';
 
@@ -101,28 +100,24 @@ export default function LiveMonitor() {
         }
     }, [selectedAgentId]);
 
-    // 3. Socket.IO
+    // 3. SignalR Connection
     useEffect(() => {
-        // Socket.IO Connection
-        const socket = io(API_URL, {
-            transports: ['websocket']
-        });
+        const connection = new HubConnectionBuilder()
+            .withUrl(`${API_URL}/streamHub`, {
+                skipNegotiation: true,
+                transport: HttpTransportType.WebSockets
+            })
+            .withAutomaticReconnect()
+            .build();
 
-        socket.on("connect", () => {
-            // console.log("Connected to Stream");
-            if (selectedAgentId) { // Use selectedAgentId from component state
-                socket.emit("join_room", { room: selectedAgentId });
-            }
-        });
-
-        socket.on("ReceiveScreen", (agentId: string, base64Image: string) => {
+        connection.on("ReceiveScreen", (agentId: string, base64Image: string) => {
             // Optimization: Only update screen if in Grid OR if specific agent selected
             if (!selectedAgentId || selectedAgentId === agentId) {
                 setScreens(prev => ({ ...prev, [agentId]: base64Image }));
             }
         });
 
-        socket.on("ReceiveEvent", (agentId: string, type: string, details: string, timestamp: string) => {
+        connection.on("ReceiveEvent", (agentId: string, type: string, details: string, timestamp: string) => {
             setEvents(prev => {
                 const agentEvents = prev[agentId] || [];
                 const newEvents = [{ type, details, timestamp }, ...agentEvents].slice(0, 50); // Keep more history
@@ -130,8 +125,16 @@ export default function LiveMonitor() {
             });
         });
 
-        connection.start().then(() => connectionRef.current = connection).catch(console.error);
-        return () => { connection.stop(); };
+        connection.start()
+            .then(() => {
+                console.log("Connected to SignalR Stream");
+                connectionRef.current = connection;
+            })
+            .catch((err: any) => console.error("SignalR Connection Error: ", err));
+
+        return () => {
+            connection.stop();
+        };
     }, [selectedAgentId]);
 
 
