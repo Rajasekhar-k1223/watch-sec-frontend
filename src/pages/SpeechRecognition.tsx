@@ -3,7 +3,8 @@ import { Mic, AlertCircle } from 'lucide-react';
 export default function SpeechRecognition() {
     // Future: const [logs, setLogs] = useState<AudioLog[]>([]);
     // Future: const [loading, setLoading] = useState(false);
-    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // Future: const [loading, setLoading] = useState(false);
+    // import { API_URL } from '../config'; (Added if needed later)
 
     // Mock Data for UI (since backend endpoint for *listing* audio isn't explicitly created, only transcribing)
     // Ideally we would have a GET /api/audio endpoint.

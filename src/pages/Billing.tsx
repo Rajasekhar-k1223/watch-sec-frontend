@@ -17,8 +17,8 @@ export default function Billing() {
     const [info, setInfo] = useState<BillingInfo | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // Fallback URL logic included in fetch
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // Use centralized configuration imported from ../config
+    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const fetchBilling = async () => {
         if (!user?.tenantId) return;

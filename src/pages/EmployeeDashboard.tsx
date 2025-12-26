@@ -7,7 +7,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 export default function EmployeeDashboard() {
     const { user } = useAuth();
     const [stats, setStats] = useState<any>(null);
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         const fetchStats = async () => {

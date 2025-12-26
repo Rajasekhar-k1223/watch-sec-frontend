@@ -1,4 +1,4 @@
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2 } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Settings as SettingsIcon } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
@@ -12,6 +12,7 @@ interface AgentReport {
     cpuUsage: number;
     memoryUsage: number;
     timestamp: string;
+    hostname: string;
 }
 
 export default function Agents() {
@@ -34,7 +35,21 @@ export default function Agents() {
             const res = await fetch(`${API_URL}/api/status${query}`);
             if (res.ok) {
                 const data = await res.json();
-                setAgents(data);
+                const normalizedData = (Array.isArray(data) ? data : []).map((a: any) => {
+                    let ts = a.timestamp || a.Timestamp || new Date().toISOString();
+                    if (!ts.endsWith('Z') && !ts.includes('+') && !ts.includes('-')) ts += 'Z';
+                    return {
+                        ...a,
+                        status: a.status || a.Status || 'Unknown',
+                        cpuUsage: a.cpuUsage ?? a.CpuUsage ?? 0,
+                        memoryUsage: a.memoryUsage ?? a.MemoryUsage ?? 0,
+                        timestamp: ts,
+                        tenantId: a.tenantId ?? a.TenantId ?? 0,
+                        agentId: a.agentId || a.AgentId || 'Unknown',
+                        hostname: a.hostname || a.Hostname || 'Unknown'
+                    };
+                });
+                setAgents(normalizedData);
             }
         } catch (e) {
             console.error("Failed to fetch agents", e);
@@ -112,17 +127,17 @@ export default function Agents() {
         }
     };
 
-    const isOnline = (timestamp: string) => {
-        const lastSeen = new Date(timestamp).getTime();
-        const now = new Date().getTime();
-        return (now - lastSeen) < 2 * 60 * 1000; // 2 minutes
-    };
+    // isOnline check moved to Backend for reliability
+    // const isOnline = (timestamp: string) => { ... }
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'screenshots' | 'activity' | null>(null);
     const [events, setEvents] = useState<any[]>([]);
     const [liveScreen, setLiveScreen] = useState<string | null>(null);
     const [isScreenMaximized, setIsScreenMaximized] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [socketStatus, setSocketStatus] = useState<string>('Disconnected');
+    const socketRef = useRef<any>(null);
 
     // Fetch Logs and Connect SignalR when Modal Opens
     useEffect(() => {
@@ -131,11 +146,20 @@ export default function Agents() {
         const fetchData = async () => {
             try {
                 // 1. Fetch Security Events (MongoDB)
-                const eventsRes = await fetch(`${API_URL}/api/events/${selectedAgentId}`);
-                const eventsData = await eventsRes.json();
+                const eventsRes = await fetch(`${API_URL}/api/events/${selectedAgentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                let eventsData = await eventsRes.json();
+
+                if (!Array.isArray(eventsData)) {
+                    console.warn("[Agents] Events data is not an array, defaulting to empty:", eventsData);
+                    eventsData = [];
+                }
 
                 // 2. Fetch Metrics History (MySQL)
-                const historyRes = await fetch(`${API_URL}/api/history/${selectedAgentId}`);
+                const historyRes = await fetch(`${API_URL}/api/history/${selectedAgentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 let historyData: AgentReport[] = await historyRes.json();
 
                 if (!Array.isArray(historyData)) {
@@ -145,12 +169,23 @@ export default function Agents() {
 
                 // 3. Merge and Sort
                 // Map history items to "Event-like" structure
-                const historyAsEvents = historyData.map(h => ({
-                    type: "System Heartbeat",
-                    details: `Status: ${h.status} | CPU: ${h.cpuUsage.toFixed(1)}% | MEM: ${h.memoryUsage.toFixed(1)}MB`,
-                    timestamp: h.timestamp,
-                    isMetric: true // Flag to style differently
-                }));
+                const historyAsEvents = historyData.map((h: any) => {
+                    const status = h.status || h.Status || 'Unknown';
+                    const cpu = h.cpuUsage ?? h.CpuUsage ?? 0;
+                    const mem = h.memoryUsage ?? h.MemoryUsage ?? 0;
+                    let ts = h.timestamp || h.Timestamp || new Date().toISOString();
+                    // Ensure UTC interpretation if no offset is present
+                    if (!ts.endsWith('Z') && !ts.includes('+') && !ts.includes('-')) {
+                        ts += 'Z';
+                    }
+
+                    return {
+                        type: "System Heartbeat",
+                        details: `Status: ${status} | CPU: ${Number(cpu).toFixed(1)}% | MEM: ${Number(mem).toFixed(1)}MB`,
+                        timestamp: ts,
+                        isMetric: true
+                    };
+                });
 
                 // Combine
                 const combined = [...eventsData, ...historyAsEvents].sort((a, b) =>
@@ -165,22 +200,30 @@ export default function Agents() {
 
         fetchData();
 
-        // 2. SignalR for Live Screen (and new events)
         // 2. Socket.IO for Live Screen (and new events)
         const socket = io(API_URL, {
             query: { token: token },
             transports: ['websocket']
         });
+        socketRef.current = socket;
 
         socket.on("connect", () => {
             console.log("[Socket] Connected:", socket.id);
+            setSocketStatus('Connected');
             if (selectedAgentId) {
+                console.log("[Socket] Joining Room:", selectedAgentId);
                 socket.emit("join_room", { room: selectedAgentId });
+                setSocketStatus(`Joined Room: ${selectedAgentId}`);
             }
+        });
+
+        socket.on("disconnect", () => {
+            setSocketStatus('Disconnected');
         });
 
         socket.on("ReceiveScreen", (agentId: string, base64: string) => {
             // Backend emits (agentId, dataUri)
+            console.log("[Socket] Received Screenshot from:", agentId);
             if (selectedAgentId && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
                 setLiveScreen(base64);
             }
@@ -192,10 +235,26 @@ export default function Agents() {
             }
         });
 
+        socket.on("receive_stream_frame", (data: any) => {
+            // console.log("[Socket] Stream Frame Received. Size:", data.image?.length);
+            if (!selectedAgentId) return;
+
+            const incomingId = (data.agentId || '').toLowerCase();
+            const currentId = selectedAgentId.toLowerCase();
+
+            if (incomingId === currentId) {
+                setLiveScreen(data.image);
+            } else {
+                console.warn(`[Socket] Frame Dropped: Mismatched ID. Received: ${incomingId}, Expected: ${currentId}`);
+            }
+        });
+
         return () => {
             socket.disconnect();
+            socketRef.current = null;
             setLiveScreen(null);
             setEvents([]);
+            setIsStreaming(false);
         };
     }, [selectedAgentId, token]);
 
@@ -223,19 +282,27 @@ export default function Agents() {
         }
     };
 
-    const handleTakeScreenshot = async (agentId: string) => {
-        try {
-            // We'll use a new API endpoint to trigger the command via the backend
-            await fetch(`${API_URL}/api/commands/screenshot/${agentId}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            alert("Screenshot request sent!");
-        } catch (e) {
-            console.error("Failed to request screenshot", e);
-            alert("Failed to send request");
+    const handleStartStream = () => {
+        console.log(`[STREAM_DEBUG] Start Button Clicked for ${selectedAgentId}`);
+        if (socketRef.current && selectedAgentId) {
+            console.log(`[STREAM_DEBUG] Emitting start_stream for ${selectedAgentId}`);
+            socketRef.current.emit('start_stream', { agentId: selectedAgentId });
+            setIsStreaming(true);
+        } else {
+            console.error("[STREAM_DEBUG] Cannot Start Stream: Socket or AgentId missing", { socket: !!socketRef.current, agentId: selectedAgentId });
         }
     };
+
+    const handleStopStream = () => {
+        console.log(`[STREAM_DEBUG] Stop Button Clicked for ${selectedAgentId}`);
+        if (socketRef.current && selectedAgentId) {
+            console.log(`[STREAM_DEBUG] Emitting stop_stream for ${selectedAgentId}`);
+            socketRef.current.emit('stop_stream', { agentId: selectedAgentId });
+            setIsStreaming(false);
+        }
+    };
+
+
 
     // Full Screen Logic
     const monitorContainerRef = useRef<HTMLDivElement>(null);
@@ -430,6 +497,7 @@ export default function Agents() {
                     <thead className="bg-gray-900/50 text-gray-400 text-sm uppercase font-semibold">
                         <tr>
                             <th className="p-4">Agent ID</th>
+                            <th className="p-4">Hostname</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Resources</th>
                             <th className="p-4">Last Seen</th>
@@ -441,12 +509,16 @@ export default function Agents() {
                         {loading ? (
                             <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr>
                         ) : agents.map(agent => {
-                            const online = isOnline(agent.timestamp);
+                            // Trust the backend's computed status (which handles Server-Side LastSeen check)
+                            const online = agent.status === 'Online';
                             return (
                                 <tr key={agent.agentId} className="hover:bg-gray-700/50 transition-colors group">
                                     <td className="p-4 font-bold text-white flex items-center gap-2">
                                         <Server className="w-4 h-4 text-gray-500" />
                                         {agent.agentId}
+                                    </td>
+                                    <td className="p-4 text-sm font-mono text-gray-400">
+                                        {agent.hostname || 'Unknown'}
                                     </td>
                                     <td className="p-4">
                                         <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${online
@@ -461,11 +533,11 @@ export default function Agents() {
                                         <div className="text-xs space-y-1">
                                             <div className="flex justify-between w-32">
                                                 <span className="text-gray-500">CPU:</span>
-                                                <span className={`${agent.cpuUsage > 80 ? 'text-red-400 font-bold' : 'text-gray-300'}`}>{agent.cpuUsage.toFixed(1)}%</span>
+                                                <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-400 font-bold' : 'text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span>
                                             </div>
                                             <div className="flex justify-between w-32">
                                                 <span className="text-gray-500">MEM:</span>
-                                                <span className="text-gray-300">{agent.memoryUsage.toFixed(0)} MB</span>
+                                                <span className="text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span>
                                             </div>
                                         </div>
                                     </td>
@@ -648,21 +720,25 @@ export default function Agents() {
                                         <Image className="w-4 h-4 text-gray-400" />
                                         <span className="text-xs font-bold text-gray-300 uppercase">Live Screen Feed</span>
                                         <div className="ml-auto flex items-center gap-3">
-                                            {/* Take Screenshot Button */}
-                                            <button
-                                                onClick={() => {
-                                                    // Emit socket event to take screenshot
-                                                    const socket = io(API_URL, { query: { token } }); // Temporary socket for command? Or reuse existing if possible.
-                                                    // Ideally we reuse the existing socket connection if we can expose it, 
-                                                    // but for now let's use the API endpoint which we should probably create, 
-                                                    // OR just emit via a new socket connection for simplicity if main socket isn't easily accessible here.
-                                                    // actually, we can add a function to the component scope.
-                                                    handleTakeScreenshot(selectedAgentId);
-                                                }}
-                                                className="flex items-center gap-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1 rounded transition-colors"
-                                            >
-                                                <Image className="w-3 h-3" /> Take Screenshot
-                                            </button>
+                                            {/* Streaming Controls */}
+                                            {isStreaming ? (
+                                                <button
+                                                    onClick={handleStopStream}
+                                                    className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-600/50 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2"
+                                                >
+                                                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                                                    Stop Stream
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={handleStartStream}
+                                                    className="px-3 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-500 border border-green-600/50 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2"
+                                                >
+                                                    <Server className="w-3 h-3" />
+                                                    Start Stream
+                                                </button>
+                                            )}
+
 
                                             {liveScreen && <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold px-2 py-0.5 bg-red-500/10 rounded animate-pulse"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> LIVE</span>}
                                             <button
@@ -674,7 +750,7 @@ export default function Agents() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="flex-1 flex items-center justify-center p-4 relative bg-grid-pattern overflow-hidden h-full">
+                                    <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden h-full">
                                         {liveScreen ? (
                                             <img
                                                 src={`data:image/webp;base64,${liveScreen}`}
@@ -682,10 +758,19 @@ export default function Agents() {
                                                 className={`object-contain rounded shadow-lg border border-gray-800 ${isScreenMaximized ? 'w-auto h-full max-w-full' : 'max-w-full max-h-full'}`}
                                             />
                                         ) : (
-                                            <div className="text-center text-gray-600">
+                                            <div className="text-center text-gray-600 bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-700">
                                                 <div className="w-12 h-12 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-                                                <p className="text-sm">Waiting for video stream...</p>
-                                                <p className="text-xs mt-2 text-gray-700">Ensure Agent is running</p>
+                                                <h3 className="text-white font-bold mb-2">Waiting for video stream...</h3>
+
+                                                <div className="text-xs font-mono text-left inline-block bg-black/50 p-3 rounded border border-gray-800 space-y-1">
+                                                    <p className="text-gray-400">Target Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
+                                                    <p className="text-gray-400">Socket Status: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
+                                                    <p className="text-gray-400">Stream Active: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
+                                                </div>
+
+                                                <p className="text-xs mt-4 text-gray-500 max-w-xs mx-auto">
+                                                    If stuck here: Ensure Agent {selectedAgentId} is running and has localized the same ID.
+                                                </p>
                                             </div>
                                         )}
                                     </div>
@@ -696,14 +781,14 @@ export default function Agents() {
                         {/* MODE 3: SCREENSHOTS GALLERY */}
                         {viewMode === 'screenshots' && (
                             <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50">
-                                <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} />
+                                <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} token={token} />
                             </div>
                         )}
 
                         {/* MODE 4: ACTIVITY LOGS */}
                         {viewMode === 'activity' && (
                             <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50">
-                                <ActivityLogViewer agentId={selectedAgentId} apiUrl={API_URL} />
+                                <ActivityLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
                             </div>
                         )}
 
@@ -729,11 +814,13 @@ export default function Agents() {
     );
 }
 
-function ActivityLogViewer({ agentId, apiUrl }: { agentId: string, apiUrl: string }) {
+function ActivityLogViewer({ agentId, apiUrl, token }: { agentId: string, apiUrl: string, token: string | null }) {
     const [logs, setLogs] = useState<any[]>([]);
 
     useEffect(() => {
-        fetch(`${apiUrl}/api/events/activity/${agentId}`)
+        fetch(`${apiUrl}/api/events/activity/${agentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(data => setLogs(data))
             .catch(e => console.error(e));
@@ -779,44 +866,284 @@ function ActivityLogViewer({ agentId, apiUrl }: { agentId: string, apiUrl: strin
     );
 }
 
-function ScreenshotsGallery({ agentId, apiUrl }: { agentId: string, apiUrl: string }) {
+function ScreenshotsGallery({ agentId, apiUrl, token }: { agentId: string, apiUrl: string, token: string | null }) {
     const [images, setImages] = useState<any[]>([]);
+    const [isEnabled, setIsEnabled] = useState(false);
+    const [loadingSettings, setLoadingSettings] = useState(true);
 
     useEffect(() => {
-        fetch(`${apiUrl}/api/screenshots/list/${agentId}`)
+        setLoadingSettings(true);
+        // 1. Fetch Images (Historic)
+        fetch(`${apiUrl}/api/screenshots/list/${agentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(data => setImages(data))
             .catch(e => console.error(e));
-    }, [agentId]);
+
+        // 2. Fetch Settings
+        fetch(`${apiUrl}/api/agents`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then((data: any[]) => {
+                const agent = data.find(a => a.agentId === agentId || a.AgentId === agentId);
+                if (agent) {
+                    const val = agent.screenshotsEnabled ?? agent.ScreenshotsEnabled;
+                    setIsEnabled(val === true);
+                }
+                setLoadingSettings(false);
+            });
+
+        // 3. Socket Listener for Live Updates
+        const newSocket = io(apiUrl, {
+            transports: ['websocket'],
+            query: { token }
+        });
+
+        newSocket.on('connect', () => {
+            console.log("[Gallery] Socket Connected");
+            newSocket.emit('join_room', { room: agentId });
+        });
+
+        newSocket.on('ReceiveScreen', (id: string, dataUri: string) => {
+            if (id === agentId) {
+                // Prepend new image
+                const newImg = {
+                    Filename: `Live Capture`,
+                    Date: 'Just Now',
+                    Timestamp: new Date().toISOString(),
+                    IsAlert: false,
+                    Url: '', // We use dataUri for src
+                    dataUri: dataUri
+                };
+                setImages(prev => [newImg, ...prev]);
+            }
+        });
+
+        return () => {
+            newSocket.disconnect();
+        };
+    }, [agentId, apiUrl, token]);
+
+    const toggleScreenshots = async () => {
+        const newVal = !isEnabled;
+        setIsEnabled(newVal); // Optimistic UI
+        try {
+            await fetch(`${apiUrl}/api/agents/${agentId}/toggle-screenshots?enabled=${newVal}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (e) {
+            console.error("Toggle failed", e);
+            setIsEnabled(!newVal); // Revert
+        }
+    };
+
+    // --- Settings Logic ---
+    const [showSettings, setShowSettings] = useState(false);
+    const [settings, setSettings] = useState({
+        quality: 80,
+        resolution: 'Original',
+        maxSize: 0 // KB
+    });
+
+    const loadSettings = async () => {
+        // Fetch current agent details to populate settings
+        // Ideally we should have a GET /settings, but GET /agents will work if we expose the fields
+        // Since we didn't update GET /agents explicitly to return these (pydantic model might default), let's assume valid default
+        // Actually, we should update the DTO on backend, but let's try reading what we have.
+        // For now, simpler to rely on defaults or what comes back from the toggle/report if we stored it.
+        // Let's implement a fetch inside `useEffect` above or just here.
+        // Rely on report data if we can, but let's do a specific fetch.
+        // Actually, the best way for now is just assume defaults or fetch agent again.
+        // Let's rely on the previous fetch in useEffect (commented out logic) or fetch specifically.
+        // To save time, we'll fetch agent again here when opening modal.
+        try {
+            const res = await fetch(`${apiUrl}/api/agents`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            const agent = data.find((a: any) => a.agentId === agentId || a.AgentId === agentId);
+            if (agent) {
+                setSettings({
+                    quality: agent.ScreenshotQuality || 80,
+                    resolution: agent.ScreenshotResolution || 'Original',
+                    maxSize: agent.MaxScreenshotSize || 0
+                });
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const saveSettings = async () => {
+        try {
+            await fetch(`${apiUrl}/api/agents/${agentId}/settings`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    ScreenshotQuality: settings.quality,
+                    ScreenshotResolution: settings.resolution,
+                    MaxScreenshotSize: settings.maxSize
+                })
+            });
+            setShowSettings(false);
+            // Could show toast success
+        } catch (e) {
+            console.error("Failed settings save", e);
+        }
+    };
+
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {images.map((img, i) => (
-                <div key={i} className={`group relative bg-gray-800 rounded-lg overflow-hidden border ${img.isAlert ? 'border-red-500/50' : 'border-gray-700'} hover:border-blue-500 transition-colors`}>
-                    <div className="aspect-video bg-black relative">
-                        <img
-                            src={`${apiUrl}${img.url}`}
-                            alt={img.filename}
-                            loading="lazy"
-                            className="w-full h-full object-cover opacity-75 group-hover:opacity-100 transition-opacity"
-                        />
-                        {img.isAlert && <div className="absolute top-1 right-1 bg-red-600 text-white text-[10px] uppercase font-bold px-1.5 rounded">Alert</div>}
-                    </div>
-                    <div className="p-2">
-                        <p className="text-xs text-gray-300 font-mono">{img.filename}</p>
-                        <p className="text-[10px] text-gray-500">{new Date(img.timestamp).toLocaleString()}</p>
-                    </div>
-                    <a
-                        href={`${apiUrl}${img.url}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                        <span className="text-white text-xs font-bold border border-white/50 px-3 py-1 rounded-full hover:bg-white hover:text-black transition-colors">View Full</span>
-                    </a>
+        <div className="space-y-6">
+            {/* Header / Controls */}
+            <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700">
+                <div>
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Image className="w-5 h-5 text-blue-500" />
+                        Captured Evidence
+                    </h3>
+                    <p className="text-xs text-gray-400">Manage automated screenshot collection for this agent.</p>
                 </div>
-            ))}
-            {images.length === 0 && <div className="col-span-full text-center text-gray-500 py-12">No screenshots found for this agent.</div>}
+
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={async () => {
+                            try {
+                                await fetch(`${apiUrl}/api/agents/${agentId}/take-screenshot`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                            } catch (e) {
+                                console.error("Manual capture failed", e);
+                            }
+                        }}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded shadow-sm mr-2"
+                    >
+                        Capture Now
+                    </button>
+
+                    {/* Settings Button */}
+                    <button
+                        onClick={() => { setShowSettings(true); loadSettings(); }}
+                        className="p-1.5 text-gray-400 hover:text-white transition-colors mr-2"
+                        title="Configure Quality"
+                    >
+                        <SettingsIcon className="w-5 h-5" />
+                    </button>
+
+                    <span className={`text-sm font-bold ${isEnabled ? 'text-green-400' : 'text-gray-500'}`}>
+                        {isEnabled ? 'Active' : 'Paused'}
+                    </span>
+                    <button
+                        onClick={toggleScreenshots}
+                        disabled={loadingSettings}
+                        className={`w-12 h-6 rounded-full p-1 transition-colors relative ${isEnabled ? 'bg-green-600' : 'bg-gray-700'}`}
+                    >
+                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                    </button>
+
+                    {/* Settings Modal */}
+                    {showSettings && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                            <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg w-96 shadow-xl">
+                                <h3 className="text-lg font-bold text-white mb-4">Screenshot Settings</h3>
+
+                                <div className="space-y-4">
+                                    {/* Resolution */}
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Resolution</label>
+                                        <select
+                                            value={settings.resolution}
+                                            onChange={e => setSettings({ ...settings, resolution: e.target.value })}
+                                            className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 text-sm"
+                                        >
+                                            <option value="Original">Original (Full Size)</option>
+                                            <option value="720p">720p (HD)</option>
+                                            <option value="480p">480p (SD)</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Quality Slider */}
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1 flex justify-between">
+                                            <span>Quality (Compression)</span>
+                                            <span>{settings.quality}%</span>
+                                        </label>
+                                        <input
+                                            type="range" min="10" max="100" step="10"
+                                            value={settings.quality}
+                                            onChange={e => setSettings({ ...settings, quality: parseInt(e.target.value) })}
+                                            className="w-full"
+                                        />
+                                    </div>
+
+                                    {/* Max Size */}
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">Max File Size (KB)</label>
+                                        <input
+                                            type="number"
+                                            placeholder="0 for Unlimited"
+                                            value={settings.maxSize}
+                                            onChange={e => setSettings({ ...settings, maxSize: parseInt(e.target.value) || 0 })}
+                                            className="w-full bg-gray-800 border border-gray-700 text-white rounded p-2 text-sm"
+                                        />
+                                        <p className="text-[10px] text-gray-500 mt-1">Set to 0 for unlimited size.</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end gap-2 mt-6">
+                                    <button
+                                        onClick={() => setShowSettings(false)}
+                                        className="px-3 py-1.5 text-gray-400 hover:text-white text-sm"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={saveSettings}
+                                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold"
+                                    >
+                                        Save Changes
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Gallery Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {images.map((img, i) => (
+                    <div key={i} className={`group relative bg-gray-800 rounded-lg overflow-hidden border ${img.IsAlert ? 'border-red-500/50' : 'border-gray-700'} hover:border-blue-500 transition-colors`}>
+                        <div className="aspect-video bg-black relative">
+                            <img
+                                src={img.dataUri || `${apiUrl}${img.Url}?token=${token}`}
+                                alt={img.Filename}
+                                loading="lazy"
+                                className="w-full h-full object-cover opacity-75 group-hover:opacity-100 transition-opacity"
+                            />
+                            {img.IsAlert && <div className="absolute top-1 right-1 bg-red-600 text-white text-[10px] uppercase font-bold px-1.5 rounded">Alert</div>}
+                        </div>
+                        <div className="p-2">
+                            <p className="text-xs text-gray-300 font-mono">{img.Filename}</p>
+                            <p className="text-[10px] text-gray-500">{new Date(img.Timestamp).toLocaleString()}</p>
+                        </div>
+                        <a
+                            href={`${apiUrl}${img.Url}?token=${token}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <span className="text-white text-xs font-bold border border-white/50 px-3 py-1 rounded-full hover:bg-white hover:text-black transition-colors">View Full</span>
+                        </a>
+                    </div>
+                ))}
+                {images.length === 0 && <div className="col-span-full text-center text-gray-500 py-12">No screenshots found for this agent.</div>}
+            </div>
         </div>
     );
 }

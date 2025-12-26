@@ -13,7 +13,7 @@ export default function Login() {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

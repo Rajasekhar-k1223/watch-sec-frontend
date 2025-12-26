@@ -15,7 +15,7 @@ interface OCRLog {
 export default function ImageRecognition() {
     const [logs, setLogs] = useState<OCRLog[]>([]);
     const [loading, setLoading] = useState(true);
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const fetchLogs = async () => {
         setLoading(true);

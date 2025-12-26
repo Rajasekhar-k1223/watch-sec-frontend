@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { HubConnection, HubConnectionBuilder, HttpTransportType } from '@microsoft/signalr';
 import { useSearchParams } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft, Monitor, Activity, ShieldAlert, Cpu } from 'lucide-react';
+import { API_URL } from '../config';
 
 interface Report {
     agentId: string;
@@ -11,6 +12,7 @@ interface Report {
     memoryUsage: number;
     timestamp: string;
     screenshotsEnabled?: boolean;
+    hostname?: string;
 }
 
 interface SecurityEvent {
@@ -29,7 +31,7 @@ export default function LiveMonitor() {
     const selectedAgentId = searchParams.get('agentId');
 
     const connectionRef = useRef<HubConnection>(null);
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     // 1. Initial Data Fetch
     useEffect(() => {
@@ -175,15 +177,9 @@ export default function LiveMonitor() {
                                 </div>
                             )}
                             <div className="absolute top-4 right-4 flex gap-2">
-                                {agent && (
-                                    <ToggleSwitch
-                                        enabled={agent.screenshotsEnabled !== false}
-                                        onChange={async (val) => {
-                                            await fetch(`${API_URL}/api/agents/${agent.agentId}/toggle-screenshots?enabled=${val}`, { method: 'POST' });
-                                            setReports(prev => prev.map(p => p.agentId === agent.agentId ? { ...p, screenshotsEnabled: val } : p));
-                                        }}
-                                    />
-                                )}
+                                <div className={`text-xs px-2 py-1 rounded shadow animate-pulse text-white ${screens[selectedAgentId] ? 'bg-red-600' : 'bg-gray-600'}`}>
+                                    {screens[selectedAgentId] ? 'LIVE' : 'IDLE'}
+                                </div>
                             </div>
                         </div>
 
@@ -193,7 +189,6 @@ export default function LiveMonitor() {
                             <div className="h-64 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={history}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
                                         <XAxis dataKey="time" stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
                                         <YAxis stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} />
                                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
@@ -253,51 +248,32 @@ export default function LiveMonitor() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="flex flex-col gap-4">
                 {reports.map(report => (
                     <div key={report.agentId} className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl hover:border-blue-500/50 transition-colors">
                         <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setSearchParams({ agentId: report.agentId })}>
-                            <h2 className="text-xl font-semibold text-white flex items-center gap-2 group">
-                                {report.agentId}
-                                <ArrowLeft className="rotate-180 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400" size={16} />
+                            <h2 className="text-xl font-semibold text-white flex flex-col group">
+                                <div className="flex items-center gap-2">
+                                    {report.agentId}
+                                    <ArrowLeft className="rotate-180 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400" size={16} />
+                                </div>
+                                <span className="text-xs font-mono text-gray-400 font-normal">{report.hostname || 'Unknown Host'}</span>
                             </h2>
                             <span className={`px-3 py-1 rounded-full text-sm ${report.status === 'Running' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
                                 {report.status}
                             </span>
                         </div>
 
-                        {/* Live Screen Area (Preview) */}
-                        <div
-                            className="mb-6 bg-black rounded-lg overflow-hidden border border-gray-600 aspect-video relative group cursor-pointer"
-                            onClick={() => setSearchParams({ agentId: report.agentId })}
-                        >
-                            {screens[report.agentId] ? (
-                                <img
-                                    src={`data:image/webp;base64,${screens[report.agentId]}`}
-                                    alt="Live Screen"
-                                    className="w-full h-full object-contain"
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-gray-500">
-                                    <span className="animate-pulse">Waiting for Stream...</span>
-                                </div>
-                            )}
-                            <div className="absolute top-2 right-2 flex items-center gap-2">
-                                <div className={`text-xs px-2 py-1 rounded shadow animate-pulse text-white ${screens[report.agentId] ? 'bg-red-600' : 'bg-gray-600'}`}>
-                                    {screens[report.agentId] ? 'LIVE' : 'IDLE'}
-                                </div>
-                                {/* Stop propagation so toggling doesn't open details */}
-                                <div onClick={(e) => e.stopPropagation()}>
-                                    <ToggleSwitch
-                                        enabled={report.screenshotsEnabled !== false}
-                                        onChange={async (val) => {
-                                            try {
-                                                await fetch(`${API_URL}/api/agents/${report.agentId}/toggle-screenshots?enabled=${val}`, { method: 'POST' });
-                                                setReports(prev => prev.map(p => p.agentId === report.agentId ? { ...p, screenshotsEnabled: val } : p));
-                                            } catch (e) { console.error(e); }
-                                        }}
-                                    />
-                                </div>
+                        {/* Live Screen Area REMOVED per user request */}
+                        {/* Status Summary */}
+                        < div className="mb-6 grid grid-cols-2 gap-4" >
+                            <div className="bg-gray-900 rounded p-4 border border-gray-700 text-center">
+                                <span className="text-gray-500 text-xs uppercase">CPU</span>
+                                <div className="text-2xl font-bold text-white mt-1">{(report.cpuUsage || 0).toFixed(1)}%</div>
+                            </div>
+                            <div className="bg-gray-900 rounded p-4 border border-gray-700 text-center">
+                                <span className="text-gray-500 text-xs uppercase">Memory</span>
+                                <div className="text-2xl font-bold text-white mt-1">{(report.memoryUsage || 0).toFixed(0)} MB</div>
                             </div>
                         </div>
 
@@ -311,25 +287,19 @@ export default function LiveMonitor() {
                             <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-gray-900 to-transparent" />
                         </div>
                     </div>
-                ))}
+                ))
+                }
 
-                {reports.length === 0 && (
-                    <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-700 rounded-xl">
-                        No agents connected.
-                    </div>
-                )}
-            </div>
-        </div>
+                {
+                    reports.length === 0 && (
+                        <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-700 rounded-xl">
+                            No agents connected.
+                        </div>
+                    )
+                }
+            </div >
+        </div >
     );
 }
 
-function ToggleSwitch({ enabled, onChange }: { enabled: boolean; onChange: (val: boolean) => void }) {
-    return (
-        <button
-            onClick={() => onChange(!enabled)}
-            className={`w-10 h-5 flex items-center rounded-full p-1 transition-colors ${enabled ? 'bg-green-500' : 'bg-gray-600'}`}
-        >
-            <div className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
-        </button>
-    );
-}
+

@@ -17,7 +17,7 @@ export default function SystemAudit() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const { user } = useAuth();
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         const fetchLogs = async () => {

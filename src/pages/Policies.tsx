@@ -27,7 +27,7 @@ export default function Policies() {
         blockedWebsitesJson: '[]'
     });
 
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         fetchPolicies();
