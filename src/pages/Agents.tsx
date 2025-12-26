@@ -80,7 +80,7 @@ export default function Agents() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = os === 'windows' ? 'watch-sec-setup.exe' : 'watch-sec-install.sh';
+            a.download = `watch-sec-agent-${os}.zip`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
@@ -220,6 +220,20 @@ export default function Agents() {
             await fetch(`${API_URL}/api/events/simulate/${agentId}`, { method: 'POST' });
         } catch (e) {
             console.error("Failed to trigger simulation", e);
+        }
+    };
+
+    const handleTakeScreenshot = async (agentId: string) => {
+        try {
+            // We'll use a new API endpoint to trigger the command via the backend
+            await fetch(`${API_URL}/api/commands/screenshot/${agentId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            alert("Screenshot request sent!");
+        } catch (e) {
+            console.error("Failed to request screenshot", e);
+            alert("Failed to send request");
         }
     };
 
@@ -634,6 +648,22 @@ export default function Agents() {
                                         <Image className="w-4 h-4 text-gray-400" />
                                         <span className="text-xs font-bold text-gray-300 uppercase">Live Screen Feed</span>
                                         <div className="ml-auto flex items-center gap-3">
+                                            {/* Take Screenshot Button */}
+                                            <button
+                                                onClick={() => {
+                                                    // Emit socket event to take screenshot
+                                                    const socket = io(API_URL, { query: { token } }); // Temporary socket for command? Or reuse existing if possible.
+                                                    // Ideally we reuse the existing socket connection if we can expose it, 
+                                                    // but for now let's use the API endpoint which we should probably create, 
+                                                    // OR just emit via a new socket connection for simplicity if main socket isn't easily accessible here.
+                                                    // actually, we can add a function to the component scope.
+                                                    handleTakeScreenshot(selectedAgentId);
+                                                }}
+                                                className="flex items-center gap-1 text-[10px] bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1 rounded transition-colors"
+                                            >
+                                                <Image className="w-3 h-3" /> Take Screenshot
+                                            </button>
+
                                             {liveScreen && <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold px-2 py-0.5 bg-red-500/10 rounded animate-pulse"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> LIVE</span>}
                                             <button
                                                 onClick={handleToggleFullscreen}
