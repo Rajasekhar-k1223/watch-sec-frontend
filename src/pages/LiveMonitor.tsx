@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
-import { HubConnection, HubConnectionBuilder, HttpTransportType } from '@microsoft/signalr';
 import { useSearchParams } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { ArrowLeft, Monitor, Activity, ShieldAlert, Cpu } from 'lucide-react';
-import { API_URL } from '../config';
+import { API_URL, SOCKET_URL } from '../config';
+import { io, Socket } from 'socket.io-client';
 
 interface Report {
     agentId: string;
@@ -30,8 +30,7 @@ export default function LiveMonitor() {
     const [searchParams, setSearchParams] = useSearchParams();
     const selectedAgentId = searchParams.get('agentId');
 
-    const connectionRef = useRef<HubConnection>(null);
-    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const socketRef = useRef<Socket | null>(null);
 
     // 1. Initial Data Fetch
     useEffect(() => {
@@ -71,7 +70,7 @@ export default function LiveMonitor() {
         return () => clearInterval(interval);
     }, [selectedAgentId]);
 
-    // 2. Single Agent History Fetch
+    // 2. Single Agent History Fetch (Initial load)
     useEffect(() => {
         if (selectedAgentId) {
             const fetchHistory = async () => {
@@ -96,46 +95,77 @@ export default function LiveMonitor() {
                 } catch { }
             };
             fetchHistory();
-            // Poll history slower
-            const hInt = setInterval(fetchHistory, 5000);
-            return () => clearInterval(hInt);
         }
     }, [selectedAgentId]);
 
-    // 3. SignalR Connection
+    // 3. Socket.IO Connection
     useEffect(() => {
-        const connection = new HubConnectionBuilder()
-            .withUrl(`${API_URL}/streamHub`, {
-                skipNegotiation: true,
-                transport: HttpTransportType.WebSockets
-            })
-            .withAutomaticReconnect()
-            .build();
+        // Initialize Socket
+        const socket = io(SOCKET_URL, {
+            path: '/socket.io/',
+            transports: ['websocket', 'polling'],
+            reconnection: true,
+        });
 
-        connection.on("ReceiveScreen", (agentId: string, base64Image: string) => {
-            // Optimization: Only update screen if in Grid OR if specific agent selected
+        socket.on("connect", () => {
+            console.log("Connected to Socket.IO Endpoint");
+            // If agent selected, join its room
+            if (selectedAgentId) {
+                console.log(`Joining Room: ${selectedAgentId}`);
+                socket.emit('join_room', { room: selectedAgentId });
+            }
+        });
+
+        // Listen for Screen Frames
+        socket.on("ReceiveScreen", (data: any) => {
+            const [agentId, base64Image] = Array.isArray(data) ? data : [data.agentId, data.image];
+
+            // Update screen state
             if (!selectedAgentId || selectedAgentId === agentId) {
                 setScreens(prev => ({ ...prev, [agentId]: base64Image }));
             }
         });
 
-        connection.on("ReceiveEvent", (agentId: string, type: string, details: string, timestamp: string) => {
+        // Listen for Events (and parse metrics for live chart appending)
+        socket.on("ReceiveEvent", (evt: any) => {
+            // evt = { agentId, title, details, timestamp }
+            const { agentId, title, details, timestamp } = evt;
+
+            // 1. Append to Event Log
             setEvents(prev => {
                 const agentEvents = prev[agentId] || [];
-                const newEvents = [{ type, details, timestamp }, ...agentEvents].slice(0, 50); // Keep more history
+                // Add new event at start
+                const newEvents = [{ type: title, details, timestamp }, ...agentEvents].slice(0, 50);
                 return { ...prev, [agentId]: newEvents };
             });
+
+            // 2. If selected agent, parse metrics and append to history/chart
+            if (selectedAgentId && agentId === selectedAgentId) {
+                // details format: "Status: Online | CPU: 12.5% | MEM: 4096.0MB"
+                const cpuMatch = details.match(/CPU:\s*([\d.]+)%/);
+                const memMatch = details.match(/MEM:\s*([\d.]+)MB/);
+
+                if (cpuMatch && memMatch) {
+                    const newPoint = {
+                        time: new Date(timestamp).toLocaleTimeString(),
+                        cpu: parseFloat(cpuMatch[1]),
+                        mem: parseFloat(memMatch[1])
+                    };
+
+                    setHistory(prev => {
+                        // Append and keep last 60 points (1 hour approx if 1m interval, but here it's 5s so 60 points = 5 min windown, maybe keep more)
+                        // User wants "live data", let's keep 100 points
+                        const newHist = [...prev, newPoint].slice(-100);
+                        return newHist;
+                    });
+                }
+            }
         });
 
-        connection.start()
-            .then(() => {
-                console.log("Connected to SignalR Stream");
-                connectionRef.current = connection;
-            })
-            .catch((err: any) => console.error("SignalR Connection Error: ", err));
+        socketRef.current = socket;
 
         return () => {
-            connection.stop();
+            socket.disconnect();
         };
     }, [selectedAgentId]);
 
@@ -185,15 +215,15 @@ export default function LiveMonitor() {
 
                         {/* Performance Chart */}
                         <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-                            <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={18} className="text-purple-400" /> Performance History (1 Hour)</h3>
+                            <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={18} className="text-purple-400" /> Live Performance Data</h3>
                             <div className="h-64 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <LineChart data={history}>
                                         <XAxis dataKey="time" stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
                                         <YAxis stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} />
                                         <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
-                                        <Line type="monotone" dataKey="cpu" stroke="#EF4444" strokeWidth={2} dot={false} name="CPU %" />
-                                        <Line type="monotone" dataKey="mem" stroke="#3B82F6" strokeWidth={2} dot={false} name="RAM %" />
+                                        <Line type="monotone" dataKey="cpu" stroke="#EF4444" strokeWidth={2} dot={false} name="CPU %" isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="mem" stroke="#3B82F6" strokeWidth={2} dot={false} name="RAM %" isAnimationActive={false} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
@@ -203,7 +233,7 @@ export default function LiveMonitor() {
                     {/* RIGHT COL: Event Log */}
                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-0 flex flex-col h-[800px]">
                         <div className="p-4 border-b border-gray-800 bg-gray-800/50">
-                            <h3 className="font-bold flex items-center gap-2"><ShieldAlert size={18} className="text-red-400" /> Detailed Security Log</h3>
+                            <h3 className="font-bold flex items-center gap-2"><ShieldAlert size={18} className="text-red-400" /> Recent Activities</h3>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs custom-scrollbar">
                             {events[selectedAgentId]?.map((evt, i) => (
@@ -217,7 +247,7 @@ export default function LiveMonitor() {
                                         <button
                                             onClick={() => {
                                                 const pid = parseInt(evt.details.match(/PID: (\d+)/)?.[1] || "0");
-                                                if (pid && connectionRef.current) connectionRef.current.invoke("KillProcess", selectedAgentId, pid);
+                                                if (pid && socketRef.current) socketRef.current.emit("KillProcess", { target: pid, agentId: selectedAgentId });
                                             }}
                                             className="mt-2 w-full bg-red-900/30 hover:bg-red-900/50 text-red-500 py-1 rounded text-center uppercase tracking-wider font-bold transition-colors"
                                         >
@@ -264,7 +294,6 @@ export default function LiveMonitor() {
                             </span>
                         </div>
 
-                        {/* Live Screen Area REMOVED per user request */}
                         {/* Status Summary */}
                         < div className="mb-6 grid grid-cols-2 gap-4" >
                             <div className="bg-gray-900 rounded p-4 border border-gray-700 text-center">
