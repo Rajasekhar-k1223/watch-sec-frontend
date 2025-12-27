@@ -109,16 +109,20 @@ export default function LiveMonitor() {
 
         socket.on("connect", () => {
             console.log("Connected to Socket.IO Endpoint");
-            // If agent selected, join its room
+            // If agent selected, join its room AND start stream
             if (selectedAgentId) {
                 console.log(`Joining Room: ${selectedAgentId}`);
                 socket.emit('join_room', { room: selectedAgentId });
+                console.log(`Requesting Stream Start: ${selectedAgentId}`);
+                socket.emit('start_stream', { agentId: selectedAgentId });
             }
         });
 
-        // Listen for Screen Frames
-        socket.on("ReceiveScreen", (data: any) => {
-            const [agentId, base64Image] = Array.isArray(data) ? data : [data.agentId, data.image];
+        // Listen for Screen Frames (Note: Backend emits 'receive_stream_frame')
+        socket.on("receive_stream_frame", (data: any) => {
+            // data: { agentId, image (base64) }
+            const agentId = data.agentId;
+            const base64Image = data.image;
 
             // Update screen state
             if (!selectedAgentId || selectedAgentId === agentId) {
@@ -165,6 +169,10 @@ export default function LiveMonitor() {
         socketRef.current = socket;
 
         return () => {
+            if (selectedAgentId) {
+                console.log(`Stopping Stream: ${selectedAgentId}`);
+                socket.emit('stop_stream', { agentId: selectedAgentId });
+            }
             socket.disconnect();
         };
     }, [selectedAgentId]);
