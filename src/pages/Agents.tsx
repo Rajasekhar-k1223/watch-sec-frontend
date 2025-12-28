@@ -1,4 +1,4 @@
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Settings as SettingsIcon } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Settings as SettingsIcon, Video, StopCircle } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
@@ -64,6 +64,11 @@ export default function Agents() {
     // OTP Token Logic
     const [showOtpModal, setShowOtpModal] = useState(false);
     const [otpToken, setOtpToken] = useState<string | null>(null);
+
+    // WebRTC Refs
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const pcRef = useRef<RTCPeerConnection | null>(null);
+    const remoteStreamRef = useRef<MediaStream | null>(null);
 
     const handleGenerateToken = async () => {
         try {
@@ -139,6 +144,81 @@ export default function Agents() {
     const [socketStatus, setSocketStatus] = useState<string>('Disconnected');
     const socketRef = useRef<any>(null);
 
+    // Recording Logic
+    const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const chunksRef = useRef<Blob[]>([]);
+
+    const handleStartRecording = () => {
+        if (!remoteStreamRef.current) return;
+
+        try {
+            const recorder = new MediaRecorder(remoteStreamRef.current);
+            chunksRef.current = []; // Clear previous chunks
+
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    chunksRef.current.push(e.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `recording-${selectedAgentId}-${new Date().toISOString()}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                chunksRef.current = [];
+            };
+
+            recorder.start();
+            mediaRecorderRef.current = recorder;
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Failed to start recording:", err);
+            alert("Failed to start recording. MediaRecorder might not be supported.");
+        }
+    };
+
+    const handleStopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    useEffect(() => {
+        if (liveScreen && remoteStreamRef.current && videoRef.current) {
+            const videoEl = videoRef.current;
+
+            // Only assign if different to avoid reloading
+            if (videoEl.srcObject !== remoteStreamRef.current) {
+                console.log("[Agents.tsx] Attaching stream to video element");
+                videoEl.srcObject = remoteStreamRef.current;
+            }
+
+            // Attempt play
+            const playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        console.log("[Agents.tsx] Play Success");
+                    })
+                    .catch(e => {
+                        if (e.name === 'AbortError') {
+                            console.warn("[Agents.tsx] Play aborted (likely buffering or new load).");
+                        } else {
+                            console.error("[Agents.tsx] Play error:", e);
+                        }
+                    });
+            }
+        }
+    }, [liveScreen]);
+
     // Fetch Logs and Connect SignalR when Modal Opens
     useEffect(() => {
         if (!selectedAgentId) return;
@@ -208,10 +288,10 @@ export default function Agents() {
         socketRef.current = socket;
 
         socket.on("connect", () => {
-            console.log("[Socket] Connected:", socket.id);
+            console.log("[Agents.tsx] Socket Connected:", socket.id);
             setSocketStatus('Connected');
             if (selectedAgentId) {
-                console.log("[Socket] Joining Room:", selectedAgentId);
+                console.log("[Agents.tsx] Joining Room:", selectedAgentId);
                 socket.emit("join_room", { room: selectedAgentId });
                 setSocketStatus(`Joined Room: ${selectedAgentId}`);
             }
@@ -223,35 +303,94 @@ export default function Agents() {
 
         socket.on("ReceiveScreen", (agentId: string, base64: string) => {
             // Backend emits (agentId, dataUri)
-            console.log("[Socket] Received Screenshot from:", agentId);
+            console.log("[Agents.tsx] ReceiveScreen Event from:", agentId);
             if (selectedAgentId && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
                 setLiveScreen(base64);
             }
         });
 
-        socket.on("ReceiveEvent", (agentId: string, type: string, details: string, timestamp: string) => {
-            if (agentId === selectedAgentId) {
-                setEvents(prev => [{ type, details, timestamp }, ...prev]);
+        socket.on("ReceiveEvent", (data: any) => {
+            // Backend emits single object: { agentId, title, details, timestamp }
+            console.log("[Agents.tsx] ReceiveEvent Object:", data);
+            const agentId = data.agentId || data.AgentId;
+            const title = data.title || data.Type || 'Info';
+            const details = data.details || data.Details || '';
+            const timestamp = data.timestamp || data.Timestamp || new Date().toISOString();
+
+            if (agentId && selectedAgentId && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
+                setEvents(prev => [{ type: title, details, timestamp }, ...prev]);
             }
         });
 
-        socket.on("receive_stream_frame", (data: any) => {
-            // console.log("[Socket] Stream Frame Received. Size:", data.image?.length);
-            if (!selectedAgentId) return;
+        // --- WebRTC Logic ---
+        socket.on("webrtc_offer", async (data: any) => {
+            console.log("[Agents.tsx] WebRTC Offer Received", data);
 
-            const incomingId = (data.agentId || '').toLowerCase();
-            const currentId = selectedAgentId.toLowerCase();
+            // 1. Reset PC
+            if (pcRef.current) pcRef.current.close();
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            pcRef.current = pc;
 
-            if (incomingId === currentId) {
-                setLiveScreen(data.image);
-            } else {
-                console.warn(`[Socket] Frame Dropped: Mismatched ID. Received: ${incomingId}, Expected: ${currentId}`);
+            // 2. Handle Track
+            pc.ontrack = (event) => {
+                console.log("[Agents.tsx] Track Received", event.streams[0]);
+                if (event.streams && event.streams[0]) {
+                    const stream = event.streams[0];
+                    console.log("[Agents.tsx] Track Received", stream.id, stream.getTracks());
+                    remoteStreamRef.current = stream;
+                    setLiveScreen(stream.id);
+                }
+            };
+
+            // 3. ICE Candidates
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice_candidate', {
+                        target: selectedAgentId,
+                        candidate: event.candidate
+                    });
+                }
+            };
+
+            try {
+                // 4. Set Remote Desc
+                await pc.setRemoteDescription(new RTCSessionDescription({
+                    type: data.type,
+                    sdp: data.sdp
+                }));
+
+                // 5. Create Answer
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+
+                // 6. Send Answer
+                socket.emit('webrtc_answer', {
+                    target: selectedAgentId,
+                    sdp: answer.sdp,
+                    type: answer.type
+                });
+            } catch (err) {
+                console.error("[Agents.tsx] WebRTC Error:", err);
+            }
+        });
+
+        socket.on('ice_candidate', async (data) => {
+            if (pcRef.current) {
+                try {
+                    await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } catch (e) { console.error("Error adding ICE:", e); }
             }
         });
 
         return () => {
             socket.disconnect();
             socketRef.current = null;
+            if (pcRef.current) {
+                pcRef.current.close();
+                pcRef.current = null;
+            }
             setLiveScreen(null);
             setEvents([]);
             setIsStreaming(false);
@@ -686,10 +825,10 @@ export default function Agents() {
 
                         {/* MODE 2: MONITOR SPLIT VIEW */}
                         {viewMode === 'monitor' && (
-                            <div className={`flex-1 ${isScreenMaximized ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-3'} gap-0 overflow-hidden`}>
+                            <div className={`flex-1 ${isScreenMaximized ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-3'} gap-0 overflow-hidden min-h-0`}>
                                 {/* Left: Logs (Smaller) - Hide if maximized */}
                                 {!isScreenMaximized && (
-                                    <div className="flex flex-col border-r border-gray-800 bg-gray-900/50 col-span-1">
+                                    <div className="flex flex-col border-r border-gray-800 bg-gray-900/50 col-span-1 overflow-hidden min-h-0">
                                         <div className="p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2">
                                             <List className="w-4 h-4 text-gray-400" />
                                             <span className="text-xs font-bold text-gray-300 uppercase">Recent Activity</span>
@@ -713,7 +852,7 @@ export default function Agents() {
                                 {/* Right: Live Screen (Larger) */}
                                 <div
                                     ref={monitorContainerRef}
-                                    className={`flex flex-col bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'}`}
+                                    className={`flex flex-col bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0`}
                                 >
                                     {/* Hide Header in Full Screen unless hovered (optional improvement), for now keep it but maybe minimal? */}
                                     <div className={`p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
@@ -739,6 +878,20 @@ export default function Agents() {
                                                 </button>
                                             )}
 
+                                            {/* Recording Button */}
+                                            {isStreaming && (
+                                                <button
+                                                    onClick={isRecording ? handleStopRecording : handleStartRecording}
+                                                    className={`px-3 py-1 border rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-2 ${isRecording
+                                                        ? 'bg-red-500/20 hover:bg-red-500/40 text-red-500 border-red-500/50'
+                                                        : 'bg-gray-700/50 hover:bg-gray-700 text-gray-300 border-gray-600'
+                                                        }`}
+                                                >
+                                                    {isRecording ? <StopCircle className="w-3 h-3 animate-pulse" /> : <Video className="w-3 h-3" />}
+                                                    {isRecording ? 'Rec ON' : 'Record'}
+                                                </button>
+                                            )}
+
 
                                             {liveScreen && <span className="flex items-center gap-1 text-[10px] text-red-500 font-bold px-2 py-0.5 bg-red-500/10 rounded animate-pulse"><div className="w-1.5 h-1.5 rounded-full bg-red-500"></div> LIVE</span>}
                                             <button
@@ -750,13 +903,30 @@ export default function Agents() {
                                             </button>
                                         </div>
                                     </div>
-                                    <div className="flex-1 flex items-center justify-center p-4 relative overflow-hidden h-full">
+                                    <div className="flex-1 relative overflow-hidden bg-black min-h-0">
                                         {liveScreen ? (
-                                            <img
-                                                src={`data:image/webp;base64,${liveScreen}`}
-                                                alt="Live Screen"
-                                                className={`object-contain rounded shadow-lg border border-gray-800 ${isScreenMaximized ? 'w-auto h-full max-w-full' : 'max-w-full max-h-full'}`}
-                                            />
+                                            <>
+                                                <video
+                                                    ref={videoRef}
+                                                    className="absolute inset-0 w-full h-full object-contain z-10"
+                                                    autoPlay
+                                                    playsInline
+                                                    muted
+                                                    onTimeUpdate={(e) => {
+                                                        const v = e.currentTarget;
+                                                        // Update debug info periodically or on frame
+                                                        const debugEl = document.getElementById('debug-stats');
+                                                        if (debugEl) {
+                                                            debugEl.innerText = `Res: ${v.videoWidth}x${v.videoHeight} | State: ${v.readyState} | Paused: ${v.paused} | Muted: ${v.muted}`;
+                                                        }
+                                                    }}
+                                                />
+                                                <div className="absolute top-2 left-2 bg-black/70 text-green-400 font-mono text-[10px] p-2 rounded pointer-events-none z-10 border border-green-500/30">
+                                                    <p className="font-bold underline mb-1">DEBUG INFO</p>
+                                                    <p id="debug-stats">Waiting for video data...</p>
+                                                    <p>Time: {new Date().toLocaleTimeString()}</p>
+                                                </div>
+                                            </>
                                         ) : (
                                             <div className="text-center text-gray-600 bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-700">
                                                 <div className="w-12 h-12 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
@@ -870,29 +1040,57 @@ function ScreenshotsGallery({ agentId, apiUrl, token }: { agentId: string, apiUr
     const [images, setImages] = useState<any[]>([]);
     const [isEnabled, setIsEnabled] = useState(false);
     const [loadingSettings, setLoadingSettings] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const { logout } = useAuth();
 
     useEffect(() => {
         setLoadingSettings(true);
+        setError(null);
+
         // 1. Fetch Images (Historic)
         fetch(`${apiUrl}/api/screenshots/list/${agentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) throw new Error("Unauthorized (Session Expired)");
+                if (!res.ok) throw new Error("Failed to fetch images");
+                return res.json();
+            })
             .then(data => setImages(data))
-            .catch(e => console.error(e));
+            .catch(e => {
+                console.error(e);
+                setError(e.message);
+            });
 
         // 2. Fetch Settings
         fetch(`${apiUrl}/api/agents`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
-            .then(res => res.json())
+            .then(res => {
+                if (res.status === 401) throw new Error("Unauthorized");
+                return res.json();
+            })
             .then((data: any[]) => {
-                const agent = data.find(a => a.agentId === agentId || a.AgentId === agentId);
-                if (agent) {
-                    const val = agent.screenshotsEnabled ?? agent.ScreenshotsEnabled;
-                    setIsEnabled(val === true);
+                if (Array.isArray(data)) {
+                    const agent = data.find(a => a.agentId === agentId || a.AgentId === agentId);
+                    if (agent) {
+                        const val = agent.screenshotsEnabled ?? agent.ScreenshotsEnabled;
+                        setIsEnabled(val === true);
+                    }
+                } else {
+                    console.warn("[Agents.tsx] Expected array for agents list but got:", data);
+                    // Safely check for error detail
+                    const errData = data as any;
+                    if (errData && errData.detail) {
+                        setError(errData.detail);
+                    }
                 }
                 setLoadingSettings(false);
+            })
+            .catch(e => {
+                console.error("[Agents.tsx] Failed to fetch settings:", e);
+                setLoadingSettings(false);
+                setError("Session expired or unauthorized. Please re-login.");
             });
 
         // 3. Socket Listener for Live Updates
@@ -930,13 +1128,18 @@ function ScreenshotsGallery({ agentId, apiUrl, token }: { agentId: string, apiUr
         const newVal = !isEnabled;
         setIsEnabled(newVal); // Optimistic UI
         try {
-            await fetch(`${apiUrl}/api/agents/${agentId}/toggle-screenshots?enabled=${newVal}`, {
+            const res = await fetch(`${apiUrl}/api/agents/${agentId}/toggle-screenshots?enabled=${newVal}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-        } catch (e) {
+            if (res.status === 401) {
+                throw new Error("Unauthorized (Session Expired)");
+            }
+            if (!res.ok) throw new Error("Failed to toggle settings");
+        } catch (e: any) {
             console.error("Toggle failed", e);
             setIsEnabled(!newVal); // Revert
+            setError(e.message || "Failed to update settings");
         }
     };
 
@@ -996,6 +1199,30 @@ function ScreenshotsGallery({ agentId, apiUrl, token }: { agentId: string, apiUr
         }
     };
 
+
+    if (error) {
+        return (
+            <div className="p-8 text-center border-t border-dashed border-red-900/50 bg-red-900/10 rounded-lg mt-4">
+                <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-red-500" />
+                <h3 className="text-white font-bold mb-1">Connection Error</h3>
+                <p className="text-red-400 text-sm mb-4">{error}</p>
+                <div className="flex gap-4 justify-center">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs font-bold uppercase tracking-wider"
+                    >
+                        Retry
+                    </button>
+                    <button
+                        onClick={() => logout()}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold uppercase tracking-wider"
+                    >
+                        Login Again
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">

@@ -81,12 +81,12 @@ export default function Dashboard() {
             console.log("[Socket.IO] Connected to Dashboard Stream");
         });
 
-        socket.on("security_event", (data: any) => {
+        socket.on("ReceiveEvent", (data: any) => {
             const newLog: LogEntry = {
-                type: data.Type || "Security",
-                details: data.Details || "Unknown Event",
-                timestamp: data.Timestamp || new Date().toISOString(),
-                agentId: data.AgentId
+                type: data.title || "Security",
+                details: data.details || "Unknown Event",
+                timestamp: data.timestamp || new Date().toISOString(),
+                agentId: data.agentId
             };
             setLogs(prev => [newLog, ...prev].slice(0, 100));
 

@@ -98,84 +98,119 @@ export default function LiveMonitor() {
         }
     }, [selectedAgentId]);
 
-    // 3. Socket.IO Connection
+    // 3. Socket.IO Connection (Optimized)
+    // 3. WebRTC / Socket.IO Connection
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const pcRef = useRef<RTCPeerConnection | null>(null);
+
     useEffect(() => {
-        // Initialize Socket
+        console.log("[LiveMonitor] Initializing Socket.IO connection...");
         const socket = io(SOCKET_URL, {
             path: '/socket.io/',
             transports: ['websocket', 'polling'],
             reconnection: true,
         });
 
+        socketRef.current = socket;
+
         socket.on("connect", () => {
-            console.log("Connected to Socket.IO Endpoint");
-            // If agent selected, join its room AND start stream
+            console.log("[LiveMonitor] Socket Connected:", socket.id);
             if (selectedAgentId) {
-                console.log(`Joining Room: ${selectedAgentId}`);
+                console.log(`[LiveMonitor] Joining Room: ${selectedAgentId}`);
                 socket.emit('join_room', { room: selectedAgentId });
-                console.log(`Requesting Stream Start: ${selectedAgentId}`);
-                socket.emit('start_stream', { agentId: selectedAgentId });
-            }
-        });
-
-        // Listen for Screen Frames (Note: Backend emits 'receive_stream_frame')
-        socket.on("receive_stream_frame", (data: any) => {
-            // data: { agentId, image (base64) }
-            const agentId = data.agentId;
-            const base64Image = data.image;
-
-            // Update screen state
-            if (!selectedAgentId || selectedAgentId === agentId) {
-                setScreens(prev => ({ ...prev, [agentId]: base64Image }));
-            }
-        });
-
-        // Listen for Events (and parse metrics for live chart appending)
-        socket.on("ReceiveEvent", (evt: any) => {
-            // evt = { agentId, title, details, timestamp }
-            const { agentId, title, details, timestamp } = evt;
-
-            // 1. Append to Event Log
-            setEvents(prev => {
-                const agentEvents = prev[agentId] || [];
-                // Add new event at start
-                const newEvents = [{ type: title, details, timestamp }, ...agentEvents].slice(0, 50);
-                return { ...prev, [agentId]: newEvents };
-            });
-
-            // 2. If selected agent, parse metrics and append to history/chart
-            if (selectedAgentId && agentId === selectedAgentId) {
-                // details format: "Status: Online | CPU: 12.5% | MEM: 4096.0MB"
-                const cpuMatch = details.match(/CPU:\s*([\d.]+)%/);
-                const memMatch = details.match(/MEM:\s*([\d.]+)MB/);
-
-                if (cpuMatch && memMatch) {
-                    const newPoint = {
-                        time: new Date(timestamp).toLocaleTimeString(),
-                        cpu: parseFloat(cpuMatch[1]),
-                        mem: parseFloat(memMatch[1])
-                    };
-
-                    setHistory(prev => {
-                        // Append and keep last 60 points (1 hour approx if 1m interval, but here it's 5s so 60 points = 5 min windown, maybe keep more)
-                        // User wants "live data", let's keep 100 points
-                        const newHist = [...prev, newPoint].slice(-100);
-                        return newHist;
-                    });
+                if (socket.connected) {
+                    console.log(`[LiveMonitor] Auto-Starting Stream for: ${selectedAgentId}`);
+                    socket.emit('start_stream', { agentId: selectedAgentId });
+                } else {
+                    console.error("[LiveMonitor] Socket NOT connected. Queuing start_stream...");
+                    // Retry once connected
                 }
             }
         });
 
-        socketRef.current = socket;
+        socket.on("connect_error", (err) => {
+            console.error("[LiveMonitor] Socket Connection Error:", err);
+        });
+
+        // Listen for Screen Frames - OPTIMIZED FOR 60FPS
+        // Listen for WebRTC Offer (Agent -> Frontend)
+        socket.on("webrtc_offer", async (data: any) => {
+            console.log("[WebRTC] Received Offer", data);
+
+            // 1. Reset PC
+            if (pcRef.current) pcRef.current.close();
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            pcRef.current = pc;
+
+            // 2. Handle Track (Remote Stream)
+            pc.ontrack = (event) => {
+                console.log("[WebRTC] Track Received", event.streams[0]);
+                if (videoRef.current) {
+                    videoRef.current.srcObject = event.streams[0];
+                }
+            };
+
+            // 3. Handle ICE Candidates (Local) -> Send to Agent
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('ice_candidate', {
+                        target: selectedAgentId,
+                        candidate: event.candidate
+                    });
+                }
+            };
+
+            // 4. Set Remote Description
+            await pc.setRemoteDescription(new RTCSessionDescription({
+                type: data.type,
+                sdp: data.sdp
+            }));
+
+            // 5. Create Answer
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            // 6. Send Answer
+            console.log("[WebRTC] Sending Answer...");
+            socket.emit('webrtc_answer', {
+                target: selectedAgentId,
+                sdp: answer.sdp,
+                type: answer.type
+            });
+        });
+
+        // Handle Incoming ICE (from Agent)
+        socket.on('ice_candidate', async (data) => {
+            if (pcRef.current) {
+                try {
+                    await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } catch (e) { console.error("Error adding ICE:", e); }
+            }
+        });
+
+        // Listen for Events
+        socket.on("ReceiveEvent", (evt: any) => {
+            // ... existing event logic if needed
+            const newLog: SystemLog = {
+                id: Date.now().toString(),
+                timestamp: new Date().toLocaleTimeString(),
+                type: 'info',
+                message: evt.title || "Event Received",
+                details: evt.details
+            };
+            setLogs(prev => [newLog, ...prev].slice(0, 50));
+        });
 
         return () => {
             if (selectedAgentId) {
-                console.log(`Stopping Stream: ${selectedAgentId}`);
                 socket.emit('stop_stream', { agentId: selectedAgentId });
             }
             socket.disconnect();
         };
-    }, [selectedAgentId]);
+    }, [selectedAgentId]); // Re-run if selected agent changes
+
 
 
     // === RENDER ===
@@ -206,14 +241,13 @@ export default function LiveMonitor() {
                     <div className="lg:col-span-2 space-y-6">
                         {/* Live Screen (Large) */}
                         <div className="bg-black border border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video">
-                            {screens[selectedAgentId] ? (
-                                <img src={`data:image/webp;base64,${screens[selectedAgentId]}`} className="w-full h-full object-contain" />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center h-full text-gray-600 gap-2">
-                                    <Activity className="animate-spin" size={32} />
-                                    <span>Waiting for optimized stream...</span>
-                                </div>
-                            )}
+                            <video
+                                ref={videoRef}
+                                className="w-full h-full object-contain"
+                                autoPlay
+                                playsInline
+                                muted
+                            />
                             <div className="absolute top-4 right-4 flex gap-2">
                                 <div className={`text-xs px-2 py-1 rounded shadow animate-pulse text-white ${screens[selectedAgentId] ? 'bg-red-600' : 'bg-gray-600'}`}>
                                     {screens[selectedAgentId] ? 'LIVE' : 'IDLE'}
