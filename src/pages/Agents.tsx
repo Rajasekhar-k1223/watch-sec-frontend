@@ -1,8 +1,8 @@
 import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Settings as SettingsIcon, Video, StopCircle, Cpu, Activity } from 'lucide-react';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { API_URL } from '../config';
 
 interface AgentReport {
@@ -36,11 +36,29 @@ export default function Agents() {
     const [agents, setAgents] = useState<AgentReport[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [stats, setStats] = useState<any>(null);
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const fetchStats = useCallback(async (dateStr?: string) => {
+        try {
+            let url = `${API_URL}/api/dashboard/stats?hours=24`;
+            if (dateStr) {
+                // Ensure we request the full UTC day corresponding to the selected date string (YYYY-MM-DD)
+                const from = `${dateStr}T00:00:00Z`;
+                const to = `${dateStr}T23:59:59Z`;
+                url = `${API_URL}/api/dashboard/stats?from_date=${from}&to_date=${to}`;
+            }
+            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) setStats(await res.json());
+        } catch (e) { console.error("Stats error", e); }
+    }, [token]);
+
     useEffect(() => {
         fetchAgents();
-        const interval = setInterval(fetchAgents, 5000); // Poll every 5s
+        fetchStats(selectedDate);
+        const interval = setInterval(() => { fetchAgents(); fetchStats(selectedDate); }, 10000);
         return () => clearInterval(interval);
-    }, []);
+    }, [fetchStats, selectedDate]);
 
     const fetchAgents = async () => {
         try {
@@ -429,28 +447,130 @@ export default function Agents() {
 
     return (
         <div>
-            <div className="flex justify-between items-end mb-6">
-                <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                        <Monitor className="w-8 h-8 text-blue-500" />
-                        Agent Management
-                    </h1>
-                    <p className="text-gray-400 text-sm mt-1">Monitor connected endpoints and devices across your network.</p>
+            <div className="mb-6 space-y-6">
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                            <Monitor className="w-8 h-8 text-blue-500" />
+                            Agent Management
+                        </h1>
+                        <p className="text-gray-400 text-sm mt-1">Monitor connected endpoints, track resources, and analyze fleet security.</p>
+                    </div>
+                    <div className="flex gap-3 items-center">
+                        <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                            {/* Date Picker Simple Implementation */}
+                            <input
+                                type="date"
+                                value={selectedDate}
+                                className="bg-transparent text-white text-xs px-2 py-1 outline-none"
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        setSelectedDate(e.target.value);
+                                    }
+                                }}
+                            />
+                            <span className="text-gray-500 text-xs py-1 border-l border-gray-700 px-2 cursor-pointer hover:text-white" onClick={() => fetchStats()}>24H (Default)</span>
+                        </div>
+
+                        {user?.role === 'TenantAdmin' && (
+                            <>
+                                <button onClick={() => setShowDeployModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20">
+                                    <Download size={18} /> Deploy Agent
+                                </button>
+                                <button onClick={handleGenerateToken} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold border border-gray-600">
+                                    <AlertTriangle size={18} className="text-yellow-500" /> Generate OTP
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
-                <div className="flex gap-3 items-center">
-                    {user?.role === 'TenantAdmin' && (
-                        <>
-                            <button onClick={() => setShowDeployModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20">
-                                <Download size={18} /> Deploy New Agent
-                            </button>
-                            <button onClick={handleGenerateToken} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold border border-gray-600">
-                                <AlertTriangle size={18} className="text-yellow-500" /> Generate OTP
-                            </button>
-                        </>
-                    )}
-                    <div className="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700">
-                        <span className="text-gray-400 text-xs uppercase font-bold">Total Agents</span>
-                        <p className="text-2xl font-bold text-white text-right">{agents.length}</p>
+
+                {/* Fleet Analytics Section */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Card 1: Agent Status */}
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"> <Server className="w-4 h-4 text-blue-400" /> Fleet Status</h3>
+                        <div className="flex items-end justify-between">
+                            <div>
+                                <span className="text-3xl font-bold text-white">{stats?.agents?.total || 0}</span>
+                                <span className="text-xs text-gray-500 block">Total Agents</span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-lg font-bold text-green-400">{stats?.agents?.online || 0}</span>
+                                <span className="text-xs text-gray-500 block">Online</span>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-lg font-bold text-red-400">{stats?.agents?.offline || 0}</span>
+                                <span className="text-xs text-gray-500 block">Offline</span>
+                            </div>
+                        </div>
+                        <div className="w-full bg-gray-700 h-1 mt-3 rounded-full overflow-hidden flex">
+                            <div className="bg-green-500 h-full" style={{ width: `${((stats?.agents?.online || 0) / (stats?.agents?.total || 1)) * 100}%` }}></div>
+                            <div className="bg-red-500 h-full flex-1"></div>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Resource Trends */}
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg col-span-2 relative overflow-hidden group">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-2"> <Activity className="w-4 h-4 text-purple-400" /> Resource Trends (Avg)</h3>
+                        <div className="h-24 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={stats?.resources?.trend || []}>
+                                    <defs>
+                                        <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <Tooltip contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#fff' }} />
+                                    <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} />
+                                    <Area type="monotone" dataKey="mem" stroke="#10b981" fillOpacity={1} fill="url(#colorMem)" strokeWidth={2} />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Security Events */}
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"> <AlertTriangle className="w-4 h-4 text-yellow-500" /> Security Events</h3>
+                        <div className="flex flex-col gap-2">
+                            <div className="flex justify-between items-center bg-gray-900/50 p-2 rounded border border-gray-700/50">
+                                <span className="text-xs text-gray-400">Total (Period)</span>
+                                <span className="font-bold text-white text-lg">{stats?.threats?.total24h || stats?.threats?.total || 0}</span>
+                            </div>
+                            <div className="h-16 w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats?.threats?.trend || []}>
+                                        <Bar dataKey="count" fill="#f59e0b" radius={[2, 2, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 4: Recent Activity Feed (New) */}
+                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg col-span-1 md:col-span-4 max-h-48 overflow-hidden flex flex-col">
+                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"> <List className="w-4 h-4 text-cyan-400" /> Recent Activities</h3>
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+                            {stats?.recentLogs && stats.recentLogs.length > 0 ? (
+                                stats.recentLogs.map((log: any, idx: number) => (
+                                    <div key={idx} className="flex items-center justify-between p-2 bg-gray-900/50 rounded border border-gray-700/50 text-xs hover:border-gray-600 transition-colors">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <span className="text-blue-400 font-bold shrink-0 w-24 truncate" title={log.agentId}>{log.agentId}</span>
+                                            <span className={`font-bold shrink-0 ${['Critical', 'High', 'Error'].includes(log.type) ? 'text-red-400' : 'text-gray-300'}`}>{log.type}</span>
+                                            <span className="text-gray-500 truncate">{log.details}</span>
+                                        </div>
+                                        <span className="text-gray-500 shrink-0 ml-2">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-gray-500 italic text-center py-4 text-xs">No recent activities found in this range.</div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -698,24 +818,55 @@ function ActivityLogViewer({ agentId, apiUrl, token }: { agentId: string, apiUrl
             .catch(e => console.error(e));
     }, [agentId, logout, apiUrl, token]);
 
+    const handleDownloadReport = async () => {
+        try {
+            const res = await fetch(`${apiUrl}/api/export/activity/${agentId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error("Export failed");
+
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ActivityReport_${agentId}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (e) {
+            console.error("Download failed", e);
+            alert("Failed to download report");
+        }
+    };
+
+
     return (
         <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
             <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
                 <h4 className="text-sm font-bold text-gray-300">Activity History</h4>
-                <button
-                    onClick={async () => {
-                        try {
-                            const res = await fetch(`${apiUrl}/api/events/simulate/${agentId}`, {
-                                method: 'POST',
-                                headers: { 'Authorization': `Bearer ${token}` }
-                            });
-                            if (res.ok) alert("Event Simulated! Check Events tab.");
-                        } catch (e) { console.error(e); }
-                    }}
-                    className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded"
-                >
-                    Simulate Event
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        onClick={async () => {
+                            try {
+                                const res = await fetch(`${apiUrl}/api/events/simulate/${agentId}`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                if (res.ok) alert("Event Simulated! Check Events tab.");
+                            } catch (e) { console.error(e); }
+                        }}
+                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded"
+                    >
+                        Simulate Event
+                    </button>
+                    <button
+                        onClick={handleDownloadReport}
+                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded flex items-center gap-2"
+                    >
+                        <Download className="w-3 h-3" /> Export CSV
+                    </button>
+                </div>
             </div>
             <table className="w-full text-left text-sm">
                 <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs sticky top-0">
