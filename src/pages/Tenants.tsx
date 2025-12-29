@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Tenant {
     id: number;
@@ -25,6 +26,7 @@ function getTenantProp(t: any, key: string) {
 }
 
 export default function Tenants() {
+    const { token } = useAuth();
     const [tenants, setTenants] = useState<Tenant[]>(MOCK_TENANTS);
     const [isCreating, setIsCreating] = useState(false);
     const [newTenantName, setNewTenantName] = useState("");
@@ -35,14 +37,16 @@ export default function Tenants() {
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
-        if (!USE_MOCK) {
+        if (!USE_MOCK && token) {
             fetchTenants();
         }
-    }, []);
+    }, [token]);
 
     const fetchTenants = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/tenants`);
+            const res = await fetch(`${API_URL}/api/tenants`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 setTenants(data);
@@ -73,7 +77,10 @@ export default function Tenants() {
         try {
             const res = await fetch(`${API_URL}/api/tenants`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ name: newTenantName, plan: "Starter" })
             });
             if (res.ok) {

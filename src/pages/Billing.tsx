@@ -13,7 +13,7 @@ interface BillingInfo {
 }
 
 export default function Billing() {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [info, setInfo] = useState<BillingInfo | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -23,7 +23,9 @@ export default function Billing() {
     const fetchBilling = async () => {
         if (!user?.tenantId) return;
         try {
-            const res = await fetch(`${API_URL}/api/billing?tenantId=${user.tenantId}`);
+            const res = await fetch(`${API_URL}/api/billing?tenantId=${user.tenantId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) setInfo(await res.json());
         } catch (e) {
             console.error("Billing fetch failed", e);
@@ -40,7 +42,10 @@ export default function Billing() {
 
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/billing/upgrade?tenantId=${user.tenantId}&newPlan=${newPlan}`, { method: 'POST' });
+            const res = await fetch(`${API_URL}/api/billing/upgrade?tenantId=${user.tenantId}&newPlan=${newPlan}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 alert(`Successfully upgraded to ${newPlan}!`);
                 fetchBilling();

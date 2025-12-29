@@ -5,14 +5,14 @@ import { API_URL } from '../config';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 export default function EmployeeDashboard() {
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const [stats, setStats] = useState<any>(null);
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         const fetchStats = async () => {
+            if (!token) return;
             try {
-                const token = localStorage.getItem('token');
                 const res = await fetch(`${API_URL}/api/productivity/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -22,7 +22,7 @@ export default function EmployeeDashboard() {
             }
         };
         fetchStats();
-    }, []);
+    }, [token]);
 
     if (!stats) return <div className="p-8 text-gray-500 animate-pulse">Loading your dashboard...</div>;
 

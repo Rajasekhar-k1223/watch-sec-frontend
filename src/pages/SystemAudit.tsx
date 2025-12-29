@@ -16,18 +16,20 @@ interface AuditLog {
 export default function SystemAudit() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
         const fetchLogs = async () => {
-            const res = await fetch(`${API_URL}/api/audit?tenantId=${user?.tenantId || ''}`);
+            const res = await fetch(`${API_URL}/api/audit?tenantId=${user?.tenantId || ''}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 setLogs(await res.json());
             }
         };
-        fetchLogs();
-    }, [user]);
+        if (token) fetchLogs();
+    }, [user, token]);
 
     const filteredLogs = logs.filter(log =>
         log.actor.toLowerCase().includes(searchTerm.toLowerCase()) ||

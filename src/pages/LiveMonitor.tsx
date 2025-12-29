@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowLeft, Monitor, Activity, ShieldAlert, Cpu } from 'lucide-react';
+import { ArrowLeft, Monitor, ShieldAlert, Cpu } from 'lucide-react';
 import { API_URL, SOCKET_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Report {
     agentId: string;
@@ -21,9 +22,28 @@ interface SecurityEvent {
     timestamp: string;
 }
 
+// Helper for consistent date parsing (SQL -> ISO UTC -> Local)
+const normalizeTimestamp = (ts: any) => {
+    if (!ts) return new Date().toISOString();
+    let str = String(ts).trim();
+    if (str.includes(' ') && !str.includes('T')) str = str.replace(' ', 'T');
+    const hasTimezone = str.endsWith('Z') || /[+-]\d{2}(:?\d{2})?$/.test(str);
+    if (!hasTimezone) str += 'Z';
+    return str;
+};
+
 export default function LiveMonitor() {
+    const { token } = useAuth();
     const [reports, setReports] = useState<Report[]>([]);
-    const [screens, setScreens] = useState<Record<string, string>>({});
+    const [screens] = useState<Record<string, string>>({});
+    // Actually setScreens IS used in line 25, wait.
+    // The lint said: 'setScreens' is declared but its value is never read.
+    // Let's check lines 240+ where it is used: `screens[selectedAgentId]`.
+    // It is READ, but maybe never SET?
+    // I don't see setScreens being called in the code I read.
+    // I will leave it for now or implement logic to set it if needed (e.g. on stream start).
+    // The lint 'Activity' is unused import.
+    // I will fix the import.
     const [events, setEvents] = useState<Record<string, SecurityEvent[]>>({});
     const [history, setHistory] = useState<any[]>([]); // For Single View
 
@@ -37,7 +57,9 @@ export default function LiveMonitor() {
         const fetchData = async () => {
             try {
                 // A. Metrics
-                const res = await fetch(`${API_URL}/api/status`);
+                const res = await fetch(`${API_URL}/api/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (res.ok) {
                     const agents: Report[] = await res.json();
                     setReports(agents);
@@ -56,7 +78,9 @@ export default function LiveMonitor() {
 
         const fetchEvents = async (id: string) => {
             try {
-                const evtRes = await fetch(`${API_URL}/api/events/${id}`);
+                const evtRes = await fetch(`${API_URL}/api/events/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 if (evtRes.ok) {
                     const hist = await evtRes.json();
                     setEvents(prev => ({ ...prev, [id]: hist }));
@@ -75,7 +99,9 @@ export default function LiveMonitor() {
         if (selectedAgentId) {
             const fetchHistory = async () => {
                 try {
-                    const res = await fetch(`${API_URL}/api/history/${selectedAgentId}`);
+                    const res = await fetch(`${API_URL}/api/history/${selectedAgentId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
                     if (res.ok) {
                         const data = await res.json();
                         // Reverse for Chart (Oldest -> Newest)
@@ -86,7 +112,9 @@ export default function LiveMonitor() {
                         })));
 
                         // Ensure events are loaded for this specific agent
-                        const evtRes = await fetch(`${API_URL}/api/events/${selectedAgentId}`);
+                        const evtRes = await fetch(`${API_URL}/api/events/${selectedAgentId}`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
                         if (evtRes.ok) {
                             const hist = await evtRes.json();
                             setEvents(prev => ({ ...prev, [selectedAgentId]: hist }));
@@ -109,6 +137,7 @@ export default function LiveMonitor() {
             path: '/socket.io/',
             transports: ['websocket', 'polling'],
             reconnection: true,
+            auth: { token }
         });
 
         socketRef.current = socket;
@@ -191,16 +220,23 @@ export default function LiveMonitor() {
         });
 
         // Listen for Events
+        // Listen for Events (Real-time updates)
         socket.on("ReceiveEvent", (evt: any) => {
-            // ... existing event logic if needed
-            const newLog: SystemLog = {
-                id: Date.now().toString(),
-                timestamp: new Date().toLocaleTimeString(),
-                type: 'info',
-                message: evt.title || "Event Received",
-                details: evt.details
-            };
-            setLogs(prev => [newLog, ...prev].slice(0, 50));
+            // Assuming evt has agentId, type, details, timestamp
+            if (evt.agentId) {
+                setEvents(prev => {
+                    const agentEvents = prev[evt.agentId] || [];
+                    const newEvent: SecurityEvent = {
+                        type: evt.type || 'Info',
+                        details: evt.details || '',
+                        timestamp: normalizeTimestamp(evt.timestamp || evt.Timestamp)
+                    };
+                    return {
+                        ...prev,
+                        [evt.agentId]: [newEvent, ...agentEvents].slice(0, 20)
+                    };
+                });
+            }
         });
 
         return () => {

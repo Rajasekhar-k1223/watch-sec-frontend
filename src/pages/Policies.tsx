@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Shield, Plus, Trash2, Save, X } from 'lucide-react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Policy {
     id?: number;
@@ -14,6 +15,7 @@ interface Policy {
 }
 
 export default function Policies() {
+    const { token } = useAuth();
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -30,12 +32,14 @@ export default function Policies() {
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
-        fetchPolicies();
-    }, []);
+        if (token) fetchPolicies();
+    }, [token]);
 
     const fetchPolicies = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/policies?tenantId=1`);
+            const res = await fetch(`${API_URL}/api/policies?tenantId=1`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 setPolicies(await res.json());
             }
@@ -51,7 +55,10 @@ export default function Policies() {
 
             const res = await fetch(url, {
                 method: method,
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(newPolicy)
             });
             if (res.ok) {
@@ -91,7 +98,10 @@ export default function Policies() {
     const handleDelete = async (id: number) => {
         if (!confirm("Are you sure?")) return;
         try {
-            await fetch(`${API_URL}/api/policies/${id}`, { method: 'DELETE' });
+            await fetch(`${API_URL}/api/policies/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             fetchPolicies();
         } catch (e) {
             console.error(e);

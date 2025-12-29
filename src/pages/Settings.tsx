@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Lock, Bell, User, Check, AlertCircle } from 'lucide-react';
-// import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Settings() {
-    // const { user } = useAuth(); // Removed unused
+    const { token } = useAuth();
     const [activeTab, setActiveTab] = useState('security');
 
     // Security State
@@ -36,7 +36,6 @@ export default function Settings() {
 
         setIsLoading(true);
         try {
-            const token = localStorage.getItem('token');
             const res = await fetch(`${API_URL}/api/users/change-password`, {
                 method: 'POST',
                 headers: {

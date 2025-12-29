@@ -1,8 +1,10 @@
 import { FileText, Download, Calendar, Filter, Printer } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Reports() {
+    const { token } = useAuth();
     const [reportType, setReportType] = useState('activity');
     const [dateRange, setDateRange] = useState('7d');
 
@@ -10,7 +12,10 @@ export default function Reports() {
 
 
     useEffect(() => {
-        fetch(`${API_URL}/api/reports`)
+        if (!token) return;
+        fetch(`${API_URL}/api/reports`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
             .then(res => res.json())
             .then(data => setReports(data))
             .catch(err => console.error("Failed to fetch reports", err));
@@ -22,7 +27,7 @@ export default function Reports() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ type: reportType, range: dateRange })
             });

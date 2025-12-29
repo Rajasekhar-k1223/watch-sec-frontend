@@ -1,6 +1,7 @@
 import { Mail, ShieldAlert, CheckCircle, RefreshCw, Paperclip } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface MailLog {
     id: string;
@@ -14,6 +15,7 @@ interface MailLog {
 }
 
 export default function MailProcessing() {
+    const { token } = useAuth();
     const [logs, setLogs] = useState<MailLog[]>([]);
     const [loading, setLoading] = useState(true);
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
@@ -21,7 +23,9 @@ export default function MailProcessing() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/mail`);
+            const res = await fetch(`${API_URL}/api/mail/`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 setLogs(await res.json());
             }
@@ -33,10 +37,12 @@ export default function MailProcessing() {
     };
 
     useEffect(() => {
-        fetchLogs();
-        const interval = setInterval(fetchLogs, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        if (token) {
+            fetchLogs();
+            const interval = setInterval(fetchLogs, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [token]);
 
     return (
         <div className="p-8">

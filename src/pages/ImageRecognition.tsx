@@ -1,6 +1,7 @@
 import { Image, Search, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface OCRLog {
     id: string;
@@ -13,6 +14,7 @@ interface OCRLog {
 }
 
 export default function ImageRecognition() {
+    const { token } = useAuth();
     const [logs, setLogs] = useState<OCRLog[]>([]);
     const [loading, setLoading] = useState(true);
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
@@ -20,7 +22,9 @@ export default function ImageRecognition() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/ocr`);
+            const res = await fetch(`${API_URL}/api/ocr`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             if (res.ok) {
                 setLogs(await res.json());
             }
@@ -32,12 +36,15 @@ export default function ImageRecognition() {
     };
 
     useEffect(() => {
-        fetchLogs();
-    }, []);
+        if (token) fetchLogs();
+    }, [token]);
 
     const triggerSimulation = async () => {
         // Simulate processing a random screenshot
-        await fetch(`${API_URL}/api/ocr/process/simulated-screen-123?agentId=DESKTOP-DEMO`, { method: 'POST' });
+        await fetch(`${API_URL}/api/ocr/process/simulated-screen-123?agentId=DESKTOP-DEMO`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         fetchLogs();
     };
 

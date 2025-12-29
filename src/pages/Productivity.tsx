@@ -35,7 +35,10 @@ export default function Productivity() {
 
     // 1. Fetch Agents List First
     useEffect(() => {
-        fetch(`${API_URL}/api/status`) // Assuming this returns list of agents
+        if (!token) return;
+        fetch(`${API_URL}/api/status`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }) // Assuming this returns list of agents
             .then(res => res.json())
             .then((res: any[]) => {
                 setAgents(res);

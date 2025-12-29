@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { Loader2, Globe } from 'lucide-react';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NetworkNode {
     id: string;
@@ -20,6 +21,7 @@ interface NetworkLink {
 }
 
 export const NetworkTopology = () => {
+    const { token } = useAuth();
     const [graphData, setGraphData] = useState<{ nodes: NetworkNode[], links: NetworkLink[] }>({ nodes: [], links: [] });
     const [loading, setLoading] = useState(true);
     const graphRef = useRef<any>(null);
@@ -33,7 +35,12 @@ export const NetworkTopology = () => {
             // Use local mock data fallback if fetch fails or returns empty in a real scenario,
             // but for now we trust the API or handle error.
 
-            const res = await fetch(`${API_URL}/api/dashboard/topology`);
+            // but for now we trust the API or handle error.
+
+            if (!token) return;
+            const res = await fetch(`${API_URL}/api/dashboard/topology`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
             let rawData: any[] = [];
             if (res.ok) {
@@ -94,10 +101,10 @@ export const NetworkTopology = () => {
     }, []);
 
     useEffect(() => {
-        fetchTopology();
+        if (token) fetchTopology();
         const interval = setInterval(fetchTopology, 30000);
         return () => clearInterval(interval);
-    }, [fetchTopology]);
+    }, [fetchTopology, token]);
 
     // Resize Handler
     useEffect(() => {

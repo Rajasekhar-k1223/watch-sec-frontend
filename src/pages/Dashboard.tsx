@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, CartesianGrid, LineChart, Line, Legend
+    PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts';
-import { Activity, Server, Users, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, Download, ArrowRight, Globe, Zap } from 'lucide-react';
+import { Activity, Server, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, ArrowRight, Globe, Zap } from 'lucide-react';
 import { io } from 'socket.io-client';
-import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 import WorldMap from '../components/WorldMap';
 import { NetworkTopology } from '../components/NetworkGraph';
 
@@ -38,21 +38,37 @@ interface DashboardStats {
 // Threat Colors for Pie Chart
 const THREAT_COLORS = ['#EF4444', '#F59E0B', '#6366F1', '#10B981'];
 
+// Helper for consistent date parsing (SQL -> ISO UTC -> Local)
+const normalizeTimestamp = (ts: any) => {
+    if (!ts) return new Date().toISOString();
+    let str = String(ts).trim();
+    if (str.includes(' ') && !str.includes('T')) str = str.replace(' ', 'T');
+    const hasTimezone = str.endsWith('Z') || /[+-]\d{2}(:?\d{2})?$/.test(str);
+    if (!hasTimezone) str += 'Z';
+    return str;
+};
+
 export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [mapAgents, setMapAgents] = useState<any[]>([]);
     const [timeRange, setTimeRange] = useState(24);
     const logContainerRef = useRef<HTMLDivElement>(null);
-    const navigate = useNavigate();
 
+
+    const { logout, token } = useAuth(); // Import useAuth
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
+        if (!token) return;
+
         const fetchStats = async () => {
             try {
                 // 1. Dashboard Aggregate Stats
-                const res = await fetch(`${API_URL}/api/dashboard/stats?hours=${timeRange}`);
+                const res = await fetch(`${API_URL}/api/dashboard/stats?hours=${timeRange}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.status === 401) return logout(); // Handle 401
                 if (res.ok) {
                     const data = await res.json();
                     setStats(data);
@@ -60,7 +76,10 @@ export default function Dashboard() {
                 }
 
                 // 2. Agent List for Map
-                const resAgents = await fetch(`${API_URL}/api/status`);
+                const resAgents = await fetch(`${API_URL}/api/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (resAgents.status === 401) return logout(); // Handle 401
                 if (resAgents.ok) {
                     setMapAgents(await resAgents.json());
                 }
@@ -74,7 +93,8 @@ export default function Dashboard() {
         const socket = io(API_URL, {
             path: "/socket.io",
             transports: ["websocket"],
-            reconnectionAttempts: 5
+            reconnectionAttempts: 5,
+            auth: { token }
         });
 
         socket.on("connect", () => {
@@ -85,7 +105,7 @@ export default function Dashboard() {
             const newLog: LogEntry = {
                 type: data.title || "Security",
                 details: data.details || "Unknown Event",
-                timestamp: data.timestamp || new Date().toISOString(),
+                timestamp: normalizeTimestamp(data.timestamp || data.Timestamp),
                 agentId: data.agentId
             };
             setLogs(prev => [newLog, ...prev].slice(0, 100));
@@ -129,7 +149,7 @@ export default function Dashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3 bg-gray-800/50 p-1 rounded-xl border border-gray-700/50 backdrop-blur-sm">
-                    {[24, 7, 30].map((h) => (
+                    {[24, 168, 720].map((h) => (
                         <button
                             key={h}
                             onClick={() => setTimeRange(h)}
@@ -137,7 +157,7 @@ export default function Dashboard() {
                                 ? 'bg-blue-600/90 text-white shadow-lg shadow-blue-500/25 ring-1 ring-blue-400/50'
                                 : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
                         >
-                            {h === 24 ? '24H' : h + 'D'}
+                            {h === 24 ? '24H' : (h / 24) + 'D'}
                         </button>
                     ))}
                 </div>
