@@ -28,10 +28,32 @@ function ProtectedRoute() {
   return <Outlet />;
 }
 
+import { useEffect } from 'react';
+import { Analytics } from './services/analytics';
+import { useLocation } from 'react-router-dom';
+
+function AnalyticsTracker() {
+  const location = useLocation();
+
+  useEffect(() => {
+    Analytics.init();
+  }, []);
+
+  useEffect(() => {
+    Analytics.track('Page View', {
+      path: location.pathname,
+      search: location.search
+    });
+  }, [location]);
+
+  return null;
+}
+
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <AnalyticsTracker />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Landing />} />

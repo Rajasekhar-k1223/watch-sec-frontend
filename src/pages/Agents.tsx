@@ -1,9 +1,15 @@
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Settings as SettingsIcon, Video, StopCircle, Cpu, Activity } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Settings as SettingsIcon, Video, StopCircle, Cpu, Activity, RefreshCw, Mail, MousePointer } from 'lucide-react';
+import RemoteDesktop from '../components/RemoteDesktop';
+import ScreenshotsGallery from '../components/ScreenshotsGallery';
+import ActivityLogViewer from '../components/ActivityLogViewer';
+import MailProcessing from './MailProcessing.tsx'; // Ensure path is correct or use component pattern
+import MailLogViewer from '../components/MailLogViewer';
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { API_URL } from '../config';
+import { Analytics } from '../services/analytics';
 
 interface AgentReport {
     id: number;
@@ -150,8 +156,11 @@ export default function Agents() {
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
+
+            Analytics.track('Download Installer', { os: os });
         } catch (e) {
             console.error("Download error:", e);
+            Analytics.track('Download Installer Failed', { os: os, error: e });
             alert("Failed to download agent. Please try again.");
         } finally {
             setIsDownloading(false);
@@ -169,6 +178,7 @@ export default function Agents() {
 
             if (res.ok) {
                 fetchAgents();
+                Analytics.track('Delete Agent', { id: id });
             } else {
                 alert("Failed to delete agent");
             }
@@ -178,7 +188,7 @@ export default function Agents() {
     };
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | null>(null);
+    const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | null>(null);
     const [events, setEvents] = useState<any[]>([]);
     const [showGraphs, setShowGraphs] = useState(false);
 
@@ -394,11 +404,13 @@ export default function Agents() {
     const handleViewLogs = (agentId: string) => {
         setSelectedAgentId(agentId);
         setViewMode('logs');
+        Analytics.track('View Logs', { agentId: agentId });
     };
 
     const handleMonitor = (agentId: string) => {
         setSelectedAgentId(agentId);
         setViewMode('monitor');
+        Analytics.track('Live Monitor', { agentId: agentId });
     };
 
     const closeModal = () => {
@@ -638,6 +650,7 @@ export default function Agents() {
                                     <div className="flex gap-3 items-center">
                                         <button onClick={() => handleViewLogs(agent.agentId)} className="text-gray-400 hover:text-white text-sm font-medium hover:underline flex items-center gap-1"> <List className="w-4 h-4" /> Logs </button>
                                         <button onClick={() => handleMonitor(agent.agentId)} className="text-blue-400 hover:text-blue-300 text-sm font-medium hover:underline flex items-center gap-1"> <Monitor className="w-4 h-4" /> Monitor </button>
+                                        <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="text-purple-400 hover:text-purple-300 text-sm font-medium hover:underline flex items-center gap-1"> <MousePointer className="w-4 h-4" /> Remote </button>
                                         <button onClick={() => handleDelete(agent.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2"> <Trash2 className="w-4 h-4" /> </button>
                                     </div>
                                 </td>
@@ -654,7 +667,7 @@ export default function Agents() {
                             <div>
                                 <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Agent: <span className="text-blue-400 font-mono">{selectedAgentId}</span> </h2>
                                 <div className="flex gap-4 mt-2">
-                                    {['logs', 'monitor', 'screenshots', 'activity'].map(m => (
+                                    {['logs', 'monitor', 'remote', 'screenshots', 'activity', 'mail'].map(m => (
                                         <button key={m} onClick={() => setViewMode(m as any)} className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors ${viewMode === m ? 'text-white border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-300'}`}> {m} </button>
                                     ))}
                                 </div>
@@ -793,6 +806,18 @@ export default function Agents() {
                             </div>
                         )}
 
+                        {viewMode === 'remote' && (
+                            <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 font-sans">
+                                <RemoteDesktop agentId={selectedAgentId!} />
+                            </div>
+                        )}
+
+                        {viewMode === 'mail' && (
+                            <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                <MailLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                            </div>
+                        )}
+
                         <div className="p-4 border-t border-gray-800 bg-gray-800/50 flex justify-end">
                             <button onClick={closeModal} className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">Close Viewer</button>
                         </div>
@@ -803,214 +828,3 @@ export default function Agents() {
     );
 }
 
-function ActivityLogViewer({ agentId, apiUrl, token }: { agentId: string, apiUrl: string, token: string | null }) {
-    const [logs, setLogs] = useState<any[]>([]);
-    const { logout } = useAuth();
-    useEffect(() => {
-        fetch(`${apiUrl}/api/events/activity/${agentId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
-            .then(res => {
-                if (res.status === 401) { logout(); return []; }
-                return res.json();
-            })
-            .then(data => { if (Array.isArray(data)) setLogs(data); })
-            .catch(e => console.error(e));
-    }, [agentId, logout, apiUrl, token]);
-
-    const handleDownloadReport = async () => {
-        try {
-            const res = await fetch(`${apiUrl}/api/export/activity/${agentId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!res.ok) throw new Error("Export failed");
-
-            const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `ActivityReport_${agentId}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-        } catch (e) {
-            console.error("Download failed", e);
-            alert("Failed to download report");
-        }
-    };
-
-
-    return (
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
-                <h4 className="text-sm font-bold text-gray-300">Activity History</h4>
-                <div className="flex gap-2">
-                    <button
-                        onClick={async () => {
-                            try {
-                                const res = await fetch(`${apiUrl}/api/events/simulate/${agentId}`, {
-                                    method: 'POST',
-                                    headers: { 'Authorization': `Bearer ${token}` }
-                                });
-                                if (res.ok) alert("Event Simulated! Check Events tab.");
-                            } catch (e) { console.error(e); }
-                        }}
-                        className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded"
-                    >
-                        Simulate Event
-                    </button>
-                    <button
-                        onClick={handleDownloadReport}
-                        className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded flex items-center gap-2"
-                    >
-                        <Download className="w-3 h-3" /> Export CSV
-                    </button>
-                </div>
-            </div>
-            <table className="w-full text-left text-sm">
-                <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs sticky top-0">
-                    <tr><th className="p-4">Timestamp</th><th className="p-4">Type</th><th className="p-4">Details</th><th className="p-4">Risk</th><th className="p-4">Duration</th></tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700 text-gray-300 font-mono">
-                    {logs.length === 0 ? (
-                        <tr><td colSpan={5} className="p-8 text-center text-gray-500 italic">No activity recorded.</td></tr>
-                    ) : (
-                        logs.map((log, i) => (
-                            <tr key={i} className="hover:bg-gray-700/30">
-                                <td className="p-4 text-gray-500">{new Date(normalizeTimestamp(log.timestamp || log.Timestamp)).toLocaleString()}</td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-1 rounded text-xs ${(log.activityType || log.ActivityType) === 'Web' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
-                                        {log.activityType || log.ActivityType}
-                                    </span>
-                                </td>
-                                <td className="p-4 break-all">
-                                    {(log.activityType || log.ActivityType) === 'Web' ? (
-                                        <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{log.url || log.Url}</a>
-                                    ) : (<span>{log.processName || log.ProcessName} - {log.windowTitle || log.WindowTitle}</span>)}
-                                </td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${(log.riskLevel === 'High' || log.RiskLevel === 'High') ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
-                                        {log.riskLevel || log.RiskLevel || 'Normal'}
-                                    </span>
-                                </td>
-                                <td className="p-4">{(log.durationSeconds || log.DurationSeconds || 0).toFixed(1)}s</td>
-                            </tr>
-                        ))
-                    )}
-                </tbody>
-            </table>
-        </div>
-    );
-}
-
-function ScreenshotsGallery({ agentId, apiUrl, token }: { agentId: string, apiUrl: string, token: string | null }) {
-    const [images, setImages] = useState<any[]>([]);
-    const [isEnabled, setIsEnabled] = useState(false);
-    const [loadingSettings, setLoadingSettings] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [showSettings, setShowSettings] = useState(false);
-    const [settings, setSettings] = useState({ quality: 80, resolution: 'Original', maxSize: 0 });
-
-    useEffect(() => {
-        setLoadingSettings(true);
-        setError(null);
-        fetch(`${apiUrl}/api/screenshots/list/${agentId}`, { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(res => res.json())
-            .then(data => setImages(Array.isArray(data) ? data : []))
-            .catch(e => setError(e.message));
-
-        fetch(`${apiUrl}/api/agents`, { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(res => res.json())
-            .then((data: any[]) => {
-                if (Array.isArray(data)) {
-                    const agent = data.find(a => a.agentId === agentId || a.AgentId === agentId);
-                    if (agent) {
-                        setIsEnabled((agent.screenshotsEnabled ?? agent.ScreenshotsEnabled) === true);
-                        setSettings({
-                            quality: agent.ScreenshotQuality || 80,
-                            resolution: agent.ScreenshotResolution || 'Original',
-                            maxSize: agent.MaxScreenshotSize || 0
-                        });
-                    }
-                }
-                setLoadingSettings(false);
-            })
-            .catch(e => { console.error(e); setLoadingSettings(false); });
-
-        const newSocket = io(apiUrl, { transports: ['websocket'], query: { token } });
-        newSocket.on('connect', () => newSocket.emit('join_room', { room: agentId }));
-        newSocket.on('ReceiveScreen', (id: string, dataUri: string) => {
-            if (id === agentId) {
-                setImages(prev => [{ Filename: `Live Capture`, Date: new Date().toISOString(), Timestamp: new Date().toISOString(), IsAlert: false, Url: '', dataUri: dataUri }, ...prev]);
-            }
-        });
-        return () => { newSocket.disconnect(); };
-    }, [agentId, apiUrl, token]);
-
-    const toggleScreenshots = async () => {
-        const newVal = !isEnabled;
-        setIsEnabled(newVal);
-        try {
-            await fetch(`${apiUrl}/api/agents/${agentId}/toggle-screenshots?enabled=${newVal}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-        } catch (e: any) { setIsEnabled(!newVal); setError(e.message); }
-    };
-
-    const saveSettings = async () => {
-        try {
-            await fetch(`${apiUrl}/api/agents/${agentId}/settings`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ScreenshotQuality: settings.quality, ScreenshotResolution: settings.resolution, MaxScreenshotSize: settings.maxSize })
-            });
-            setShowSettings(false);
-        } catch (e) { console.error("Failed settings save", e); }
-    };
-
-    if (error) return <div className="p-4 text-red-500 bg-red-900/10 rounded">{error}</div>;
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700">
-                <h3 className="text-lg font-bold text-white flex gap-2"><Image className="w-5 h-5 text-blue-500" /> Captured Evidence</h3>
-                <div className="flex items-center gap-3">
-                    <button onClick={async () => { await fetch(`${apiUrl}/api/agents/${agentId}/take-screenshot`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }} className="px-3 py-1 bg-blue-600 rounded text-white font-bold text-sm">Capture Now</button>
-                    <button onClick={() => setShowSettings(true)} className="p-1.5 text-gray-400 hover:text-white" title="Settings"><SettingsIcon className="w-5 h-5" /></button>
-                    <span className={`text-sm font-bold ${isEnabled ? 'text-green-400' : 'text-gray-500'}`}>{isEnabled ? 'Active' : 'Paused'}</span>
-                    <button onClick={toggleScreenshots} disabled={loadingSettings} className={`w-12 h-6 rounded-full p-1 relative ${isEnabled ? 'bg-green-600' : 'bg-gray-700'}`}>
-                        <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
-                    </button>
-                </div>
-            </div>
-            {showSettings && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg w-96 shadow-xl">
-                        <h3 className="text-lg font-bold text-white mb-4">Settings</h3>
-                        <div className="space-y-4">
-                            <div><label className="text-xs text-gray-400">Resolution</label><select value={settings.resolution} onChange={e => setSettings({ ...settings, resolution: e.target.value })} className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"><option value="Original">Original</option><option value="720p">720p</option></select></div>
-                            <div><label className="text-xs text-gray-400">Quality {settings.quality}%</label><input type="range" min="10" max="100" value={settings.quality} onChange={e => setSettings({ ...settings, quality: parseInt(e.target.value) })} className="w-full" /></div>
-                        </div>
-                        <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setShowSettings(false)} className="text-gray-400 text-sm">Cancel</button>
-                            <button onClick={saveSettings} className="bg-blue-600 text-white rounded px-3 py-1 text-sm font-bold">Save</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {images.map((img, i) => (
-                    <div key={i} className="group relative bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                        <div className="aspect-video bg-black relative">
-                            <img src={img.dataUri || `${apiUrl}${img.Url}?token=${token}`} alt={img.Filename} className="w-full h-full object-cover opacity-75 group-hover:opacity-100" />
-                        </div>
-                        <div className="p-2">
-                            <p className="text-xs text-gray-300 font-mono truncate">{img.Filename}</p>
-                            <p className="text-[10px] text-gray-500">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleString()}</p>
-                        </div>
-                        <a href={`${apiUrl}${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50"><span className="text-white border px-2 py-1 rounded-full text-xs">View</span></a>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-}
