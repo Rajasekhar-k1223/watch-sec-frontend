@@ -354,7 +354,6 @@ function ThesaurusSettingsTab() {
 }
 
 function RecognitionSettingsTab() {
-    const { token } = useAuth();
     // In a real app, these would come from an API
     const [settings, setSettings] = useState({
         EnableOCR: true,
@@ -567,7 +566,7 @@ function LicenseInfoTab() {
 function SearchesTab() {
     const { token } = useAuth();
     const [searches, setSearches] = useState<any[]>([]);
-    const [newSearch, setNewSearch] = useState({ name: '', query: '{}', category: 'General' });
+    const [newSearch, setNewSearch] = useState({ name: '', query: '{ }', category: 'General' });
 
     const fetchSearches = async () => {
         try {
@@ -587,7 +586,7 @@ function SearchesTab() {
                 body: JSON.stringify({ Name: newSearch.name, QueryJson: newSearch.query, Category: newSearch.category })
             });
             fetchSearches();
-            setNewSearch({ name: '', query: '{}', category: 'General' });
+            setNewSearch({ name: '', query: '{ }', category: 'General' });
         } catch (e) { console.error(e); }
     };
 
@@ -640,6 +639,19 @@ function SearchesTab() {
                             {searches.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-gray-500">No saved searches.</td></tr>}
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function DigitalFingerprintsTab() {
+    return (
+        <div className="space-y-6 max-w-4xl">
+            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
+                <div className="p-8">
+                    <h3 className="text-xl font-bold text-white mb-2">Digital Fingerprints</h3>
+                    <p className="text-gray-400">Manage device fingerprints and identity tracking here.</p>
                 </div>
             </div>
         </div>

@@ -42,7 +42,10 @@ export default function MailLogViewer({ agentId, apiUrl, token }: Props) {
                     <tr><th className="p-4">Time</th><th className="p-4">Sender & Recipient</th><th className="p-4">Subject</th><th className="p-4">Risk</th></tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700 text-gray-300 font-mono">
-                    {mails.length === 0 ? (
+                    {loading && (
+                        <tr><td colSpan={4} className="p-8 text-center text-gray-400">Loading logs...</td></tr>
+                    )}
+                    {!loading && mails.length === 0 ? (
                         <tr><td colSpan={4} className="p-8 text-center text-gray-500 italic">No email logs found.</td></tr>
                     ) : (
                         mails.map((m, i) => (

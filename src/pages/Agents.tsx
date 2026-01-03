@@ -1,8 +1,8 @@
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Settings as SettingsIcon, Video, StopCircle, Cpu, Activity, RefreshCw, Mail, MousePointer } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
-import MailProcessing from './MailProcessing.tsx'; // Ensure path is correct or use component pattern
+// import MailProcessing from './MailProcessing.tsx'; 
 import MailLogViewer from '../components/MailLogViewer';
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';

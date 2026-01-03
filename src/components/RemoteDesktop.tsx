@@ -15,8 +15,6 @@ export default function RemoteDesktop({ agentId }: Props) {
 
     // Recording State
     const [isRecording, setIsRecording] = useState(false);
-    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const chunksRef = useRef<Blob[]>([]);
 
     // Fullscreen State
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -81,44 +79,14 @@ export default function RemoteDesktop({ agentId }: Props) {
 
     const handleToggleRecording = () => {
         if (isRecording) {
-            // Stop
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                mediaRecorderRef.current.stop();
-                setIsRecording(false);
-            }
+            // Stop Agent Recording
+            sendInput('stop_recording');
+            setIsRecording(false);
+            alert("Recording stopped. Agent is uploading the video to the backend.");
         } else {
-            // Start
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            try {
-                const stream = canvas.captureStream(30); // 30 FPS
-                const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-                chunksRef.current = [];
-
-                recorder.ondataavailable = (e) => {
-                    if (e.data.size > 0) chunksRef.current.push(e.data);
-                };
-
-                recorder.onstop = () => {
-                    const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `remote-session-${agentId}-${new Date().toISOString()}.webm`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                };
-
-                recorder.start();
-                mediaRecorderRef.current = recorder;
-                setIsRecording(true);
-            } catch (e) {
-                console.error("Recording failed", e);
-                alert("Failed to start recording. Browser might not support Canvas capture.");
-            }
+            // Start Agent Recording
+            sendInput('start_recording');
+            setIsRecording(true);
         }
     };
 
