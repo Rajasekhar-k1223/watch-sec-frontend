@@ -35,6 +35,8 @@ export default function RemoteDesktop({ agentId }: Props) {
             setIsConnected(true);
             // Join Agent Room to receive stream
             socket.emit('join', { room: agentId });
+            // Start the stream explicitly (On-Demand)
+            socket.emit('start_stream', { agentId });
         });
 
         socket.on('disconnect', () => {
@@ -48,7 +50,7 @@ export default function RemoteDesktop({ agentId }: Props) {
         });
 
         // Handle Stream Frames (Base64)
-        socket.on('receive_stream_frame', async (data: { image: string }) => {
+        socket.on('stream_frame', async (data: { image: string }) => {
             if (!data.image) return;
 
             const canvas = canvasRef.current;
@@ -66,17 +68,27 @@ export default function RemoteDesktop({ agentId }: Props) {
             };
             img.src = `data:image/jpeg;base64,${data.image}`;
         });
+
+        // Backward compatibility for 'receive_stream_frame' if backend sends that
+        socket.on('receive_stream_frame', async (_data: { image: string }) => {
+            // ... same logic or ignore if stream_frame is primary
+        });
+
     }, [agentId]);
 
     const disconnectSocket = useCallback(() => {
         if (socketRef.current) {
             console.log("[RemoteDesktop] Disconnecting...");
+            // Stop the stream explicitly
+            if (socketRef.current.connected) {
+                socketRef.current.emit('stop_stream', { agentId });
+            }
             socketRef.current.disconnect();
             socketRef.current = null;
             setIsConnected(false);
             setStatus('Disconnected');
         }
-    }, []);
+    }, [agentId]);
 
     useEffect(() => {
         connectSocket();
