@@ -626,6 +626,7 @@ export default function Agents() {
                                     <span className="text-gray-500 text-sm">Or use CLI (Recommended)</span>
                                 </div>
 
+
                                 {deployOS === 'windows' && (
                                     <div className="bg-black/50 p-4 rounded-lg border border-gray-700 font-mono text-xs relative group">
                                         <p className="text-gray-400 mb-2 font-bold uppercase">PowerShell Command (Run as Admin)</p>
@@ -634,6 +635,22 @@ export default function Agents() {
                                         </div>
                                         <button
                                             onClick={() => navigator.clipboard.writeText(`powershell -ExecutionPolicy Bypass -Command "iwr '${API_URL}/api/downloads/script?key=${tenantApiKey}' | iex"`).then(() => alert("Copied!"))}
+                                            className="absolute top-4 right-4 p-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 hover:text-white transition-colors"
+                                            title="Copy to Clipboard"
+                                        >
+                                            <FileText size={16} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                {(deployOS === 'linux' || deployOS === 'mac') && (
+                                    <div className="bg-black/50 p-4 rounded-lg border border-gray-700 font-mono text-xs relative group">
+                                        <p className="text-gray-400 mb-2 font-bold uppercase">Terminal Command</p>
+                                        <div className="text-green-400 break-all pr-12">
+                                            curl -sL "{API_URL}/api/downloads/public/agent?key={tenantApiKey || 'Loading...'}&os={deployOS}" | bash
+                                        </div>
+                                        <button
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os=${deployOS}" | bash`).then(() => alert("Copied!"))}
                                             className="absolute top-4 right-4 p-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >
