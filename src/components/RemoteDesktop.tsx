@@ -91,9 +91,9 @@ export default function RemoteDesktop({ agentId }: Props) {
     }, [agentId]);
 
     useEffect(() => {
-        connectSocket();
+        // Auto-connect removed. User must click "Connect".
         return () => disconnectSocket();
-    }, [connectSocket, disconnectSocket]);
+    }, [disconnectSocket]);
 
     const sendInput = (type: string, data: any = {}) => {
         if (socketRef.current && socketRef.current.connected) {
