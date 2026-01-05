@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Lock, Wifi, WifiOff, Video, StopCircle, Maximize2, Minimize2 } from 'lucide-react';
 import { API_URL } from '../config';
+import { io, Socket } from 'socket.io-client';
 
 interface Props {
     agentId: string;
@@ -9,7 +10,7 @@ interface Props {
 export default function RemoteDesktop({ agentId }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const wsRef = useRef<WebSocket | null>(null);
+    const socketRef = useRef<Socket | null>(null);
     const [status, setStatus] = useState<string>('Disconnected');
     const [isConnected, setIsConnected] = useState(false);
 
@@ -20,54 +21,65 @@ export default function RemoteDesktop({ agentId }: Props) {
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     useEffect(() => {
-        // Auto-reconnect logic is inherent here: 
-        // On page reload, component mounts -> useEffect runs -> connects.
         const connect = () => {
-            const wsUrl = API_URL.replace('http', 'ws') + `/api/ws/admin/${agentId}`;
-            const ws = new WebSocket(wsUrl);
-            wsRef.current = ws;
-            ws.binaryType = 'blob';
+            const socket = io(API_URL, {
+                transports: ['websocket'],
+                reconnection: true,
+            });
+            socketRef.current = socket;
 
-            ws.onopen = () => {
+            socket.on('connect', () => {
                 setStatus('Connected');
                 setIsConnected(true);
-            };
+                // Join Agent Room to receive stream
+                socket.emit('join', { room: agentId });
+            });
 
-            ws.onclose = () => {
+            socket.on('disconnect', () => {
                 setStatus('Disconnected');
                 setIsConnected(false);
-                // Optional: Retry logic could go here if connection drops without page reload
-            };
+            });
 
-            ws.onmessage = async (event) => {
-                if (event.data instanceof Blob) {
-                    const bitmap = await createImageBitmap(event.data);
-                    const canvas = canvasRef.current;
-                    if (!canvas) return;
+            socket.on('connect_error', (err) => {
+                console.error("Socket Error:", err);
+                setStatus('Error');
+            });
 
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) return;
+            // Handle Stream Frames (Base64)
+            socket.on('receive_stream_frame', async (data: { image: string }) => {
+                if (!data.image) return;
 
-                    if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
-                        canvas.width = bitmap.width;
-                        canvas.height = bitmap.height;
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                const img = new Image();
+                img.onload = () => {
+                    if (canvas.width !== img.width || canvas.height !== img.height) {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
                     }
-
-                    ctx.drawImage(bitmap, 0, 0);
-                }
-            };
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = `data:image/jpeg;base64,${data.image}`;
+            });
         };
 
         connect();
 
         return () => {
-            if (wsRef.current) wsRef.current.close();
+            if (socketRef.current) socketRef.current.disconnect();
         };
     }, [agentId]);
 
     const sendInput = (type: string, data: any = {}) => {
-        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify({ type, ...data }));
+        if (socketRef.current && socketRef.current.connected) {
+            socketRef.current.emit('RemoteInput', {
+                agentId,
+                type,
+                ...data
+            });
         }
     };
 
