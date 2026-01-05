@@ -1,5 +1,5 @@
-import { useRef, useEffect, useState } from 'react';
-import { Lock, Wifi, WifiOff, Video, StopCircle, Maximize2, Minimize2 } from 'lucide-react';
+import { useRef, useEffect, useState, useCallback } from 'react';
+import { Lock, Wifi, WifiOff, Video, StopCircle, Maximize2, Minimize2, Play, Square } from 'lucide-react';
 import { API_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 
@@ -20,58 +20,68 @@ export default function RemoteDesktop({ agentId }: Props) {
     // Fullscreen State
     const [isFullscreen, setIsFullscreen] = useState(false);
 
-    useEffect(() => {
-        const connect = () => {
-            const socket = io(API_URL, {
-                transports: ['websocket'],
-                reconnection: true,
-            });
-            socketRef.current = socket;
+    const connectSocket = useCallback(() => {
+        if (socketRef.current?.connected) return;
 
-            socket.on('connect', () => {
-                setStatus('Connected');
-                setIsConnected(true);
-                // Join Agent Room to receive stream
-                socket.emit('join', { room: agentId });
-            });
+        console.log("[RemoteDesktop] Connecting...");
+        const socket = io(API_URL, {
+            transports: ['websocket'],
+            reconnection: true,
+        });
+        socketRef.current = socket;
 
-            socket.on('disconnect', () => {
-                setStatus('Disconnected');
-                setIsConnected(false);
-            });
+        socket.on('connect', () => {
+            setStatus('Connected');
+            setIsConnected(true);
+            // Join Agent Room to receive stream
+            socket.emit('join', { room: agentId });
+        });
 
-            socket.on('connect_error', (err) => {
-                console.error("Socket Error:", err);
-                setStatus('Error');
-            });
+        socket.on('disconnect', () => {
+            setStatus('Disconnected');
+            setIsConnected(false);
+        });
 
-            // Handle Stream Frames (Base64)
-            socket.on('receive_stream_frame', async (data: { image: string }) => {
-                if (!data.image) return;
+        socket.on('connect_error', (err) => {
+            console.error("Socket Error:", err);
+            setStatus('Error');
+        });
 
-                const canvas = canvasRef.current;
-                if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) return;
+        // Handle Stream Frames (Base64)
+        socket.on('receive_stream_frame', async (data: { image: string }) => {
+            if (!data.image) return;
 
-                const img = new Image();
-                img.onload = () => {
-                    if (canvas.width !== img.width || canvas.height !== img.height) {
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                    }
-                    ctx.drawImage(img, 0, 0);
-                };
-                img.src = `data:image/jpeg;base64,${data.image}`;
-            });
-        };
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
 
-        connect();
-
-        return () => {
-            if (socketRef.current) socketRef.current.disconnect();
-        };
+            const img = new Image();
+            img.onload = () => {
+                if (canvas.width !== img.width || canvas.height !== img.height) {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                }
+                ctx.drawImage(img, 0, 0);
+            };
+            img.src = `data:image/jpeg;base64,${data.image}`;
+        });
     }, [agentId]);
+
+    const disconnectSocket = useCallback(() => {
+        if (socketRef.current) {
+            console.log("[RemoteDesktop] Disconnecting...");
+            socketRef.current.disconnect();
+            socketRef.current = null;
+            setIsConnected(false);
+            setStatus('Disconnected');
+        }
+    }, []);
+
+    useEffect(() => {
+        connectSocket();
+        return () => disconnectSocket();
+    }, [connectSocket, disconnectSocket]);
 
     const sendInput = (type: string, data: any = {}) => {
         if (socketRef.current && socketRef.current.connected) {
@@ -161,6 +171,19 @@ export default function RemoteDesktop({ agentId }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="text-gray-500 italic hidden md:block mr-2">Click screen to focus</div>
+
+                    {/* Connect/Disconnect Buttons */}
+                    {!isConnected ? (
+                        <button onClick={connectSocket} className="bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded border border-green-600 flex items-center gap-1 transition-colors">
+                            <Play size={12} fill="currentColor" /> Connect
+                        </button>
+                    ) : (
+                        <button onClick={disconnectSocket} className="bg-red-900/50 hover:bg-red-900 text-red-300 px-2 py-1 rounded border border-red-800 flex items-center gap-1 transition-colors">
+                            <Square size={12} fill="currentColor" /> Disconnect
+                        </button>
+                    )}
+
+                    <div className="w-px h-4 bg-gray-700 mx-1"></div>
 
                     <button onClick={handleToggleRecording} className={`px-2 py-1 rounded border flex items-center gap-1 transition-colors ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}>
                         {isRecording ? <StopCircle size={14} className="animate-pulse" /> : <Video size={14} />}
