@@ -151,7 +151,7 @@ export default function Agents() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            const extension = os === 'windows' ? 'exe' : 'sh';
+
             const filename = os === 'windows' ? 'watch-sec-installer.exe' : 'watch-sec-install.sh';
             a.download = filename;
             document.body.appendChild(a);
