@@ -139,7 +139,7 @@ export default function Agents() {
     const handleDownload = async (os: string) => {
         setIsDownloading(true);
         try {
-            const res = await fetch(`${API_URL}/api/downloads/agent?os=${os}`, {
+            const res = await fetch(`${API_URL}/api/downloads/agent/install?os=${os}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
