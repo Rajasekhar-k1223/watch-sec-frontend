@@ -99,24 +99,30 @@ export default function Dashboard() {
 
         socket.on("connect", () => {
             console.log("[Socket.IO] Connected to Dashboard Stream");
+            socket.emit("join", { room: "dashboard" });
         });
 
-        socket.on("ReceiveEvent", (data: any) => {
+        const handleNewLog = (data: any) => {
             const newLog: LogEntry = {
-                type: data.title || "Security",
+                type: data.category || data.title || data.type || "Security", // Adapt to agent event format
                 details: data.details || "Unknown Event",
                 timestamp: normalizeTimestamp(data.timestamp || data.Timestamp),
-                agentId: data.agentId
+                agentId: data.agentId || data.agent_id
             };
             setLogs(prev => [newLog, ...prev].slice(0, 100));
 
             setStats(prev => {
                 if (!prev) return null;
                 const next = { ...prev };
-                next.threats.total24h++;
+                if (data.severity === 'critical' || data.severity === 'high') {
+                    next.threats.total24h++;
+                }
                 return next;
             });
-        });
+        };
+
+        socket.on("ReceiveEvent", handleNewLog);
+        socket.on("new_alert", handleNewLog);
 
         return () => {
             clearInterval(interval);
