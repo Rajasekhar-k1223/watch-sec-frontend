@@ -35,7 +35,7 @@ export default function Sidebar() {
                     <Shield className="w-8 h-8 text-blue-500" />
                     Watch Sec
                 </h1>
-                <p className="text-xs text-gray-400 mt-1 font-mono">Enterprise EDR v2.0</p>
+                <p className="text-xs text-gray-400 mt-1 font-mono">Enterprise EDR v2.1.0-FIXED</p>
                 <div className="mt-3 px-3 py-1.5 bg-gray-800/50 rounded-lg border border-gray-700/50 inline-flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                     <span className="text-[10px] text-gray-300 uppercase font-bold tracking-wider">
