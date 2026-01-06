@@ -152,11 +152,18 @@ export default function Agents() {
     const handleDownload = async (os: string) => {
         setIsDownloading(true);
         try {
-            const res = await fetch(`${API_URL}/api/downloads/agent/install?os=${os}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
+            let downloadUrl = '';
+            let filename = '';
+
+            if (os === 'windows') {
+                downloadUrl = `${API_URL}/api/downloads/script?key=${tenantApiKey}`;
+                filename = 'monitorix-install.ps1';
+            } else {
+                downloadUrl = `${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os=${os}&payload=false`;
+                filename = 'monitorix-install.sh';
+            }
+
+            const res = await fetch(downloadUrl);
 
             if (!res.ok) throw new Error("Download failed");
 
@@ -165,7 +172,6 @@ export default function Agents() {
             const a = document.createElement('a');
             a.href = url;
 
-            const filename = os === 'windows' ? 'watch-sec-installer.exe' : 'watch-sec-install.sh';
             a.download = filename;
             document.body.appendChild(a);
             a.click();
