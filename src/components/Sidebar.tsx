@@ -1,11 +1,9 @@
-import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 
 export default function Sidebar() {
     const { user, logout } = useAuth();
-    const { theme, toggleTheme } = useTheme();
     const role = user?.role || 'Analyst';
 
     const allNavItems = [
@@ -62,19 +60,6 @@ export default function Sidebar() {
             </nav>
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
-                {/* Theme Toggle */}
-                <button
-                    onClick={toggleTheme}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
-                >
-                    <span className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase">Appearance</span>
-                    {theme === 'dark' ? (
-                        <Moon className="w-4 h-4 text-purple-400" />
-                    ) : (
-                        <Sun className="w-4 h-4 text-orange-500" />
-                    )}
-                </button>
-
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
                     <p className="text-xs text-gray-500 uppercase font-bold mb-1">Current Tenant</p>
                     <div className="flex items-center gap-2 mb-3">
