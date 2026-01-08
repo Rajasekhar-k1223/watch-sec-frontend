@@ -543,26 +543,26 @@ export default function Agents() {
             <div className="mb-6 space-y-6">
                 <div className="flex justify-between items-end">
                     <div>
-                        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                            <Monitor className="w-8 h-8 text-blue-500" />
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                            <Monitor className="w-8 h-8 text-blue-600 dark:text-blue-500" />
                             Agent Management
                         </h1>
-                        <p className="text-gray-400 text-sm mt-1">Monitor connected endpoints, track resources, and analyze fleet security.</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Monitor connected endpoints, track resources, and analyze fleet security.</p>
                     </div>
                     <div className="flex gap-3 items-center">
-                        <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                        <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 items-center shadow-sm">
                             {/* Date Picker Simple Implementation */}
                             <input
                                 type="date"
                                 value={selectedDate}
-                                className="bg-transparent text-white text-xs px-2 py-1 outline-none"
+                                className="bg-transparent text-gray-900 dark:text-white text-xs px-2 py-1 outline-none"
                                 onChange={(e) => {
                                     if (e.target.value) {
                                         setSelectedDate(e.target.value);
                                     }
                                 }}
                             />
-                            <span className="text-gray-500 text-xs py-1 border-l border-gray-700 px-2 cursor-pointer hover:text-white" onClick={() => fetchStats()}>24H (Default)</span>
+                            <span className="text-gray-400 dark:text-gray-500 text-xs py-1 border-l border-gray-200 dark:border-gray-700 px-2 cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors" onClick={() => fetchStats()}>24H (Default)</span>
                         </div>
 
                         {user?.role === 'TenantAdmin' && (
@@ -581,31 +581,31 @@ export default function Agents() {
                 {/* Fleet Analytics Section */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {/* Card 1: Agent Status */}
-                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg">
-                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"> <Server className="w-4 h-4 text-blue-400" /> Fleet Status</h3>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <Server className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Fleet Status</h3>
                         <div className="flex items-end justify-between">
                             <div>
-                                <span className="text-3xl font-bold text-white">{stats?.agents?.total || 0}</span>
+                                <span className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.agents?.total || 0}</span>
                                 <span className="text-xs text-gray-500 block">Total Agents</span>
                             </div>
                             <div className="text-right">
-                                <span className="text-lg font-bold text-green-400">{stats?.agents?.online || 0}</span>
+                                <span className="text-lg font-bold text-green-500 dark:text-green-400">{stats?.agents?.online || 0}</span>
                                 <span className="text-xs text-gray-500 block">Online</span>
                             </div>
                             <div className="text-right">
-                                <span className="text-lg font-bold text-red-400">{stats?.agents?.offline || 0}</span>
+                                <span className="text-lg font-bold text-red-500 dark:text-red-400">{stats?.agents?.offline || 0}</span>
                                 <span className="text-xs text-gray-500 block">Offline</span>
                             </div>
                         </div>
-                        <div className="w-full bg-gray-700 h-1 mt-3 rounded-full overflow-hidden flex">
+                        <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 mt-3 rounded-full overflow-hidden flex">
                             <div className="bg-green-500 h-full" style={{ width: `${((stats?.agents?.online || 0) / (stats?.agents?.total || 1)) * 100}%` }}></div>
                             <div className="bg-red-500 h-full flex-1"></div>
                         </div>
                     </div>
 
                     {/* Card 2: Resource Trends */}
-                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg col-span-2 relative overflow-hidden group">
-                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-1 flex items-center gap-2"> <Activity className="w-4 h-4 text-purple-400" /> Resource Trends (Avg)</h3>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg col-span-2 relative overflow-hidden group transition-colors">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 flex items-center gap-2"> <Activity className="w-4 h-4 text-purple-500 dark:text-purple-400" /> Resource Trends (Avg)</h3>
                         <div className="h-24 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={stats?.resources?.trend || []}>
@@ -619,7 +619,7 @@ export default function Agents() {
                                             <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <Tooltip contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#fff' }} />
+                                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#fff' }} />
                                     <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} />
                                     <Area type="monotone" dataKey="mem" stroke="#10b981" fillOpacity={1} fill="url(#colorMem)" strokeWidth={2} />
                                 </AreaChart>
@@ -628,12 +628,12 @@ export default function Agents() {
                     </div>
 
                     {/* Card 3: Security Events */}
-                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg">
-                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"> <AlertTriangle className="w-4 h-4 text-yellow-500" /> Security Events</h3>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <AlertTriangle className="w-4 h-4 text-yellow-500" /> Security Events</h3>
                         <div className="flex flex-col gap-2">
-                            <div className="flex justify-between items-center bg-gray-900/50 p-2 rounded border border-gray-700/50">
-                                <span className="text-xs text-gray-400">Total (Period)</span>
-                                <span className="font-bold text-white text-lg">{stats?.threats?.total24h || stats?.threats?.total || 0}</span>
+                            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 p-2 rounded border border-gray-200 dark:border-gray-700/50">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">Total (Period)</span>
+                                <span className="font-bold text-gray-900 dark:text-white text-lg">{stats?.threats?.total24h || stats?.threats?.total || 0}</span>
                             </div>
                             <div className="h-16 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -646,16 +646,16 @@ export default function Agents() {
                     </div>
 
                     {/* Card 4: Recent Activity Feed (New) */}
-                    <div className="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg col-span-1 md:col-span-4 max-h-48 overflow-hidden flex flex-col">
-                        <h3 className="text-xs font-bold text-gray-400 uppercase mb-3 flex items-center gap-2"> <List className="w-4 h-4 text-cyan-400" /> Recent Activities</h3>
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg col-span-1 md:col-span-4 max-h-48 overflow-hidden flex flex-col transition-colors">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <List className="w-4 h-4 text-cyan-500 dark:text-cyan-400" /> Recent Activities</h3>
                         <div className="flex-1 overflow-y-auto pr-2 space-y-2">
                             {stats?.recentLogs && stats.recentLogs.length > 0 ? (
                                 stats.recentLogs.map((log: any, idx: number) => (
-                                    <div key={idx} className="flex items-center justify-between p-2 bg-gray-900/50 rounded border border-gray-700/50 text-xs hover:border-gray-600 transition-colors">
+                                    <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700/50 text-xs hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
                                         <div className="flex items-center gap-3 overflow-hidden">
-                                            <span className="text-blue-400 font-bold shrink-0 w-24 truncate" title={log.agentId}>{log.agentId}</span>
-                                            <span className={`font-bold shrink-0 ${['Critical', 'High', 'Error'].includes(log.type) ? 'text-red-400' : 'text-gray-300'}`}>{log.type}</span>
-                                            <span className="text-gray-500 truncate">{log.details}</span>
+                                            <span className="text-blue-600 dark:text-blue-400 font-bold shrink-0 w-24 truncate" title={log.agentId}>{log.agentId}</span>
+                                            <span className={`font-bold shrink-0 ${['Critical', 'High', 'Error'].includes(log.type) ? 'text-red-500 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>{log.type}</span>
+                                            <span className="text-gray-600 dark:text-gray-500 truncate">{log.details}</span>
                                         </div>
                                         <span className="text-gray-500 shrink-0 ml-2">{new Date(log.timestamp).toLocaleTimeString()}</span>
                                     </div>
@@ -670,15 +670,15 @@ export default function Agents() {
 
             {showDeployModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
-                    <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden">
-                        <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Deploy Enterprise Agent </h2>
-                            <button onClick={() => setShowDeployModal(false)} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden transition-colors">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-600 dark:text-blue-500" /> Deploy Enterprise Agent </h2>
+                            <button onClick={() => setShowDeployModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"><X className="w-6 h-6" /></button>
                         </div>
                         <div className="p-6 space-y-6">
-                            <div className="flex gap-4 border-b border-gray-800 pb-6">
+                            <div className="flex gap-4 border-b border-gray-200 dark:border-gray-800 pb-6">
                                 {(['windows', 'linux', 'mac'] as const).map(os => (
-                                    <button key={os} onClick={() => setDeployOS(os)} className={`flex-1 py-3 rounded-lg border font-bold flex flex-col items-center gap-2 transition-all ${deployOS === os ? 'bg-blue-600/10 border-blue-500 text-blue-400' : 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700'}`}>
+                                    <button key={os} onClick={() => setDeployOS(os)} className={`flex-1 py-3 rounded-lg border font-bold flex flex-col items-center gap-2 transition-all ${deployOS === os ? 'bg-blue-50 dark:bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                                         <span className="text-lg capitalize">{os}</span>
                                     </button>
                                 ))}
@@ -694,14 +694,14 @@ export default function Agents() {
 
 
                                 {deployOS === 'windows' && (
-                                    <div className="bg-black/50 p-4 rounded-lg border border-gray-700 font-mono text-xs relative group">
-                                        <p className="text-gray-400 mb-2 font-bold uppercase">PowerShell Command (Run as Admin)</p>
-                                        <div className="text-green-400 break-all pr-12">
+                                    <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
+                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">PowerShell Command (Run as Admin)</p>
+                                        <div className="text-gray-900 dark:text-green-400 break-all pr-12">
                                             powershell -Ep Bypass -C "irm '{API_URL}/api/downloads/script?key={tenantApiKey || 'Loading...'}' | iex"
                                         </div>
                                         <button
                                             onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm '${API_URL}/api/downloads/script?key=${tenantApiKey}' | iex"`).then(() => alert("Copied!"))}
-                                            className="absolute top-4 right-4 p-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 hover:text-white transition-colors"
+                                            className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >
                                             <FileText size={16} />
@@ -710,14 +710,14 @@ export default function Agents() {
                                 )}
 
                                 {(deployOS === 'linux' || deployOS === 'mac') && (
-                                    <div className="bg-black/50 p-4 rounded-lg border border-gray-700 font-mono text-xs relative group">
-                                        <p className="text-gray-400 mb-2 font-bold uppercase">Terminal Command</p>
-                                        <div className="text-green-400 break-all pr-12">
+                                    <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
+                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">Terminal Command</p>
+                                        <div className="text-gray-900 dark:text-green-400 break-all pr-12">
                                             curl -sL "{API_URL}/api/downloads/public/agent?key={tenantApiKey || 'Loading...'}&os={deployOS}" | bash
                                         </div>
                                         <button
                                             onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os=${deployOS}" | bash`).then(() => alert("Copied!"))}
-                                            className="absolute top-4 right-4 p-2 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 hover:text-white transition-colors"
+                                            className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >
                                             <FileText size={16} />
@@ -732,43 +732,43 @@ export default function Agents() {
 
             {showOtpModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
-                    <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl p-8 max-w-sm w-full text-center">
-                        <h2 className="text-xl font-bold text-white mb-4">Installation PIN</h2>
-                        <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 mb-4">
-                            <span className="text-4xl font-mono mobile-nums text-blue-400 font-bold tracking-widest">{otpToken?.substring(0, 3)}-{otpToken?.substring(3)}</span>
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-8 max-w-sm w-full text-center transition-colors">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Installation PIN</h2>
+                        <div className="bg-gray-100 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+                            <span className="text-4xl font-mono mobile-nums text-blue-600 dark:text-blue-400 font-bold tracking-widest">{otpToken?.substring(0, 3)}-{otpToken?.substring(3)}</span>
                         </div>
                         <button onClick={() => setShowOtpModal(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Close</button>
                     </div>
                 </div>
             )}
 
-            <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden shadow-lg">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg transition-colors">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-900/50 text-gray-400 text-sm uppercase font-semibold">
+                    <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
                         <tr><th className="p-4">Agent ID</th><th className="p-4">Hostname</th><th className="p-4">Status</th><th className="p-4">Resources</th><th className="p-4">Last Seen</th><th className="p-4">Actions</th></tr>
                     </thead>
-                    <tbody className="text-gray-300 divide-y divide-gray-700">
+                    <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
                         {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : agents.map(agent => (
-                            <tr key={agent.agentId} className="hover:bg-gray-700/50 transition-colors group">
-                                <td className="p-4 font-bold text-white flex items-center gap-2"> <Server className="w-4 h-4 text-gray-500" /> {agent.agentId} </td>
-                                <td className="p-4 text-sm font-mono text-gray-400"> {agent.hostname || 'Unknown'} </td>
+                            <tr key={agent.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                                <td className="p-4 font-bold text-gray-900 dark:text-white flex items-center gap-2"> <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" /> {agent.agentId} </td>
+                                <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-400"> {agent.hostname || 'Unknown'} </td>
                                 <td className="p-4">
-                                    <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                                    <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
                                         {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
                                     </div>
                                 </td>
                                 <td className="p-4">
                                     <div className="text-xs space-y-1">
-                                        <div className="flex justify-between w-32"> <span className="text-gray-500">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-400 font-bold' : 'text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
-                                        <div className="flex justify-between w-32"> <span className="text-gray-500">MEM:</span> <span className="text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
+                                        <div className="flex justify-between w-32"> <span className="text-gray-500">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
+                                        <div className="flex justify-between w-32"> <span className="text-gray-500">MEM:</span> <span className="text-gray-700 dark:text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
                                     </div>
                                 </td>
-                                <td className="p-4 text-gray-400 text-sm"> {new Date(agent.timestamp).toLocaleString()} </td>
+                                <td className="p-4 text-gray-500 dark:text-gray-400 text-sm"> {new Date(agent.timestamp).toLocaleString()} </td>
                                 <td className="p-4">
                                     <div className="flex gap-3 items-center">
                                         <button
                                             onClick={() => handleToggleUsb(agent.agentId, agent.usbBlockingEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.usbBlockingEnabled ? 'text-red-400 hover:text-red-300' : 'text-gray-500 hover:text-gray-300'}`}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.usbBlockingEnabled ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                                             title={agent.usbBlockingEnabled ? "USB Blocking ACTIVE (Write Protected)" : "USB Access ALLOWED"}
                                         >
                                             <Usb className="w-4 h-4" />
@@ -777,7 +777,7 @@ export default function Agents() {
 
                                         <button
                                             onClick={() => handleToggleNetwork(agent.agentId, agent.networkMonitoringEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.networkMonitoringEnabled ? 'text-blue-400 hover:text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.networkMonitoringEnabled ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                                             title={agent.networkMonitoringEnabled ? "Network Analysis ON" : "Network Analysis OFF"}
                                         >
                                             {agent.networkMonitoringEnabled ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
@@ -785,7 +785,7 @@ export default function Agents() {
 
                                         <button
                                             onClick={() => handleToggleFile(agent.agentId, agent.fileDlpEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.fileDlpEnabled ? 'text-purple-400 hover:text-purple-300' : 'text-gray-500 hover:text-gray-300'}`}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.fileDlpEnabled ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                                             title={agent.fileDlpEnabled ? "File System DLP ON (Confidential Folder)" : "File System DLP OFF"}
                                         >
                                             {agent.fileDlpEnabled ? <FileText className="w-4 h-4" /> : <FileText className="w-4 h-4 opacity-50" />}
@@ -793,7 +793,7 @@ export default function Agents() {
 
                                         <button
                                             onClick={() => handleToggleLocation(agent.agentId, agent.locationTrackingEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.locationTrackingEnabled ? 'text-green-400 hover:text-green-300' : 'text-gray-500 hover:text-gray-300'}`}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.locationTrackingEnabled ? 'text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                                             title={agent.locationTrackingEnabled ? "Location Tracking ON" : "Location Tracking OFF"}
                                         >
                                             {agent.locationTrackingEnabled ? <MapPin className="w-4 h-4" /> : <MapPinOff className="w-4 h-4" />}

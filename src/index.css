@@ -1,17 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
+    color-scheme: dark;
 }
+
 .light {
-  color-scheme: light;
-  --bg-color: #f3f4f6;
-  --text-color: #111827;
+    color-scheme: light;
+    --bg-color: #f3f4f6;
+    --text-color: #111827;
 }
+
 .dark {
-  color-scheme: dark;
-  --bg-color: #030712;
-  --text-color: #ffffff;
+    color-scheme: dark;
+    --bg-color: #030712;
+    --text-color: #ffffff;
 }
 
 body {
@@ -20,10 +22,12 @@ body {
     color: var(--text-color);
     /* Subtle Grid Pattern only in dark mode or adaptive? */
 }
+
 .dark body {
     background-image: radial-gradient(#1f2937 1px, transparent 1px);
     background-size: 40px 40px;
 }
+
 .light body {
     background-image: radial-gradient(#d1d5db 1px, transparent 1px);
     background-size: 40px 40px;
@@ -34,21 +38,32 @@ body {
     width: 8px;
     height: 8px;
 }
+
 ::-webkit-scrollbar-track {
-    @apply bg-gray-900;
+    @apply bg-gray-200 dark:bg-gray-900;
 }
+
 ::-webkit-scrollbar-thumb {
-    @apply bg-gray-700 rounded hover:bg-gray-600;
+    @apply bg-gray-400 dark:bg-gray-700 rounded hover:bg-gray-500 dark:hover:bg-gray-600;
 }
 
 /* Animations */
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
+
 .animate-fade-in {
     animation: fadeIn 0.4s ease-out forwards;
 }
+
 .animate-fade-in-up {
     opacity: 0;
     animation: fadeIn 0.6s ease-out forwards;
@@ -62,6 +77,6 @@ body {
 /* Chart Gradients */
 .bg-grid-pattern {
     background-image: linear-gradient(to right, #374151 1px, transparent 1px),
-                      linear-gradient(to bottom, #374151 1px, transparent 1px);
+        linear-gradient(to bottom, #374151 1px, transparent 1px);
     background-size: 20px 20px;
 }
