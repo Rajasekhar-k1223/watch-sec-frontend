@@ -87,6 +87,7 @@ export default function Agents() {
                 const normalizedData = (Array.isArray(data) ? data : []).map((a: any) => {
                     return {
                         ...a,
+                        id: a.id || a.Id,
                         status: a.status || a.Status || 'Unknown',
                         cpuUsage: a.cpuUsage ?? a.CpuUsage ?? 0,
                         memoryUsage: a.memoryUsage ?? a.MemoryUsage ?? 0,
@@ -803,7 +804,7 @@ export default function Agents() {
                                         <button onClick={() => handleViewLogs(agent.agentId)} className="text-gray-400 hover:text-white text-sm font-medium hover:underline flex items-center gap-1"> <List className="w-4 h-4" /> Logs </button>
                                         <button onClick={() => handleMonitor(agent.agentId)} className="text-blue-400 hover:text-blue-300 text-sm font-medium hover:underline flex items-center gap-1"> <Monitor className="w-4 h-4" /> Monitor </button>
                                         <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="text-purple-400 hover:text-purple-300 text-sm font-medium hover:underline flex items-center gap-1"> <MousePointer className="w-4 h-4" /> Remote </button>
-                                        <button onClick={() => handleDelete(agent.id)} className="text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity ml-2"> <Trash2 className="w-4 h-4" /> </button>
+                                        <button onClick={() => handleDelete(agent.id)} className="text-gray-400 hover:text-red-500 transition-colors ml-2" title="Delete Agent"> <Trash2 className="w-4 h-4" /> </button>
                                     </div>
                                 </td>
                             </tr>
