@@ -84,6 +84,7 @@ export default function Agents() {
             }
             if (res.ok) {
                 const data = await res.json();
+                console.log("[Agents] Raw API Data:", data);
                 const normalizedData = (Array.isArray(data) ? data : []).map((a: any) => {
                     return {
                         ...a,
@@ -250,6 +251,12 @@ export default function Agents() {
     };
 
     const handleDelete = async (id: number) => {
+        console.log("[Agents] Attempting to delete agent with ID:", id);
+        if (!id) {
+            alert("Error: Cannot delete agent (Missing ID). Please refresh and try again.");
+            return;
+        }
+
         if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return;
 
         try {
