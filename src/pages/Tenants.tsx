@@ -72,34 +72,34 @@ export default function Tenants() {
     };
 
     return (
-        <div>
+        <div className="p-8 animate-fade-in transition-colors text-gray-900 dark:text-white">
             <div className="flex justify-between items-end mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-white">Tenant Management</h1>
-                    <p className="text-gray-400 text-sm mt-1">Manage customer organizations and API access.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage customer organizations and API access.</p>
                 </div>
 
                 <div className="flex gap-2">
                     <input
                         type="text"
                         placeholder="New Tenant Name"
-                        className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:border-blue-500"
+                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-3 py-2 rounded focus:outline-none focus:border-blue-500"
                         value={newTenantName}
                         onChange={e => setNewTenantName(e.target.value)}
                     />
                     <button
                         onClick={handleCreate}
                         disabled={isCreating}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50 font-medium"
                     >
                         {isCreating ? "Creating..." : "+ Add Tenant"}
                     </button>
                 </div>
             </div>
 
-            <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden shadow-lg">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg">
                 <table className="w-full text-left">
-                    <thead className="bg-gray-900/50 text-gray-400 text-sm uppercase font-semibold">
+                    <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
                         <tr>
                             <th className="p-4">ID</th>
                             <th className="p-4">Tenant Name</th>
@@ -108,22 +108,22 @@ export default function Tenants() {
                             <th className="p-4">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="text-gray-300 divide-y divide-gray-700">
+                    <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
                         {tenants.map(tenant => (
-                            <tr key={getTenantProp(tenant, 'id')} className="hover:bg-gray-700/50 transition-colors">
+                            <tr key={getTenantProp(tenant, 'id')} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <td className="p-4 text-gray-500">#{getTenantProp(tenant, 'id')}</td>
-                                <td className="p-4 font-bold text-white">{getTenantProp(tenant, 'name')}</td>
+                                <td className="p-4 font-bold text-gray-900 dark:text-white">{getTenantProp(tenant, 'name')}</td>
                                 <td className="p-4">
-                                    <code className="text-yellow-500 bg-gray-900 px-2 py-1 rounded w-fit select-all text-xs font-mono border border-gray-700">
+                                    <code className="text-blue-600 dark:text-yellow-500 bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded w-fit select-all text-xs font-mono border border-gray-300 dark:border-gray-700">
                                         {getTenantProp(tenant, 'apiKey')}
                                     </code>
                                 </td>
                                 <td className="p-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${getTenantProp(tenant, 'plan') === 'Enterprise' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'}`}>
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${getTenantProp(tenant, 'plan') === 'Enterprise' ? 'bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20' : 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20'}`}>
                                         {getTenantProp(tenant, 'plan')}
                                     </span>
                                 </td>
-                                <td className="p-4 text-blue-400 cursor-pointer hover:text-blue-300 font-medium text-sm">
+                                <td className="p-4 text-blue-500 hover:text-blue-600 cursor-pointer font-medium text-sm">
                                     Config
                                 </td>
                             </tr>
@@ -131,13 +131,11 @@ export default function Tenants() {
                     </tbody>
                 </table>
                 {tenants.length === 0 && (
-                    <div className="p-12 text-center text-gray-500 border-t border-dashed border-gray-700">
+                    <div className="p-12 text-center text-gray-500 border-t border-dashed border-gray-200 dark:border-gray-700">
                         No tenants found. Create one above!
                     </div>
                 )}
             </div>
-
-
         </div>
     );
 }

@@ -50,23 +50,23 @@ export default function Register() {
     };
 
     return (
-        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center relative overflow-hidden">
+        <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center relative overflow-hidden transition-colors">
             {/* Background Decoration */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2"></div>
-            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2"></div>
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 
-            <div className="w-full max-w-2xl bg-gray-900/80 backdrop-blur-xl border border-gray-700/50 rounded-2xl shadow-2xl p-8 relative z-10">
+            <div className="w-full max-w-2xl bg-white dark:bg-gray-900/80 backdrop-blur-xl border border-gray-200 dark:border-gray-700/50 rounded-2xl shadow-2xl p-8 relative z-10 animate-fade-in-up">
                 <div className="text-center mb-8">
                     <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center mb-4 shadow-lg shadow-blue-500/25">
                         <Shield className="w-6 h-6 text-white" />
                     </div>
-                    <h1 className="text-2xl font-bold text-white tracking-tight">Create Organization</h1>
-                    <p className="text-gray-400 text-sm mt-2">Start securing your workforce in minutes.</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Create Organization</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">Start securing your workforce in minutes.</p>
                 </div>
 
                 {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg mb-6 text-center">
+                    <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm p-3 rounded-lg mb-6 text-center">
                         {error}
                     </div>
                 )}
@@ -75,42 +75,42 @@ export default function Register() {
                     {/* Step 1: Organization & Admin Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Organization Name</label>
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Organization Name</label>
                             <div className="relative">
-                                <Building2 className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                                <Building2 className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                 <input
                                     type="text"
                                     value={tenantName}
                                     onChange={(e) => setTenantName(e.target.value)}
-                                    className="block w-full pl-10 bg-gray-800 border border-gray-700 rounded-lg py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    className="block w-full pl-10 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                     placeholder="Acme Corp"
                                     required
                                 />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Admin Username</label>
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Admin Username</label>
                             <div className="relative">
-                                <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                                <UserIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                 <input
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    className="block w-full pl-10 bg-gray-800 border border-gray-700 rounded-lg py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    className="block w-full pl-10 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                     placeholder="admin_acme"
                                     required
                                 />
                             </div>
                         </div>
                         <div className="md:col-span-2">
-                            <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-2">Password</label>
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Password</label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-500" />
+                                <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="block w-full pl-10 bg-gray-800 border border-gray-700 rounded-lg py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    className="block w-full pl-10 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                     placeholder="••••••••"
                                     required
                                 />
@@ -120,7 +120,7 @@ export default function Register() {
 
                     {/* Step 2: Plan Selection */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 uppercase tracking-wider mb-4">Select Plan</label>
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Select Plan</label>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {plans.map((p) => (
                                 <div
@@ -128,21 +128,21 @@ export default function Register() {
                                     onClick={() => setPlan(p.id)}
                                     className={`relative cursor-pointer rounded-xl border p-4 transition-all ${plan === p.id
                                         ? `bg-${p.color}-500/10 border-${p.color}-500 ring-1 ring-${p.color}-500`
-                                        : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                                        : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-gray-600'
                                         }`}
                                 >
                                     <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold text-white">{p.name}</h3>
-                                        <span className={`text-xs font-bold px-2 py-1 rounded bg-${p.color}-500/20 text-${p.color}-400`}>
+                                        <h3 className="font-bold text-gray-900 dark:text-white">{p.name}</h3>
+                                        <span className={`text-xs font-bold px-2 py-1 rounded bg-${p.color}-100 dark:bg-${p.color}-500/20 text-${p.color}-600 dark:text-${p.color}-400`}>
                                             {p.price}
                                         </span>
                                     </div>
                                     <ul className="space-y-1">
-                                        <li className="text-sm text-gray-400 flex items-center gap-2">
-                                            <Check className="w-3 h-3 text-green-400" /> {p.limit}
+                                        <li className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                                            <Check className="w-3 h-3 text-green-500" /> {p.limit}
                                         </li>
-                                        <li className="text-sm text-gray-400 flex items-center gap-2">
-                                            <Check className="w-3 h-3 text-green-400" /> Full EDR Features
+                                        <li className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                                            <Check className="w-3 h-3 text-green-500" /> Full EDR Features
                                         </li>
                                     </ul>
                                     {plan === p.id && (
@@ -166,7 +166,7 @@ export default function Register() {
                     </button>
 
                     <div className="text-center mt-4">
-                        <Link to="/login" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                        <Link to="/login" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 transition-colors">
                             Already have an account? Sign In
                         </Link>
                     </div>

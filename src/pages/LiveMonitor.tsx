@@ -165,15 +165,16 @@ export default function LiveMonitor() {
 
     const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6'];
 
+
     // --- RENDER ---
 
     if (selectedAgentId) {
         // --- SINGLE AGENT VIEW ---
         return (
-            <div className="flex flex-col h-full bg-gray-900 text-white p-6 overflow-hidden">
+            <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white p-6 overflow-hidden transition-colors">
                 <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setSearchParams({})} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                        <button onClick={() => setSearchParams({})} className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
                             <ArrowLeft size={20} /> Back
                         </button>
                         <h2 className="text-xl font-bold flex items-center gap-2">
@@ -183,16 +184,16 @@ export default function LiveMonitor() {
                     </div>
 
                     {/* TABS */}
-                    <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                    <div className="flex bg-gray-200 dark:bg-gray-800 rounded-lg p-1 border border-gray-300 dark:border-gray-700">
                         <button
                             onClick={() => setActiveTab('stream')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'stream' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'stream' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                         >
                             <Video size={16} /> Live Stream
                         </button>
                         <button
                             onClick={() => setActiveTab('analytics')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                         >
                             <BarChart2 size={16} /> Analytics
                         </button>
@@ -240,7 +241,7 @@ export default function LiveMonitor() {
                                 </div>
 
                                 {/* Performance Chart */}
-                                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                                <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
                                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={18} className="text-purple-400" /> Live Performance Data</h3>
                                     <div className="h-64 w-full">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -260,8 +261,8 @@ export default function LiveMonitor() {
                         /* ANALYTICS TAB CONTENT */
                         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 content-start">
                             {/* 1. PIE CHART */}
-                            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center">
-                                <h3 className="text-lg font-bold mb-4 self-start">Event Distribution</h3>
+                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 flex flex-col items-center shadow-lg">
+                                <h3 className="text-lg font-bold mb-4 self-start text-gray-900 dark:text-white">Event Distribution</h3>
                                 <div className="w-full h-64 relative">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
@@ -281,15 +282,15 @@ export default function LiveMonitor() {
                                         </PieChart>
                                     </ResponsiveContainer>
                                     <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                        <span className="text-3xl font-bold text-white">{analyticsData.total}</span>
+                                        <span className="text-3xl font-bold text-gray-900 dark:text-white">{analyticsData.total}</span>
                                         <span className="text-xs text-gray-500 uppercase">Events</span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* 2. BAR CHART (Top Events) */}
-                            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-                                <h3 className="text-lg font-bold mb-4">Event Frequency</h3>
+                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-lg">
+                                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Event Frequency</h3>
                                 <div className="w-full h-64">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={analyticsData.pieData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
@@ -307,8 +308,8 @@ export default function LiveMonitor() {
                             </div>
 
                             {/* 3. AREA CHART (Timeline) */}
-                            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 md:col-span-2">
-                                <h3 className="text-lg font-bold mb-4">Event Velocity (Last 100)</h3>
+                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 md:col-span-2 shadow-lg">
+                                <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Event Velocity (Last 100)</h3>
                                 <div className="w-full h-64">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={analyticsData.lineData}>
@@ -324,31 +325,28 @@ export default function LiveMonitor() {
                         </div>
                     )}
 
-                    {/* RIGHT COL: Event Log (Always Visible or Collapsed?) 
-                        Let's keep it visible as "Context" but maybe simplified in analytics mode?
-                        No, in single view usually 3 cols. Left 2 are Stream/Charts, Right 1 is Log.
-                    */}
-                    <div className="bg-gray-900 border border-gray-800 rounded-xl p-0 flex flex-col h-full lg:h-auto overflow-hidden">
-                        <div className="p-4 border-b border-gray-800 bg-gray-800/50">
-                            <h3 className="font-bold flex items-center gap-2"><ShieldAlert size={18} className="text-red-400" /> Event Feed</h3>
+                    {/* RIGHT COL: Event Log */}
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-0 flex flex-col h-full lg:h-auto overflow-hidden shadow-lg">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                            <h3 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white"><ShieldAlert size={18} className="text-red-400" /> Event Feed</h3>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs custom-scrollbar">
                             {events[selectedAgentId]?.map((evt, i) => (
-                                <div key={i} className="p-2 bg-black/30 rounded border border-gray-800 hover:border-gray-600 transition-colors">
+                                <div key={i} className="p-2 bg-gray-100 dark:bg-black/30 rounded border border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-colors">
                                     <div className="flex justify-between text-gray-500 mb-1">
                                         <span>{new Date(evt.timestamp || evt.Timestamp).toLocaleTimeString()}</span>
-                                        <span className={`font-bold ${(evt.type || evt.Type || "").includes('Block') ? 'text-red-500' :
-                                            (evt.type || evt.Type || "").includes('Error') ? 'text-yellow-500' : 'text-blue-400'
+                                        <span className={`font-bold ${(evt.type || evt.Type || "").includes('Block') ? 'text-red-600 dark:text-red-500' :
+                                            (evt.type || evt.Type || "").includes('Error') ? 'text-yellow-600 dark:text-yellow-500' : 'text-blue-600 dark:text-blue-400'
                                             }`}>{evt.type || evt.Type}</span>
                                     </div>
-                                    <div className="text-gray-300 break-all">{evt.details || evt.Details}</div>
+                                    <div className="text-gray-700 dark:text-gray-300 break-all">{evt.details || evt.Details}</div>
                                     {evt.type === 'Process Started' && (evt.details || "").includes('PID:') && (
                                         <button
                                             onClick={() => {
                                                 const pid = parseInt((evt.details || "").match(/PID: (\d+)/)?.[1] || "0");
                                                 if (pid && socketRef.current) socketRef.current.emit("KillProcess", { target: pid, agentId: selectedAgentId });
                                             }}
-                                            className="mt-2 w-full bg-red-900/30 hover:bg-red-900/50 text-red-500 py-1 rounded text-center uppercase tracking-wider font-bold transition-colors"
+                                            className="mt-2 w-full bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-500 py-1 rounded text-center uppercase tracking-wider font-bold transition-colors"
                                         >
                                             Kill Process
                                         </button>
@@ -356,7 +354,7 @@ export default function LiveMonitor() {
                                 </div>
                             ))}
                             {(!events[selectedAgentId] || events[selectedAgentId].length === 0) && (
-                                <div className="text-center text-gray-600 py-10">No recent events recorded.</div>
+                                <div className="text-center text-gray-500 dark:text-gray-600 py-10">No recent events recorded.</div>
                             )}
                         </div>
                     </div>
@@ -369,9 +367,9 @@ export default function LiveMonitor() {
     return (
         <div className="p-8">
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-white">Live Monitor</h1>
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Live Monitor</h1>
                 <div className="flex gap-2">
-                    <span className="bg-green-500/10 text-green-500 px-3 py-1 rounded-full text-sm border border-green-500/20 animate-pulse">
+                    <span className="bg-green-500/10 text-green-600 dark:text-green-500 px-3 py-1 rounded-full text-sm border border-green-500/20 animate-pulse">
                         System Online
                     </span>
                 </div>
@@ -379,44 +377,44 @@ export default function LiveMonitor() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {reports.map(report => (
-                    <div key={report.agentId} className="bg-gray-800 rounded-lg p-6 border border-gray-700 shadow-xl hover:border-blue-500/50 transition-colors">
+                    <div key={report.agentId} className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-xl hover:border-blue-500/50 transition-colors">
                         <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setSearchParams({ agentId: report.agentId })}>
-                            <h2 className="text-xl font-semibold text-white flex flex-col group">
+                            <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex flex-col group">
                                 <div className="flex items-center gap-2">
                                     {report.agentId}
-                                    <ArrowLeft className="rotate-180 opacity-0 group-hover:opacity-100 transition-opacity text-blue-400" size={16} />
+                                    <ArrowLeft className="rotate-180 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500 dark:text-blue-400" size={16} />
                                 </div>
-                                <span className="text-xs font-mono text-gray-400 font-normal">{report.hostname || 'Unknown Host'}</span>
+                                <span className="text-xs font-mono text-gray-500 dark:text-gray-400 font-normal">{report.hostname || 'Unknown Host'}</span>
                             </h2>
-                            <span className={`px-3 py-1 rounded-full text-sm ${report.status === 'Running' || report.status === 'Online' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}`}>
+                            <span className={`px-3 py-1 rounded-full text-sm ${report.status === 'Running' || report.status === 'Online' ? 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300' : 'bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300'}`}>
                                 {report.status}
                             </span>
                         </div>
 
                         {/* Status Summary */}
                         <div className="mb-6 grid grid-cols-2 gap-4">
-                            <div className="bg-gray-900 rounded p-4 border border-gray-700 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-900 rounded p-4 border border-gray-200 dark:border-gray-700 text-center">
                                 <span className="text-gray-500 text-xs uppercase">CPU</span>
-                                <div className="text-2xl font-bold text-white mt-1">{(report.cpuUsage || 0).toFixed(1)}%</div>
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{(report.cpuUsage || 0).toFixed(1)}%</div>
                             </div>
-                            <div className="bg-gray-900 rounded p-4 border border-gray-700 text-center">
+                            <div className="bg-gray-50 dark:bg-gray-900 rounded p-4 border border-gray-200 dark:border-gray-700 text-center">
                                 <span className="text-gray-500 text-xs uppercase">Memory</span>
-                                <div className="text-2xl font-bold text-white mt-1">{(report.memoryUsage || 0).toFixed(0)} MB</div>
+                                <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{(report.memoryUsage || 0).toFixed(0)} MB</div>
                             </div>
                         </div>
 
                         {/* Events Preview */}
-                        <div className="bg-gray-900 rounded p-4 h-32 overflow-hidden mb-4 border border-gray-700 font-mono text-xs relative">
+                        <div className="bg-gray-50 dark:bg-gray-900 rounded p-4 h-32 overflow-hidden mb-4 border border-gray-200 dark:border-gray-700 font-mono text-xs relative">
                             {/* Assuming events might be global or we fetch per agent, for now we leave empty or mock */}
-                            <div className="text-gray-500 text-center italic mt-10">Click to view details</div>
+                            <div className="text-gray-400 dark:text-gray-500 text-center italic mt-10">Click to view details</div>
 
-                            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-gray-900 to-transparent" />
+                            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-gray-50 dark:from-gray-900 to-transparent" />
                         </div>
                     </div>
                 ))}
 
                 {reports.length === 0 && (
-                    <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-700 rounded-xl">
+                    <div className="col-span-full text-center text-gray-500 py-12 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
                         No agents connected.
                     </div>
                 )}
