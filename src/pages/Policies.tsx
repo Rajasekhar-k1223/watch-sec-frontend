@@ -109,18 +109,18 @@ export default function Policies() {
     };
 
     return (
-        <div className="p-6">
+        <div className="p-6 transition-colors">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-                        <Shield className="text-purple-500" />
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Shield className="text-purple-600 dark:text-purple-500" />
                         DLP Policies
                     </h1>
-                    <p className="text-gray-400 text-sm mt-1">Define rules to prevent data leaks and unauthorized activities.</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Define rules to prevent data leaks and unauthorized activities.</p>
                 </div>
                 <button
                     onClick={handleOpenCreate}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-purple-500/20"
                 >
                     <Plus size={18} />
                     New Policy
@@ -129,27 +129,27 @@ export default function Policies() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {policies.map(policy => (
-                    <div key={policy.id} className="bg-gray-800 rounded-xl border border-gray-700 p-6 shadow-lg hover:border-purple-500/50 transition-colors">
+                    <div key={policy.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm hover:shadow-md hover:border-purple-300 dark:hover:border-purple-500/50 transition-all">
                         <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-xl font-bold text-white">{policy.name}</h3>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">{policy.name}</h3>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => handleEdit(policy)}
-                                    className="text-gray-500 hover:text-blue-400 font-bold text-xs border border-gray-600 px-2 py-1 rounded hover:border-blue-400 transition-colors"
+                                    className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 font-bold text-xs border border-gray-200 dark:border-gray-600 px-2 py-1 rounded hover:border-blue-400 transition-colors"
                                 >
                                     Edit
                                 </button>
-                                <button onClick={() => handleDelete(policy.id!)} className="text-gray-500 hover:text-red-500">
+                                <button onClick={() => handleDelete(policy.id!)} className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-500">
                                     <Trash2 size={18} />
                                 </button>
                             </div>
                         </div>
-                        <div className="bg-gray-900 rounded p-3 mb-4 font-mono text-xs text-green-400 overflow-x-auto">
+                        <div className="bg-gray-50 dark:bg-gray-900 rounded p-3 mb-4 font-mono text-xs text-gray-700 dark:text-green-400 border border-gray-100 dark:border-gray-800 overflow-x-auto">
                             {policy.rulesJson}
                         </div>
                         <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-400">Action: <span className="text-white font-bold">{policy.actions}</span></span>
-                            <span className={`px-2 py-1 rounded text-xs ${policy.isActive ? 'bg-green-500/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                            <span className="text-gray-500 dark:text-gray-400">Action: <span className="text-gray-900 dark:text-white font-bold">{policy.actions}</span></span>
+                            <span className={`px-2 py-1 rounded text-xs ${policy.isActive ? 'bg-green-100 text-green-700 dark:bg-green-500/10 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>
                                 {policy.isActive ? 'ACTIVE' : 'DISABLED'}
                             </span>
                         </div>
@@ -158,40 +158,40 @@ export default function Policies() {
             </div>
 
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 w-full max-w-lg">
+                <div className="fixed inset-0 bg-black/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg shadow-2xl">
 
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-white">{editingId ? 'Edit Policy' : 'Create New Policy'}</h2>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Policy' : 'Create New Policy'}</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Policy Name</label>
+                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Policy Name</label>
                                 <input
                                     type="text"
-                                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-purple-500 outline-none"
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-2 text-gray-900 dark:text-white focus:border-purple-500 outline-none transition-colors"
                                     value={newPolicy.name}
                                     onChange={e => setNewPolicy({ ...newPolicy, name: e.target.value })}
                                     placeholder="e.g., Block Torrent Clients"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Rules (JSON)</label>
+                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Rules (JSON)</label>
                                 <textarea
                                     value={newPolicy.rulesJson}
                                     onChange={e => setNewPolicy({ ...newPolicy, rulesJson: e.target.value })}
-                                    readOnly disabled className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white font-mono text-xs focus:border-purple-500 outline-none h-32 opacity-50 cursor-not-allowed hidden"
+                                    readOnly disabled className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-2 text-gray-600 dark:text-white font-mono text-xs focus:border-purple-500 outline-none h-32 opacity-70 cursor-not-allowed hidden"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Blocked Apps (Comma Separated)</label>
+                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Blocked Apps (Comma Separated)</label>
                                 <input
                                     type="text"
-                                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-purple-500 outline-none"
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-2 text-gray-900 dark:text-white focus:border-purple-500 outline-none transition-colors"
                                     value={JSON.parse(newPolicy.blockedAppsJson || "[]").join(", ")}
                                     onChange={e => setNewPolicy({
                                         ...newPolicy,
@@ -201,10 +201,10 @@ export default function Policies() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Blocked Websites (Comma Separated)</label>
+                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Blocked Websites (Comma Separated)</label>
                                 <input
                                     type="text"
-                                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-purple-500 outline-none"
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-2 text-gray-900 dark:text-white focus:border-purple-500 outline-none transition-colors"
                                     value={JSON.parse(newPolicy.blockedWebsitesJson || "[]").join(", ")}
                                     onChange={e => setNewPolicy({
                                         ...newPolicy,
@@ -215,10 +215,10 @@ export default function Policies() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-400 mb-1">Violation Action</label>
+                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Violation Action</label>
                                 <select
-                                    className="w-full bg-gray-900 border border-gray-700 rounded p-2 text-white focus:border-purple-500 outline-none"
-                                    value={newPolicy.actions.replace(',Screenshot', '').replace('Screenshot', 'Block')} // Extract base action
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-2 text-gray-900 dark:text-white focus:border-purple-500 outline-none transition-colors"
+                                    value={newPolicy.actions.replace(',Screenshot', '').replace('Screenshot', 'Block')}
                                     onChange={e => {
                                         const base = e.target.value;
                                         const hasScreenshot = newPolicy.actions.includes('Screenshot');
@@ -234,11 +234,10 @@ export default function Policies() {
                                 <input
                                     type="checkbox"
                                     id="chkScreenshot"
-                                    className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-purple-600 focus:ring-purple-500"
+                                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-purple-600 focus:ring-purple-500"
                                     checked={newPolicy.actions.includes('Screenshot')}
                                     onChange={e => {
-                                        const base = newPolicy.actions.replace(',Screenshot', '').replace('Screenshot', 'Block'); // Default fallback?
-                                        // Handle edge case where action IS just "Screenshot" (legacy)
+                                        const base = newPolicy.actions.replace(',Screenshot', '').replace('Screenshot', 'Block');
                                         let cleanBase = base;
                                         if (base === '') cleanBase = 'Block';
 
@@ -249,13 +248,13 @@ export default function Policies() {
                                         }
                                     }}
                                 />
-                                <label htmlFor="chkScreenshot" className="text-sm text-gray-300">Enable Agent Screenshots</label>
+                                <label htmlFor="chkScreenshot" className="text-sm text-gray-600 dark:text-gray-300">Enable Agent Screenshots</label>
                             </div>
 
 
                             <button
                                 onClick={handleSave}
-                                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-bold mt-4 flex justify-center items-center gap-2"
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-bold mt-4 flex justify-center items-center gap-2 shadow-lg shadow-purple-500/20"
                             >
                                 <Save size={18} />
                                 {editingId ? 'Update Policy' : 'Save Policy'}
