@@ -9,15 +9,7 @@ interface Tenant {
     plan: string;
 }
 
-// --- MOCK DATA ---
-const MOCK_TENANTS: Tenant[] = [
-    { id: 1, name: "CyberCorp Inc", apiKey: "bcd-123-efg-456", plan: "Enterprise" },
-    { id: 2, name: "RetailChain Ltd", apiKey: "xyz-789-abc-012", plan: "Starter" },
-    { id: 3, name: "FinTech Global", apiKey: "sec-999-fin-888", plan: "Enterprise" },
-];
-
 function getTenantProp(t: any, key: string) {
-    // Handle PascalCase (Backend) vs camelCase (Frontend)
     if (key === 'apiKey') return t.apiKey || t.ApiKey || t.api_key;
     if (key === 'name') return t.name || t.Name;
     if (key === 'plan') return t.plan || t.Plan;
@@ -27,7 +19,7 @@ function getTenantProp(t: any, key: string) {
 
 export default function Tenants() {
     const { token } = useAuth();
-    const [tenants, setTenants] = useState<Tenant[]>(MOCK_TENANTS);
+    const [tenants, setTenants] = useState<Tenant[]>([]);
     const [isCreating, setIsCreating] = useState(false);
     const [newTenantName, setNewTenantName] = useState("");
 
@@ -58,20 +50,6 @@ export default function Tenants() {
 
     const handleCreate = async () => {
         if (!newTenantName) return;
-
-        if (USE_MOCK) {
-            // Mock Create
-            const newId = Math.max(...tenants.map(t => t.id), 0) + 1;
-            const newTenant = {
-                id: newId,
-                name: newTenantName,
-                apiKey: `mock-key-${Date.now()}`,
-                plan: "Starter"
-            };
-            setTenants([...tenants, newTenant]);
-            setNewTenantName("");
-            return;
-        }
 
         setIsCreating(true);
         try {
@@ -159,11 +137,7 @@ export default function Tenants() {
                 )}
             </div>
 
-            <div className="mt-4 text-right">
-                <span className="text-gray-500 text-xs">
-                    Mode: {USE_MOCK ? "Local Mock Data" : "Connected to Backend"}
-                </span>
-            </div>
+
         </div>
     );
 }

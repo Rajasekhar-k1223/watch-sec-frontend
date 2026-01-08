@@ -49,41 +49,45 @@ function AnalyticsTracker() {
   return null;
 }
 
+import { ThemeProvider } from './contexts/ThemeContext';
+
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AnalyticsTracker />
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Landing />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+      <ThemeProvider>
+        <BrowserRouter>
+          <AnalyticsTracker />
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
 
-          {/* Protected Dashboard Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/status" element={<Dashboard />} />
-              <Route path="/central-server" element={<CentralServer />} />
-              <Route path="/users" element={<Admin />} />
-              <Route path="/tenants" element={<Tenants />} />
-              <Route path="/agents" element={<Agents />} />
-              <Route path="/mail" element={<MailProcessing />} />
-              <Route path="/icap" element={<IcapServer />} />
-              <Route path="/image-recognition" element={<ImageRecognition />} />
-              <Route path="/speech-recognition" element={<SpeechRecognition />} />
-              <Route path="/events" element={<LiveMonitor />} />
-              <Route path="/policies" element={<Policies />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/audit" element={<SystemAudit />} />
-              <Route path="/billing" element={<Billing />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/my-dashboard" element={<EmployeeDashboard />} />
-              <Route path="/productivity" element={<Productivity />} />
+            {/* Protected Dashboard Routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/status" element={<Dashboard />} />
+                <Route path="/central-server" element={<CentralServer />} />
+                <Route path="/users" element={<Admin />} />
+                <Route path="/tenants" element={<Tenants />} />
+                <Route path="/agents" element={<Agents />} />
+                <Route path="/mail" element={<MailProcessing />} />
+                <Route path="/icap" element={<IcapServer />} />
+                <Route path="/image-recognition" element={<ImageRecognition />} />
+                <Route path="/speech-recognition" element={<SpeechRecognition />} />
+                <Route path="/events" element={<LiveMonitor />} />
+                <Route path="/policies" element={<Policies />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/audit" element={<SystemAudit />} />
+                <Route path="/billing" element={<Billing />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/my-dashboard" element={<EmployeeDashboard />} />
+                <Route path="/productivity" element={<Productivity />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
+          </Routes>
+        </BrowserRouter>
+      </ThemeProvider>
     </AuthProvider >
   );
 }

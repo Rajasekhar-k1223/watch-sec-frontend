@@ -56,7 +56,7 @@ export default function Dashboard() {
     const logContainerRef = useRef<HTMLDivElement>(null);
 
 
-    const { logout, token } = useAuth(); // Import useAuth
+    const { logout, token, user } = useAuth(); // Import useAuth
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
@@ -99,7 +99,11 @@ export default function Dashboard() {
 
         socket.on("connect", () => {
             console.log("[Socket.IO] Connected to Dashboard Stream");
-            socket.emit("join", { room: "dashboard" });
+            if (user?.tenantId) {
+                socket.emit("join", { room: `tenant_${user.tenantId}` });
+                console.log(`[Socket.IO] Joining room: tenant_${user.tenantId}`);
+            }
+            // Also join specific dashboard room if needed, but we rely on tenant rooms now
         });
 
         const handleNewLog = (data: any) => {

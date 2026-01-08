@@ -3,10 +3,29 @@
 :root {
   color-scheme: dark;
 }
+.light {
+  color-scheme: light;
+  --bg-color: #f3f4f6;
+  --text-color: #111827;
+}
+.dark {
+  color-scheme: dark;
+  --bg-color: #030712;
+  --text-color: #ffffff;
+}
 
 body {
-    @apply bg-gray-950 text-white font-sans antialiased overflow-x-hidden;
+    @apply font-sans antialiased overflow-x-hidden transition-colors duration-300;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    /* Subtle Grid Pattern only in dark mode or adaptive? */
+}
+.dark body {
     background-image: radial-gradient(#1f2937 1px, transparent 1px);
+    background-size: 40px 40px;
+}
+.light body {
+    background-image: radial-gradient(#d1d5db 1px, transparent 1px);
     background-size: 40px 40px;
 }
 

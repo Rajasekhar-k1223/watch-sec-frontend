@@ -1,10 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square } from 'lucide-react';
+import {
+    LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend
+} from 'recharts';
+import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video } from 'lucide-react';
 import { API_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
+
+// ... (Rest of imports or interfaces if needed, keeping AgentReport)
 
 interface AgentReport {
     agentId: string;
@@ -26,6 +31,7 @@ export default function LiveMonitor() {
     const [history] = useState<any[]>([]);
     const [screens] = useState<Record<string, boolean>>({});
     const [isStreamActive, setIsStreamActive] = useState(false);
+    const [activeTab, setActiveTab] = useState<'stream' | 'analytics'>('stream');
 
     // Refs
     const socketRef = useRef<Socket | null>(null);
@@ -61,33 +67,42 @@ export default function LiveMonitor() {
         return () => clearInterval(interval);
     }, [token, user]);
 
-    // Socket Connection (Single View)
+    // Socket & History Connection
     useEffect(() => {
         if (!selectedAgentId || !token) return;
 
+        // 1. Fetch History
+        fetch(`${API_URL}/api/events/${selectedAgentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (Array.isArray(data)) {
+                    setEvents(prev => ({ ...prev, [selectedAgentId]: data }));
+                }
+            })
+            .catch(err => console.error("Failed to fetch event history:", err));
+
+        // 2. Connect Socket
         console.log("[LiveMonitor] Connecting Socket for:", selectedAgentId);
         const socket = io(API_URL, {
             transports: ['websocket'],
-            query: { token }
+            auth: { token }
         });
         socketRef.current = socket;
 
         socket.on('connect', () => {
             console.log("Socket Connected");
             socket.emit('join', { room: selectedAgentId });
-            // socket.emit('join_room', { room: selectedAgentId }); // Try both conventions
         });
 
         // Event Stream
         socket.on('new_event', (evt) => {
             setEvents(prev => ({
                 ...prev,
-                [selectedAgentId]: [evt, ...(prev[selectedAgentId] || [])].slice(0, 50)
+                [selectedAgentId]: [evt, ...(prev[selectedAgentId] || [])].slice(0, 100)
             }));
         });
-
-        // Metrics Stream
-        // Assuming metrics come via events or a specific channel. For now, we mock history from report updates.
 
         return () => {
             if (socketRef.current) {
@@ -104,9 +119,6 @@ export default function LiveMonitor() {
             console.log(`[LiveMonitor] Manual Start Stream: ${selectedAgentId}`);
             socketRef.current.emit('start_stream', { agentId: selectedAgentId });
             setIsStreamActive(true);
-
-            // Note: Actual stream consumption (WebRTC/Canvas) should be initialized here.
-            // For now, we assume the backend pushes frames to the video element source or similar.
         }
     };
 
@@ -121,6 +133,38 @@ export default function LiveMonitor() {
         }
     };
 
+    // Analytics Helper
+    const analyticsData = useMemo(() => {
+        const agentEvents = events[selectedAgentId] || [];
+
+        // 1. By Type (Pie)
+        const typeCounts: Record<string, number> = {};
+        agentEvents.forEach(e => {
+            const t = e.Type || e.type || "Unknown";
+            typeCounts[t] = (typeCounts[t] || 0) + 1;
+        });
+        const pieData = Object.keys(typeCounts).map(k => ({ name: k, value: typeCounts[k] }));
+
+        // 2. Over Time (Bar/Area) - Last 24h bucketed by Hour
+        // Since we only fetch 100, we might group by minute if recent, or hour if spread.
+        // Let's simple group by Hour string
+        const timeCounts: Record<string, number> = {};
+        agentEvents.forEach(e => {
+            const ts = new Date(e.Timestamp || e.timestamp);
+            const key = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            timeCounts[key] = (timeCounts[key] || 0) + 1;
+        });
+        // Sort by time (tricky with strings, but better than nothing)
+        const lineData = Object.keys(timeCounts)
+            .sort() // Rough sort
+            .slice(-20) // Last 20 data points
+            .map(k => ({ time: k, count: timeCounts[k] }));
+
+        return { pieData, lineData, total: agentEvents.length };
+    }, [events, selectedAgentId]);
+
+    const COLORS = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6'];
+
     // --- RENDER ---
 
     if (selectedAgentId) {
@@ -128,86 +172,180 @@ export default function LiveMonitor() {
         return (
             <div className="flex flex-col h-full bg-gray-900 text-white p-6 overflow-hidden">
                 <div className="mb-4 flex items-center justify-between">
-                    <button onClick={() => setSearchParams({})} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
-                        <ArrowLeft size={20} /> Back to Grid
-                    </button>
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <Monitor size={20} className="text-blue-500" />
-                        {selectedAgentId}
-                    </h2>
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setSearchParams({})} className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
+                            <ArrowLeft size={20} /> Back
+                        </button>
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Monitor size={20} className="text-blue-500" />
+                            {selectedAgentId}
+                        </h2>
+                    </div>
+
+                    {/* TABS */}
+                    <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                        <button
+                            onClick={() => setActiveTab('stream')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'stream' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <Video size={16} /> Live Stream
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('analytics')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                        >
+                            <BarChart2 size={16} /> Analytics
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
-                    {/* LEFT COL: Stream & Stats */}
-                    <div className="lg:col-span-2 flex flex-col gap-6">
-                        {/* Live Screen */}
-                        <div className="bg-black border border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video group">
-                            <video
-                                ref={videoRef}
-                                className="w-full h-full object-contain"
-                                autoPlay
-                                playsInline
-                                muted
-                            />
-                            {/* Controls Overlay */}
-                            <div className="absolute top-4 right-4 flex gap-2 z-10">
-                                <div className={`text-xs px-2 py-1 rounded shadow text-white flex items-center gap-2 ${screens[selectedAgentId] ? 'bg-red-600 animate-pulse' : 'bg-gray-600'}`}>
-                                    {screens[selectedAgentId] ? 'LIVE' : 'IDLE'}
+
+                    {activeTab === 'stream' ? (
+                        <>
+                            {/* LEFT COL: Stream & Stats */}
+                            <div className="lg:col-span-2 flex flex-col gap-6">
+                                {/* Live Screen */}
+                                <div className="bg-black border border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video group">
+                                    <video
+                                        ref={videoRef}
+                                        className="w-full h-full object-contain"
+                                        autoPlay
+                                        playsInline
+                                        muted
+                                    />
+                                    {/* Controls Overlay */}
+                                    <div className="absolute top-4 right-4 flex gap-2 z-10">
+                                        <div className={`text-xs px-2 py-1 rounded shadow text-white flex items-center gap-2 ${screens[selectedAgentId] ? 'bg-red-600 animate-pulse' : 'bg-gray-600'}`}>
+                                            {screens[selectedAgentId] ? 'LIVE' : 'IDLE'}
+                                        </div>
+                                    </div>
+
+                                    <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                        <button
+                                            onClick={handleStartStream}
+                                            disabled={isStreamActive}
+                                            className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${isStreamActive ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-500 shadow-lg'}`}
+                                        >
+                                            <Play size={14} fill={!isStreamActive ? "currentColor" : "none"} /> Connect
+                                        </button>
+                                        <button
+                                            onClick={handleStopStream}
+                                            disabled={!isStreamActive}
+                                            className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${!isStreamActive ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 shadow-lg'}`}
+                                        >
+                                            <Square size={14} fill={isStreamActive ? "currentColor" : "none"} /> Disconnect
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Performance Chart */}
+                                <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
+                                    <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={18} className="text-purple-400" /> Live Performance Data</h3>
+                                    <div className="h-64 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={history}>
+                                                <XAxis dataKey="time" stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
+                                                <YAxis stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} />
+                                                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
+                                                <Line type="monotone" dataKey="cpu" stroke="#EF4444" strokeWidth={2} dot={false} name="CPU %" isAnimationActive={false} />
+                                                <Line type="monotone" dataKey="mem" stroke="#3B82F6" strokeWidth={2} dot={false} name="RAM %" isAnimationActive={false} />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        /* ANALYTICS TAB CONTENT */
+                        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 content-start">
+                            {/* 1. PIE CHART */}
+                            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 flex flex-col items-center">
+                                <h3 className="text-lg font-bold mb-4 self-start">Event Distribution</h3>
+                                <div className="w-full h-64 relative">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={analyticsData.pieData}
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {analyticsData.pieData.map((_entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#fff' }} />
+                                            <Legend />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                                        <span className="text-3xl font-bold text-white">{analyticsData.total}</span>
+                                        <span className="text-xs text-gray-500 uppercase">Events</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <button
-                                    onClick={handleStartStream}
-                                    disabled={isStreamActive}
-                                    className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${isStreamActive ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-500 shadow-lg'}`}
-                                >
-                                    <Play size={14} fill={!isStreamActive ? "currentColor" : "none"} /> Connect
-                                </button>
-                                <button
-                                    onClick={handleStopStream}
-                                    disabled={!isStreamActive}
-                                    className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${!isStreamActive ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 shadow-lg'}`}
-                                >
-                                    <Square size={14} fill={isStreamActive ? "currentColor" : "none"} /> Disconnect
-                                </button>
+                            {/* 2. BAR CHART (Top Events) */}
+                            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+                                <h3 className="text-lg font-bold mb-4">Event Frequency</h3>
+                                <div className="w-full h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={analyticsData.pieData} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#9CA3AF', fontSize: 10 }} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#fff' }} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                                            <Bar dataKey="value" fill="#3B82F6" radius={[0, 4, 4, 0]} barSize={20}>
+                                                {analyticsData.pieData.map((_entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* 3. AREA CHART (Timeline) */}
+                            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 md:col-span-2">
+                                <h3 className="text-lg font-bold mb-4">Event Velocity (Last 100)</h3>
+                                <div className="w-full h-64">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={analyticsData.lineData}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                                            <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
+                                            <Tooltip contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#fff' }} cursor={false} />
+                                            <Bar dataKey="count" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
                         </div>
+                    )}
 
-                        {/* Performance Chart */}
-                        <div className="bg-gray-800/50 border border-gray-700 rounded-xl p-6">
-                            <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={18} className="text-purple-400" /> Live Performance Data</h3>
-                            <div className="h-64 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={history}>
-                                        <XAxis dataKey="time" stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
-                                        <YAxis stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} />
-                                        <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151' }} />
-                                        <Line type="monotone" dataKey="cpu" stroke="#EF4444" strokeWidth={2} dot={false} name="CPU %" isAnimationActive={false} />
-                                        <Line type="monotone" dataKey="mem" stroke="#3B82F6" strokeWidth={2} dot={false} name="RAM %" isAnimationActive={false} />
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* RIGHT COL: Event Log */}
+                    {/* RIGHT COL: Event Log (Always Visible or Collapsed?) 
+                        Let's keep it visible as "Context" but maybe simplified in analytics mode?
+                        No, in single view usually 3 cols. Left 2 are Stream/Charts, Right 1 is Log.
+                    */}
                     <div className="bg-gray-900 border border-gray-800 rounded-xl p-0 flex flex-col h-full lg:h-auto overflow-hidden">
                         <div className="p-4 border-b border-gray-800 bg-gray-800/50">
-                            <h3 className="font-bold flex items-center gap-2"><ShieldAlert size={18} className="text-red-400" /> Recent Activities</h3>
+                            <h3 className="font-bold flex items-center gap-2"><ShieldAlert size={18} className="text-red-400" /> Event Feed</h3>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs custom-scrollbar">
                             {events[selectedAgentId]?.map((evt, i) => (
                                 <div key={i} className="p-2 bg-black/30 rounded border border-gray-800 hover:border-gray-600 transition-colors">
                                     <div className="flex justify-between text-gray-500 mb-1">
-                                        <span>{new Date(evt.timestamp).toLocaleTimeString()}</span>
-                                        <span className={`font-bold ${evt.type.includes('Block') ? 'text-red-500' : 'text-blue-400'}`}>{evt.type}</span>
+                                        <span>{new Date(evt.timestamp || evt.Timestamp).toLocaleTimeString()}</span>
+                                        <span className={`font-bold ${(evt.type || evt.Type || "").includes('Block') ? 'text-red-500' :
+                                                (evt.type || evt.Type || "").includes('Error') ? 'text-yellow-500' : 'text-blue-400'
+                                            }`}>{evt.type || evt.Type}</span>
                                     </div>
-                                    <div className="text-gray-300 break-all">{evt.details}</div>
-                                    {evt.type === 'Process Started' && evt.details.includes('PID:') && (
+                                    <div className="text-gray-300 break-all">{evt.details || evt.Details}</div>
+                                    {evt.type === 'Process Started' && (evt.details || "").includes('PID:') && (
                                         <button
                                             onClick={() => {
-                                                const pid = parseInt(evt.details.match(/PID: (\d+)/)?.[1] || "0");
+                                                const pid = parseInt((evt.details || "").match(/PID: (\d+)/)?.[1] || "0");
                                                 if (pid && socketRef.current) socketRef.current.emit("KillProcess", { target: pid, agentId: selectedAgentId });
                                             }}
                                             className="mt-2 w-full bg-red-900/30 hover:bg-red-900/50 text-red-500 py-1 rounded text-center uppercase tracking-wider font-bold transition-colors"
