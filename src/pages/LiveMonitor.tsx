@@ -135,11 +135,11 @@ export default function LiveMonitor() {
 
     // Analytics Helper
     const analyticsData = useMemo(() => {
-        const agentEvents = events[selectedAgentId] || [];
+        const agentEvents = events[selectedAgentId || ''] || [];
 
         // 1. By Type (Pie)
         const typeCounts: Record<string, number> = {};
-        agentEvents.forEach(e => {
+        agentEvents.forEach((e: any) => {
             const t = e.Type || e.type || "Unknown";
             typeCounts[t] = (typeCounts[t] || 0) + 1;
         });
@@ -149,7 +149,7 @@ export default function LiveMonitor() {
         // Since we only fetch 100, we might group by minute if recent, or hour if spread.
         // Let's simple group by Hour string
         const timeCounts: Record<string, number> = {};
-        agentEvents.forEach(e => {
+        agentEvents.forEach((e: any) => {
             const ts = new Date(e.Timestamp || e.timestamp);
             const key = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             timeCounts[key] = (timeCounts[key] || 0) + 1;
@@ -338,7 +338,7 @@ export default function LiveMonitor() {
                                     <div className="flex justify-between text-gray-500 mb-1">
                                         <span>{new Date(evt.timestamp || evt.Timestamp).toLocaleTimeString()}</span>
                                         <span className={`font-bold ${(evt.type || evt.Type || "").includes('Block') ? 'text-red-500' :
-                                                (evt.type || evt.Type || "").includes('Error') ? 'text-yellow-500' : 'text-blue-400'
+                                            (evt.type || evt.Type || "").includes('Error') ? 'text-yellow-500' : 'text-blue-400'
                                             }`}>{evt.type || evt.Type}</span>
                                     </div>
                                     <div className="text-gray-300 break-all">{evt.details || evt.Details}</div>

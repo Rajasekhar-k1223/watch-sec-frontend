@@ -1,9 +1,11 @@
-import { LayoutDashboard, Users, Shield, Server, Monitor, Mail, Share2, Image, Mic, List, FileText, Brain, ShieldCheck, CreditCard, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, Sun, Moon } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Sidebar() {
     const { user, logout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const role = user?.role || 'Analyst';
 
     const allNavItems = [
@@ -13,10 +15,6 @@ export default function Sidebar() {
         { name: 'Users and Privileges', path: '/users', icon: Users, roles: ['SuperAdmin', 'TenantAdmin'] },
         { name: 'Tenants', path: '/tenants', icon: Share2, roles: ['SuperAdmin'] }, // Org Management
         { name: 'Agents', path: '/agents', icon: Monitor, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] }, // Device Monitoring
-        { name: 'Mail Processing', path: '/mail', icon: Mail, roles: ['SuperAdmin', 'TenantAdmin'] },
-        { name: 'ICAP Server', path: '/icap', icon: Share2, roles: ['SuperAdmin', 'TenantAdmin'] },
-        { name: 'Image Recognition', path: '/image-recognition', icon: Image, roles: ['SuperAdmin', 'TenantAdmin'] },
-        { name: 'Speech Recognition', path: '/speech-recognition', icon: Mic, roles: ['SuperAdmin', 'TenantAdmin'] },
         { name: 'Event Log', path: '/events', icon: List, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
         { name: 'System Audit', path: '/audit', icon: ShieldCheck, roles: ['SuperAdmin', 'TenantAdmin'] },
         { name: 'Employee Pulse', path: '/productivity', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
@@ -27,14 +25,6 @@ export default function Sidebar() {
     ];
 
     const navItems = allNavItems.filter(item => item.roles.includes(role));
-
-    return (
-import { useTheme } from '../contexts/ThemeContext';
-    import { Sun, Moon } from 'lucide-react';
-
-    // ... 
-
-    const { theme, toggleTheme } = useTheme();
 
     return (
         <aside className="w-64 bg-white/90 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 h-screen flex flex-col fixed left-0 top-0 z-50 transition-all">
