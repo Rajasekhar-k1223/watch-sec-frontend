@@ -250,29 +250,34 @@ export default function Agents() {
         }
     };
 
-    const handleDelete = async (id: number) => {
-        console.log("[Agents] Attempting to delete agent with ID:", id);
-        if (!id) {
-            alert("Error: Cannot delete agent (Missing ID). Please refresh and try again.");
+    const handleDelete = async (identifier: number | string) => {
+        let finalId = identifier;
+
+        // Fallback: If passed null/undefined, try to find the agent string ID from the list
+        if (!finalId) {
+            console.error("[Agents] Delete called with invalid ID");
+            alert("Error: Invalid Agent ID.");
             return;
         }
 
-        if (!confirm("Are you sure you want to delete this agent? This action cannot be undone.")) return;
+        if (!confirm(`Are you sure you want to delete this agent (${finalId})? This action cannot be undone.`)) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/agents/${id}`, {
+            const res = await fetch(`${API_URL}/api/agents/${finalId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (res.ok) {
                 fetchAgents();
-                Analytics.track('Delete Agent', { id: id });
+                Analytics.track('Delete Agent', { id: finalId });
             } else {
-                alert("Failed to delete agent");
+                const err = await res.json();
+                alert(`Failed to delete agent: ${err.detail || 'Unknown error'}`);
             }
         } catch (e) {
             console.error("Delete failed", e);
+            alert("Delete request failed. See console.");
         }
     };
 
@@ -811,7 +816,7 @@ export default function Agents() {
                                         <button onClick={() => handleViewLogs(agent.agentId)} className="text-gray-400 hover:text-white text-sm font-medium hover:underline flex items-center gap-1"> <List className="w-4 h-4" /> Logs </button>
                                         <button onClick={() => handleMonitor(agent.agentId)} className="text-blue-400 hover:text-blue-300 text-sm font-medium hover:underline flex items-center gap-1"> <Monitor className="w-4 h-4" /> Monitor </button>
                                         <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="text-purple-400 hover:text-purple-300 text-sm font-medium hover:underline flex items-center gap-1"> <MousePointer className="w-4 h-4" /> Remote </button>
-                                        <button onClick={() => handleDelete(agent.id)} className="text-gray-400 hover:text-red-500 transition-colors ml-2" title="Delete Agent"> <Trash2 className="w-4 h-4" /> </button>
+                                        <button onClick={() => handleDelete(agent.id || agent.agentId)} className="text-gray-400 hover:text-red-500 transition-colors ml-2" title="Delete Agent"> <Trash2 className="w-4 h-4" /> </button>
                                     </div>
                                 </td>
                             </tr>
