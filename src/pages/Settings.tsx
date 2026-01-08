@@ -62,14 +62,14 @@ export default function Settings() {
     };
 
     return (
-        <div className="p-8 bg-gray-900 min-h-screen text-white font-sans animate-fade-in">
-            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-800">
-                <div className="bg-gray-800 p-3 rounded-xl border border-gray-700">
+        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
+            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200 dark:border-gray-800">
+                <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                     <User size={32} className="text-blue-500" />
                 </div>
                 <div>
-                    <h1 className="text-3xl font-bold">Account Settings</h1>
-                    <p className="text-gray-400">Manage your profile, security, and preferences.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
+                    <p className="text-gray-500 dark:text-gray-400">Manage your profile, security, and preferences.</p>
                 </div>
             </div>
 
@@ -78,20 +78,20 @@ export default function Settings() {
                 <div className="space-y-2">
                     <button
                         onClick={() => setActiveTab('security')}
-                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'security' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'}`}
+                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'security' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                     >
                         <Lock size={18} /> Security
                     </button>
                     <button
                         onClick={() => setActiveTab('preferences')}
-                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'preferences' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:bg-gray-800'}`}
+                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'preferences' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                     >
                         <Bell size={18} /> Notifications
                     </button>
                 </div>
 
                 {/* Content Area */}
-                <div className="lg:col-span-3 bg-gray-800 rounded-xl p-8 border border-gray-700 shadow-xl">
+                <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700 shadow-xl transition-colors">
                     {activeTab === 'security' && (
                         <div className="max-w-md">
                             <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
@@ -99,7 +99,7 @@ export default function Settings() {
                             </h2>
 
                             {msg.text && (
-                                <div className={`p-4 rounded-lg mb-6 flex items-start gap-3 ${msg.type === 'success' ? 'bg-green-900/30 text-green-400 border border-green-800' : 'bg-red-900/30 text-red-400 border border-red-800'}`}>
+                                <div className={`p-4 rounded-lg mb-6 flex items-start gap-3 ${msg.type === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'}`}>
                                     {msg.type === 'success' ? <Check size={18} className="mt-0.5" /> : <AlertCircle size={18} className="mt-0.5" />}
                                     <p>{msg.text}</p>
                                 </div>
@@ -107,30 +107,30 @@ export default function Settings() {
 
                             <form onSubmit={handleChangePassword} className="space-y-4">
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Current Password</label>
+                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Current Password</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 outline-none transition-colors"
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 text-gray-900 dark:text-white outline-none transition-colors"
                                         value={oldPassword}
                                         onChange={e => setOldPassword(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">New Password</label>
+                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">New Password</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 outline-none transition-colors"
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 text-gray-900 dark:text-white outline-none transition-colors"
                                         value={newPassword}
                                         onChange={e => setNewPassword(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Confirm New Password</label>
+                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Confirm New Password</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 outline-none transition-colors"
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 text-gray-900 dark:text-white outline-none transition-colors"
                                         value={confirmPassword}
                                         onChange={e => setConfirmPassword(e.target.value)}
                                         required
@@ -154,18 +154,18 @@ export default function Settings() {
                                 <Bell className="text-yellow-400" /> notification Preferences
                             </h2>
                             <div className="space-y-6">
-                                <div className="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
                                     <div>
-                                        <h3 className="font-bold text-white">Email Security Alerts</h3>
-                                        <p className="text-sm text-gray-400">Receive immediate emails for critical threats.</p>
+                                        <h3 className="font-bold text-gray-900 dark:text-white">Email Security Alerts</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Receive immediate emails for critical threats.</p>
                                     </div>
                                     <ToggleSwitch enabled={emailAlerts} onChange={setEmailAlerts} />
                                 </div>
 
-                                <div className="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700">
+                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
                                     <div>
-                                        <h3 className="font-bold text-white">Weekly Summary Report</h3>
-                                        <p className="text-sm text-gray-400">Get a PDF summary every Monday morning.</p>
+                                        <h3 className="font-bold text-gray-900 dark:text-white">Weekly Summary Report</h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400">Get a PDF summary every Monday morning.</p>
                                     </div>
                                     <ToggleSwitch enabled={weeklyReport} onChange={setWeeklyReport} />
                                 </div>
@@ -182,7 +182,7 @@ function ToggleSwitch({ enabled, onChange }: any) {
     return (
         <button
             onClick={() => onChange(!enabled)}
-            className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${enabled ? 'bg-green-500' : 'bg-gray-600'}`}
+            className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${enabled ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'}`}
         >
             <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${enabled ? 'translate-x-6' : 'translate-x-0'}`} />
         </button>

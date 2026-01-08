@@ -142,7 +142,7 @@ export default function Dashboard() {
     })) || [];
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 text-white">
+        <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 text-gray-900 dark:text-white">
 
             {/* Header section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -153,19 +153,19 @@ export default function Dashboard() {
                             Command Center
                         </span>
                     </h1>
-                    <p className="text-gray-400 mt-1 flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-gray-500" />
+                    <p className="text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-2">
+                        <Globe className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         Global Security Operations Real-time View
                     </p>
                 </div>
-                <div className="flex items-center gap-3 bg-gray-800/50 p-1 rounded-xl border border-gray-700/50 backdrop-blur-sm">
+                <div className="flex items-center gap-3 bg-white dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700/50 backdrop-blur-sm shadow-sm">
                     {[24, 168, 720].map((h) => (
                         <button
                             key={h}
                             onClick={() => setTimeRange(h)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${timeRange === h
                                 ? 'bg-blue-600/90 text-white shadow-lg shadow-blue-500/25 ring-1 ring-blue-400/50'
-                                : 'text-gray-400 hover:text-white hover:bg-gray-700/50'}`}
+                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}
                         >
                             {h === 24 ? '24H' : (h / 24) + 'D'}
                         </button>
@@ -176,7 +176,7 @@ export default function Dashboard() {
             {/* Top Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Agents Card */}
-                <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg hover:shadow-blue-500/10">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg hover:shadow-blue-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400 border border-blue-500/20">
@@ -187,12 +187,12 @@ export default function Dashboard() {
                             {stats?.agents.online || 0} Online
                         </span>
                     </div>
-                    <div className="text-4xl font-bold text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
-                    <div className="text-sm text-gray-400 font-medium">Active Endpoints</div>
+                    <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Active Endpoints</div>
                 </div>
 
                 {/* Threats Card */}
-                <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg hover:shadow-red-500/10">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg hover:shadow-red-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-red-500/20 rounded-xl text-red-400 border border-red-500/20">
@@ -203,42 +203,42 @@ export default function Dashboard() {
                             +{stats?.threats.total24h || 0} New
                         </span>
                     </div>
-                    <div className="text-4xl font-bold text-white mb-2 tracking-tight">{stats?.threats.total24h || 0}</div>
-                    <div className="text-sm text-gray-400 font-medium">Critical Threats</div>
+                    <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.threats.total24h || 0}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
                 </div>
 
                 {/* Network Card */}
-                <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all shadow-lg hover:shadow-purple-500/10">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all shadow-lg hover:shadow-purple-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-purple-500/20 rounded-xl text-purple-400 border border-purple-500/20">
                             <Wifi className="w-6 h-6" />
                         </div>
-                        <span className="text-xs font-semibold bg-gray-800 text-gray-300 px-2.5 py-1 rounded-full border border-gray-700">
+                        <span className="text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-700">
                             Running
                         </span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <div className="text-4xl font-bold text-white mb-2 tracking-tight">{stats?.network.inboundMbps || 0}</div>
-                        <span className="text-lg text-gray-500">Mbps</span>
+                        <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.network.inboundMbps || 0}</div>
+                        <span className="text-lg text-gray-500 dark:text-gray-500">Mbps</span>
                     </div>
-                    <div className="text-sm text-gray-400 font-medium">Inbound Traffic</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
                 </div>
 
                 {/* Productivity / Custom Card */}
-                <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all shadow-lg hover:shadow-emerald-500/10">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all shadow-lg hover:shadow-emerald-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400 border border-emerald-500/20">
                             <Zap className="w-6 h-6" />
                         </div>
                         <div className="text-right">
-                            <div className="text-2xl font-bold text-white">{stats?.productivity.globalScore || 0}</div>
-                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">Score</div>
+                            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.productivity.globalScore || 0}</div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-widest font-semibold">Score</div>
                         </div>
                     </div>
-                    <div className="text-sm text-gray-400 mt-2 font-medium">Productivity Index</div>
-                    <div className="w-full bg-gray-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Productivity Index</div>
+                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-1.5 mt-3 rounded-full overflow-hidden">
                         <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${stats?.productivity.globalScore || 0}%` }}></div>
                     </div>
                 </div>
@@ -248,17 +248,17 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Main Graph: System Load Trend */}
-                <div className="lg:col-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 min-h-[400px] shadow-lg">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 min-h-[400px] shadow-lg">
                     <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <Terminal className="w-5 h-5 text-purple-400" />
                             System Health Trends
                         </h2>
                         <div className="flex gap-4">
-                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                                 <span className="w-3 h-3 rounded-full bg-purple-500/50"></span> CPU
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
                                 <span className="w-3 h-3 rounded-full bg-blue-500/50"></span> Memory
                             </div>
                         </div>
@@ -291,8 +291,8 @@ export default function Dashboard() {
                 </div>
 
                 {/* Pie Chart: Threats by Type */}
-                <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 shadow-lg">
-                    <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-lg">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
                         <ShieldAlert className="w-5 h-5 text-red-400" />
                         Threat Distribution
                     </h2>
@@ -318,7 +318,7 @@ export default function Dashboard() {
                         </ResponsiveContainer>
                         {/* Center Text Overlays */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                            <div className="text-3xl font-bold text-white">{stats?.threats.total24h || 0}</div>
+                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.threats.total24h || 0}</div>
                             <div className="text-xs text-gray-500 uppercase">Total</div>
                         </div>
                     </div>
@@ -329,31 +329,31 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
                 {/* Network Topology */}
-                <div className="lg:col-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 relative overflow-hidden group shadow-lg min-h-[400px]">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 relative overflow-hidden group shadow-lg min-h-[400px]">
                     <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <Network className="w-5 h-5 text-blue-400" />
                             Network Topology
                         </h2>
                         <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">LIVE SCAN</span>
                     </div>
-                    <div className="h-[350px] w-full bg-gray-950/50 rounded-xl border border-gray-800/50 relative overflow-hidden">
+                    <div className="h-[350px] w-full bg-gray-50 dark:bg-gray-950/50 rounded-xl border border-gray-200 dark:border-gray-800/50 relative overflow-hidden">
                         <NetworkTopology />
                     </div>
                 </div>
 
                 {/* Live Logs */}
-                <div className="lg:col-span-2 bg-gray-900/40 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 flex flex-col h-[400px] shadow-lg">
-                    <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col h-[400px] shadow-lg">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-yellow-500" />
                         Live Security Feed
                     </h2>
                     <div
                         ref={logContainerRef}
-                        className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-800 scrollbar-track-transparent custom-scrollbar"
+                        className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 scrollbar-track-transparent custom-scrollbar"
                     >
                         {logs.map((log, i) => (
-                            <div key={i} className="p-3 bg-gray-950/50 rounded-lg border border-gray-800 hover:border-gray-600 transition-all group animate-in slide-in-from-right-2 duration-300">
+                            <div key={i} className="p-3 bg-gray-50 dark:bg-gray-950/50 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-all group animate-in slide-in-from-right-2 duration-300">
                                 <div className="flex justify-between items-start mb-1">
                                     <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${log.type.includes('Security') || log.type.includes('Threat')
                                         ? 'bg-red-500/10 text-red-400 border-red-500/20'
@@ -363,8 +363,8 @@ export default function Dashboard() {
                                     </span>
                                     <span className="text-[10px] text-gray-500 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
                                 </div>
-                                <div className="text-sm text-gray-300 group-hover:text-white transition-colors line-clamp-1" title={log.details}>{log.details}</div>
-                                {log.agentId && <div className="text-[10px] text-gray-600 mt-1 flex items-center gap-1 font-mono"><Server className="w-3 h-3" /> {log.agentId}</div>}
+                                <div className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors line-clamp-1" title={log.details}>{log.details}</div>
+                                {log.agentId && <div className="text-[10px] text-gray-500 dark:text-gray-600 mt-1 flex items-center gap-1 font-mono"><Server className="w-3 h-3" /> {log.agentId}</div>}
                             </div>
                         ))}
                         {logs.length === 0 && (
@@ -378,15 +378,15 @@ export default function Dashboard() {
             </div>
 
             {/* World Map Overlay/Modal OR Bottom Component? Let's hide it for now to reduce clutter or put at very bottom */}
-            <div className="bg-gray-900/40 backdrop-blur-xl border border-gray-800 rounded-2xl p-6 min-h-[400px]">
+            <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 min-h-[400px]">
                 <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-bold text-white">Global Threat Map</h2>
-                    <div className="flex items-center gap-4 text-xs font-medium text-gray-400">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Global Threat Map</h2>
+                    <div className="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400">
                         <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span> Active Endpoint</div>
                         <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span> Threat Detected</div>
                     </div>
                 </div>
-                <div className="h-[400px] w-full rounded-xl overflow-hidden relative border border-gray-800/50">
+                <div className="h-[400px] w-full rounded-xl overflow-hidden relative border border-gray-200 dark:border-gray-800/50">
                     <WorldMap agents={mapAgents} />
                 </div>
             </div>
