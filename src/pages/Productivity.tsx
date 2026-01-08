@@ -78,18 +78,18 @@ export default function Productivity() {
         <div className="space-y-6">
             <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-                        <Brain className="w-8 h-8 text-purple-500" />
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <Brain className="w-8 h-8 text-purple-600 dark:text-purple-500" />
                         Employee Pulse
                     </h1>
-                    <p className="text-gray-400 text-sm mt-1">AI-Driven Productivity & Focus Analytics</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">AI-Driven Productivity & Focus Analytics</p>
                 </div>
 
-                <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
+                <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 shadow-sm">
                     <select
                         value={selectedAgent}
                         onChange={(e) => setSelectedAgent(e.target.value)}
-                        className="bg-transparent text-white text-sm font-bold px-4 py-2 outline-none cursor-pointer"
+                        className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-4 py-2 outline-none cursor-pointer"
                     >
                         {agents.map(a => <option key={a.agentId} value={a.agentId}>{a.agentId} ({a.status})</option>)}
                     </select>
@@ -102,46 +102,46 @@ export default function Productivity() {
                 <>
                     {/* TOP STATS */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg relative overflow-hidden">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg relative overflow-hidden transition-colors">
                             <div className="absolute top-0 right-0 p-4 opacity-10"><Brain size={64} className="text-purple-500" /></div>
-                            <p className="text-gray-400 text-xs font-bold uppercase">Productivity Score</p>
-                            <h2 className={`text-4xl font-bold mt-2 ${data.score >= 70 ? 'text-green-400' : data.score >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Productivity Score</p>
+                            <h2 className={`text-4xl font-bold mt-2 ${data.score >= 70 ? 'text-green-500 dark:text-green-400' : data.score >= 40 ? 'text-yellow-500 dark:text-yellow-400' : 'text-red-500 dark:text-red-400'}`}>
                                 {data.score}%
                             </h2>
                             <p className="text-xs text-gray-500 mt-2">Efficiency Rating</p>
                         </div>
 
-                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
                             <div className="flex justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-xs font-bold uppercase">Work Time</p>
-                                    <h2 className="text-2xl font-bold text-white mt-1">{formatTime(data.breakdown.productive)}</h2>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Work Time</p>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatTime(data.breakdown.productive)}</h2>
                                 </div>
                                 <Monitor className="text-green-500 opacity-50" />
                             </div>
-                            <div className="w-full bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
                                 <div className="bg-green-500 h-full" style={{ width: `${(data.breakdown.productive / data.totalSeconds) * 100}%` }}></div>
                             </div>
                         </div>
 
-                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
                             <div className="flex justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-xs font-bold uppercase">Distractions</p>
-                                    <h2 className="text-2xl font-bold text-white mt-1">{formatTime(data.breakdown.unproductive)}</h2>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Distractions</p>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatTime(data.breakdown.unproductive)}</h2>
                                 </div>
                                 <Coffee className="text-red-500 opacity-50" />
                             </div>
-                            <div className="w-full bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
                                 <div className="bg-red-500 h-full" style={{ width: `${(data.breakdown.unproductive / data.totalSeconds) * 100}%` }}></div>
                             </div>
                         </div>
 
-                        <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-lg">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
                             <div className="flex justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-xs font-bold uppercase">Total Logged</p>
-                                    <h2 className="text-2xl font-bold text-white mt-1">{formatTime(data.totalSeconds)}</h2>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Total Logged</p>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatTime(data.totalSeconds)}</h2>
                                 </div>
                                 <Clock className="text-blue-500 opacity-50" />
                             </div>
@@ -152,8 +152,8 @@ export default function Productivity() {
                     {/* CHARTS ROW */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* 1. DONUT CHART */}
-                        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 lg:col-span-1 flex flex-col items-center justify-center">
-                            <h3 className="text-white font-bold mb-4 self-start">Time Distribution</h3>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 lg:col-span-1 flex flex-col items-center justify-center transition-colors">
+                            <h3 className="text-gray-900 dark:text-white font-bold mb-4 self-start">Time Distribution</h3>
                             <div className="w-full h-64 relative">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -176,20 +176,20 @@ export default function Productivity() {
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                    <span className="text-3xl font-bold text-white">{formatTime(data.totalSeconds)}</span>
+                                    <span className="text-3xl font-bold text-gray-900 dark:text-white">{formatTime(data.totalSeconds)}</span>
                                     <span className="text-xs text-gray-500 uppercase">Total</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* 2. TOP APPS BAR CHART */}
-                        <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 lg:col-span-2">
-                            <h3 className="text-white font-bold mb-6">Top Applications</h3>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 lg:col-span-2 transition-colors">
+                            <h3 className="text-gray-900 dark:text-white font-bold mb-6">Top Applications</h3>
                             <div className="w-full h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={data.topApps} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                                         <XAxis type="number" hide />
-                                        <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                                        <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#6B7280', fontSize: 12 }} />
                                         <Tooltip
                                             contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#fff' }}
                                             formatter={(val: any) => [formatTime(val), "Duration"]}
@@ -207,12 +207,12 @@ export default function Productivity() {
                     </div>
 
                     {/* DETAILED TABLE */}
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                        <div className="p-6 border-b border-gray-700">
-                            <h3 className="text-white font-bold">Application Breakdown</h3>
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-gray-900 dark:text-white font-bold">Application Breakdown</h3>
                         </div>
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-900/50 text-gray-400 uppercase font-bold text-xs">
+                            <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs">
                                 <tr>
                                     <th className="p-4">Application</th>
                                     <th className="p-4">Category</th>
@@ -220,20 +220,20 @@ export default function Productivity() {
                                     <th className="p-4 w-full">Impact</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-700 text-gray-300">
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-600 dark:text-gray-300">
                                 {data.topApps.map((app, i) => (
-                                    <tr key={i} className="hover:bg-gray-700/30 transition-colors">
-                                        <td className="p-4 font-bold text-white">{app.name}</td>
+                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                        <td className="p-4 font-bold text-gray-900 dark:text-white">{app.name}</td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${app.category === 'Productive' ? 'bg-green-500/10 text-green-400' :
-                                                app.category === 'Unproductive' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${app.category === 'Productive' ? 'bg-green-100 dark:bg-green-500/10 text-green-700 dark:text-green-400' :
+                                                app.category === 'Unproductive' ? 'bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400' : 'bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400'
                                                 }`}>
                                                 {app.category}
                                             </span>
                                         </td>
                                         <td className="p-4 font-mono">{formatTime(app.duration)}</td>
                                         <td className="p-4">
-                                            <div className="w-32 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                            <div className="w-32 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full ${app.category === 'Productive' ? 'bg-green-500' : app.category === 'Unproductive' ? 'bg-red-500' : 'bg-yellow-500'}`}
                                                     style={{ width: `${(app.duration / data.totalSeconds) * 100}%` }}

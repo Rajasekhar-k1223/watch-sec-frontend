@@ -60,16 +60,16 @@ export default function Reports() {
         <div className="p-8">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-                        <FileText className="text-blue-500" />
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <FileText className="text-blue-600 dark:text-blue-500" />
                         Reports & Analytics
                     </h1>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                         Generate, view, and export detailed security and productivity reports.
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
+                    <button className="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-600 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
                         <Filter size={18} />
                         Filter
                     </button>
@@ -81,15 +81,15 @@ export default function Reports() {
             </div>
 
             {/* Generator Section */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 mb-8">
-                <h2 className="text-lg font-bold text-white mb-4">Generate New Report</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Generate New Report</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Report Type</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Report Type</label>
                         <select
                             value={reportType}
                             onChange={(e) => setReportType(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg p-3 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:border-blue-500"
                         >
                             <option value="activity">User Activity Summary</option>
                             <option value="dlp">DLP Violations</option>
@@ -98,11 +98,11 @@ export default function Reports() {
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Time Range</label>
+                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Time Range</label>
                         <select
                             value={dateRange}
                             onChange={(e) => setDateRange(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg p-3 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded-lg p-3 focus:outline-none focus:border-blue-500"
                         >
                             <option value="24h">Last 24 Hours</option>
                             <option value="7d">Last 7 Days</option>
@@ -113,7 +113,7 @@ export default function Reports() {
                     <div className="flex items-end">
                         <button
                             onClick={handleGenerate}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors flex justify-center items-center gap-2 shadow-sm"
                         >
                             <Printer size={18} />
                             Generate Report
@@ -123,12 +123,12 @@ export default function Reports() {
             </div>
 
             {/* Recent Reports List */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700 bg-gray-900/50">
-                    <h3 className="font-bold text-white">Recent Reports</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors shadow-sm">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Recent Reports</h3>
                 </div>
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
+                    <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs">
                         <tr>
                             <th className="p-4">Report Name</th>
                             <th className="p-4">Type</th>
@@ -137,27 +137,27 @@ export default function Reports() {
                             <th className="p-4 text-right">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-700 text-gray-300">
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-600 dark:text-gray-300">
                         {reports.map(report => (
-                            <tr key={report.id} className="hover:bg-gray-700/50 transition-colors">
-                                <td className="p-4 font-medium text-white flex items-center gap-3">
-                                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400">
+                            <tr key={report.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                <td className="p-4 font-medium text-gray-900 dark:text-white flex items-center gap-3">
+                                    <div className="p-2 bg-blue-100 dark:bg-blue-500/10 rounded-lg text-blue-600 dark:text-blue-400">
                                         <FileText size={18} />
                                     </div>
                                     {report.name}
                                 </td>
                                 <td className="p-4">
-                                    <span className="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs border border-gray-600">
+                                    <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded text-xs border border-gray-200 dark:border-gray-600">
                                         {report.type}
                                     </span>
                                 </td>
-                                <td className="p-4 text-gray-400 flex items-center gap-2">
+                                <td className="p-4 text-gray-500 dark:text-gray-400 flex items-center gap-2">
                                     <Calendar size={14} />
                                     {report.date}
                                 </td>
-                                <td className="p-4 text-gray-500">{report.size}</td>
+                                <td className="p-4 text-gray-500 dark:text-gray-500">{report.size}</td>
                                 <td className="p-4 text-right">
-                                    <button className="text-blue-400 hover:text-blue-300 hover:underline text-xs font-bold">
+                                    <button className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline text-xs font-bold">
                                         Download
                                     </button>
                                 </td>
