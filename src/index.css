@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
 
 :root {
     /* Default variables if needed, usually empty or system pref */
