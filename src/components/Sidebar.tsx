@@ -2,6 +2,8 @@ import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+import logo from '../assets/logo.png';
+
 export default function Sidebar() {
     const { user, logout } = useAuth();
     const role = user?.role || 'Analyst';
@@ -28,8 +30,8 @@ export default function Sidebar() {
         <aside className="w-64 bg-white/90 dark:bg-gray-900/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-800 h-screen flex flex-col fixed left-0 top-0 z-50 transition-all">
             <div className="p-6 border-b border-gray-200 dark:border-gray-800/50 bg-gray-50/50 dark:bg-black/20">
                 <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-500 flex items-center gap-2">
-                    <Shield className="w-8 h-8 text-blue-600 dark:text-blue-500" />
-                    Watch Sec
+                    <img src={logo} alt="Monitorix" className="w-8 h-8 rounded-lg" />
+                    Monitorix
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-mono">Enterprise EDR v2.1.0-FIXED</p>
                 <div className="mt-3 px-3 py-1.5 bg-gray-100 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700/50 inline-flex items-center gap-2">

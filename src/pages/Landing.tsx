@@ -7,6 +7,8 @@ import ProjectFlowAnimation from '../components/ProjectFlowAnimation';
 import SecureTowerAnimation from '../components/SecureTowerAnimation';
 import TiltCard from '../components/TiltCard';
 
+import logo from '../assets/logo.png';
+
 export default function Landing() {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
@@ -82,11 +84,12 @@ export default function Landing() {
                     <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
                         <div className="relative group">
                             <div className="absolute inset-0 bg-blue-500 blur-lg opacity-50 animate-pulse group-hover:opacity-80 transition-opacity"></div>
-                            <div className="relative w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-2xl border border-white/10">
+                            <div className="relative w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-2xl border border-white/10 hidden">
                                 <Shield className="w-6 h-6 text-white" />
                             </div>
+                            <img src={logo} alt="Monitorix" className="w-10 h-10 rounded-xl relative shadow-2xl border border-white/10" />
                         </div>
-                        <span className="text-xl font-bold tracking-tight">WatchSec <span className="text-blue-500">Enterprise</span></span>
+                        <span className="text-xl font-bold tracking-tight">Monitorix <span className="text-blue-500">Enterprise</span></span>
                     </div>
                     <div className="flex items-center gap-6">
                         <button onClick={() => navigate('/login')} className="text-sm font-semibold text-gray-300 hover:text-white transition-colors">Sign In</button>
@@ -204,7 +207,7 @@ export default function Landing() {
                 <div className="container mx-auto px-6">
                     <div className="reveal text-center mb-16">
                         <span className="text-blue-500 font-bold uppercase tracking-widest text-sm mb-4 block">System Architecture</span>
-                        <h2 className="text-4xl font-bold mb-4">How WatchSec Works</h2>
+                        <h2 className="text-4xl font-bold mb-4">How Monitorix Works</h2>
                         <p className="text-gray-400">Real-time telemetry streaming from edge to cloud.</p>
                     </div>
                     <div className="reveal">
@@ -316,7 +319,7 @@ export default function Landing() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         <TestimonialCard
-                            quote="WatchSec completely transformed our remote security posture. The visibility is unmatched."
+                            quote="Monitorix completely transformed our remote security posture. The visibility is unmatched."
                             author="Sarah Connor"
                             role="CISO @ SkyNet Systems"
                             rating={5}
@@ -368,7 +371,7 @@ export default function Landing() {
                             name="Enterprise" price="Custom" period=""
                             features={["Unlimited Agents", "SSO / SAML", "Dedicated Support", "1-Year History", "On-Prem Option"]}
                             cta="Contact Sales"
-                            onClick={() => window.location.href = 'mailto:sales@watchsec.io'}
+                            onClick={() => window.location.href = 'mailto:sales@monitorix.co.in'}
                             delay="200"
                         />
                     </div>
@@ -397,8 +400,8 @@ export default function Landing() {
                 <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
                     <div className="col-span-1 md:col-span-1">
                         <div className="flex items-center gap-2 mb-6">
-                            <Shield className="w-6 h-6 text-white" />
-                            <span className="font-bold text-xl text-white">WatchSec</span>
+                            <img src={logo} alt="Monitorix" className="w-6 h-6 rounded-md" />
+                            <span className="font-bold text-xl text-white">Monitorix</span>
                         </div>
                         <p className="mb-6">The next generation of endpoint security for the distributed enterprise.</p>
                         <div className="flex gap-4">
@@ -435,7 +438,7 @@ export default function Landing() {
                     </div>
                 </div>
                 <div className="text-center border-t border-gray-800 pt-8">
-                    <p>&copy; 2025 WatchSec Inc. All rights reserved.</p>
+                    <p>&copy; 2025 Monitorix Inc. All rights reserved.</p>
                 </div>
             </footer>
 

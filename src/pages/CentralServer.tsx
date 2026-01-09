@@ -82,7 +82,7 @@ function GeneralSettingsTab() {
     const [settings, setSettings] = useState({
         DataRetentionDays: "90",
         LogLevel: "INFO",
-        StoragePath: "/var/lib/watchsec/data"
+        StoragePath: "/var/lib/monitorix/data"
     });
 
     // Mock Load

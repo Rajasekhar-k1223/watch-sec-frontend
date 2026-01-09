@@ -84,7 +84,7 @@ export default function Admin() {
                                                     <p className="text-gray-900 dark:text-white font-medium text-sm">{user.username}</p>
                                                     <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-500">
                                                         <Mail size={10} />
-                                                        {user.username}@watchsec.io
+                                                        {user.username}@monitorix.co.in
                                                     </div>
                                                 </div>
                                             </div>

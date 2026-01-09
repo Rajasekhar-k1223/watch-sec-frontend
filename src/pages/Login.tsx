@@ -148,7 +148,7 @@ export default function Login() {
 
             {/* Footer */}
             <div className="absolute bottom-6 text-center text-gray-500 dark:text-gray-600 text-xs">
-                <p>&copy; 2025 Watch Sec Platform. All rights reserved.</p>
+                <p>&copy; 2025 Monitorix Platform. All rights reserved.</p>
                 <div className="flex gap-4 justify-center mt-2 opacity-50">
                     <span>Privacy Policy</span>
                     <span>•</span>
