@@ -3,6 +3,7 @@ import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
+import AgentCapabilitiesModal from '../components/AgentCapabilitiesModal'; // [NEW]
 // import MailProcessing from './MailProcessing.tsx'; 
 import MailLogViewer from '../components/MailLogViewer';
 import { useRef, useEffect, useState, useCallback } from 'react';
@@ -157,6 +158,7 @@ export default function Agents() {
     const [showDeployModal, setShowDeployModal] = useState(false);
     const [deployOS, setDeployOS] = useState<'windows' | 'linux' | 'mac'>('windows');
     const [showOtpModal, setShowOtpModal] = useState(false);
+    const [showCapabilities, setShowCapabilities] = useState(false); // [NEW]
     const [otpToken, setOtpToken] = useState<string | null>(null);
 
     const [tenantApiKey, setTenantApiKey] = useState<string | null>(null);
@@ -205,7 +207,7 @@ export default function Agents() {
                 downloadUrl = `${API_URL}/api/downloads/script?key=${tenantApiKey}`;
                 filename = 'monitorix-install.ps1';
             } else {
-                downloadUrl = `${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os=${os}&payload=false`;
+                downloadUrl = `${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os_type=${os}&payload=false`;
                 filename = 'monitorix-install.sh';
             }
 
@@ -586,6 +588,9 @@ export default function Agents() {
                                 <button onClick={handleGenerateToken} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold border border-gray-600">
                                     <AlertTriangle size={18} className="text-yellow-500" /> Generate OTP
                                 </button>
+                                <button onClick={() => setShowCapabilities(true)} className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-300 dark:border-gray-600" title="Feature Matrix">
+                                    <List size={18} /> Features
+                                </button>
                             </>
                         )}
                     </div>
@@ -726,10 +731,10 @@ export default function Agents() {
                                     <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">Terminal Command</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-12">
-                                            curl -sL "{API_URL}/api/downloads/public/agent?key={tenantApiKey || 'Loading...'}&os={deployOS}" | bash
+                                            curl -sL "{API_URL}/api/downloads/public/agent?key={tenantApiKey || 'Loading...'}&os_type={deployOS}" | bash
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os=${deployOS}" | bash`).then(() => alert("Copied!"))}
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | bash`).then(() => alert("Copied!"))}
                                             className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >
@@ -743,17 +748,21 @@ export default function Agents() {
                 </div>
             )}
 
-            {showOtpModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
-                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-8 max-w-sm w-full text-center transition-colors">
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Installation PIN</h2>
-                        <div className="bg-gray-100 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
-                            <span className="text-4xl font-mono mobile-nums text-blue-600 dark:text-blue-400 font-bold tracking-widest">{otpToken?.substring(0, 3)}-{otpToken?.substring(3)}</span>
+            <AgentCapabilitiesModal isOpen={showCapabilities} onClose={() => setShowCapabilities(false)} />
+
+            {
+                showOtpModal && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
+                        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-8 max-w-sm w-full text-center transition-colors">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Installation PIN</h2>
+                            <div className="bg-gray-100 dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 mb-4">
+                                <span className="text-4xl font-mono mobile-nums text-blue-600 dark:text-blue-400 font-bold tracking-widest">{otpToken?.substring(0, 3)}-{otpToken?.substring(3)}</span>
+                            </div>
+                            <button onClick={() => setShowOtpModal(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Close</button>
                         </div>
-                        <button onClick={() => setShowOtpModal(false)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg">Close</button>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg transition-colors">
                 <table className="w-full text-left">
@@ -825,171 +834,173 @@ export default function Agents() {
                 </table>
             </div>
 
-            {selectedAgentId && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
-                    <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col">
-                        <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
-                            <div>
-                                <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Agent: <span className="text-blue-400 font-mono">{selectedAgentId}</span> </h2>
-                                <div className="flex gap-4 mt-2">
-                                    {['logs', 'monitor', 'remote', 'screenshots', 'activity', 'mail'].map(m => (
-                                        <button key={m} onClick={() => setViewMode(m as any)} className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors ${viewMode === m ? 'text-white border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-300'}`}> {m} </button>
-                                    ))}
+            {
+                selectedAgentId && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
+                        <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col">
+                            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
+                                <div>
+                                    <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Agent: <span className="text-blue-400 font-mono">{selectedAgentId}</span> </h2>
+                                    <div className="flex gap-4 mt-2">
+                                        {['logs', 'monitor', 'remote', 'screenshots', 'activity', 'mail'].map(m => (
+                                            <button key={m} onClick={() => setViewMode(m as any)} className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors ${viewMode === m ? 'text-white border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-300'}`}> {m} </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 items-center">
+                                    {viewMode === 'logs' && (
+                                        <button onClick={() => setShowGraphs(!showGraphs)} className={`p-2 rounded-full transition-colors ${showGraphs ? 'bg-purple-900/50 text-purple-400' : 'hover:bg-gray-700 text-gray-400'}`} title="Toggle Graphs"> <Activity className="w-5 h-5" /> </button>
+                                    )}
+                                    <button onClick={handleSimulateEvent} className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold border border-red-600/50"> Simulate Event </button>
+                                    <button onClick={closeModal} className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white transition-colors"> <X className="w-6 h-6" /> </button>
                                 </div>
                             </div>
-                            <div className="flex gap-2 items-center">
-                                {viewMode === 'logs' && (
-                                    <button onClick={() => setShowGraphs(!showGraphs)} className={`p-2 rounded-full transition-colors ${showGraphs ? 'bg-purple-900/50 text-purple-400' : 'hover:bg-gray-700 text-gray-400'}`} title="Toggle Graphs"> <Activity className="w-5 h-5" /> </button>
-                                )}
-                                <button onClick={handleSimulateEvent} className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold border border-red-600/50"> Simulate Event </button>
-                                <button onClick={closeModal} className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white transition-colors"> <X className="w-6 h-6" /> </button>
-                            </div>
-                        </div>
 
-                        {viewMode === 'logs' && (
-                            <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 flex flex-col">
-                                {showGraphs && events.length > 0 && (
-                                    <div className="mb-4 grid grid-cols-2 gap-4 h-48">
-                                        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
-                                            <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Activity className="w-3 h-3 text-cyan-400" /> Event Distribution </div>
-                                            <div className="flex-1 w-full text-xs">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <BarChart data={Object.entries(events.reduce((acc: any, curr: any) => { acc[curr.type] = (acc[curr.type] || 0) + 1; return acc; }, {})).map(([name, count]) => ({ name, count })).slice(0, 10)}>
-                                                        <XAxis dataKey="name" stroke="#6b7280" tick={{ fontSize: 10 }} />
-                                                        <YAxis stroke="#6b7280" tick={{ fontSize: 10 }} />
-                                                        <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
-                                                        <Bar dataKey="count" fill="#3b82f6" />
-                                                    </BarChart>
-                                                </ResponsiveContainer>
+                            {viewMode === 'logs' && (
+                                <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 flex flex-col">
+                                    {showGraphs && events.length > 0 && (
+                                        <div className="mb-4 grid grid-cols-2 gap-4 h-48">
+                                            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
+                                                <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Activity className="w-3 h-3 text-cyan-400" /> Event Distribution </div>
+                                                <div className="flex-1 w-full text-xs">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <BarChart data={Object.entries(events.reduce((acc: any, curr: any) => { acc[curr.type] = (acc[curr.type] || 0) + 1; return acc; }, {})).map(([name, count]) => ({ name, count })).slice(0, 10)}>
+                                                            <XAxis dataKey="name" stroke="#6b7280" tick={{ fontSize: 10 }} />
+                                                            <YAxis stroke="#6b7280" tick={{ fontSize: 10 }} />
+                                                            <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
+                                                            <Bar dataKey="count" fill="#3b82f6" />
+                                                        </BarChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                            </div>
+                                            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
+                                                <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Cpu className="w-3 h-3 text-purple-400" /> System Performance </div>
+                                                <div className="flex-1 w-full text-xs">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
+                                                            <XAxis dataKey="timestamp" hide />
+                                                            <YAxis domain={[0, 100]} stroke="#6b7280" tick={{ fontSize: 10 }} />
+                                                            <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
+                                                            <Line type="monotone" name="CPU" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                                                            <Line type="monotone" name="Memory" dataKey="mem" stroke="#10b981" strokeWidth={2} dot={false} />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
-                                            <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Cpu className="w-3 h-3 text-purple-400" /> System Performance </div>
-                                            <div className="flex-1 w-full text-xs">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
-                                                        <XAxis dataKey="timestamp" hide />
-                                                        <YAxis domain={[0, 100]} stroke="#6b7280" tick={{ fontSize: 10 }} />
-                                                        <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
-                                                        <Line type="monotone" name="CPU" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                                                        <Line type="monotone" name="Memory" dataKey="mem" stroke="#10b981" strokeWidth={2} dot={false} />
-                                                    </LineChart>
-                                                </ResponsiveContainer>
-                                            </div>
+                                    )}
+                                    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden flex-1 flex flex-col">
+                                        <div className="overflow-y-auto flex-1">
+                                            <table className="w-full text-left text-sm">
+                                                <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs sticky top-0">
+                                                    <tr><th className="p-4 w-48">Timestamp</th><th className="p-4 w-48">Event Type</th><th className="p-4">Details</th></tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-700 text-gray-300 font-mono">
+                                                    {events.length === 0 ? <tr><td colSpan={3} className="p-8 text-center text-gray-500 italic">No logs recorded.</td></tr> : events.map((evt, i) => (
+                                                        <tr key={i} className="hover:bg-gray-700/30">
+                                                            <td className="p-4 text-gray-500">{new Date(evt.timestamp).toLocaleString()}</td>
+                                                            <td className="p-4 font-bold"> <span className="text-blue-400">{evt.type}</span> </td>
+                                                            <td className="p-4 break-all">{evt.details}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
-                                )}
-                                <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden flex-1 flex flex-col">
-                                    <div className="overflow-y-auto flex-1">
-                                        <table className="w-full text-left text-sm">
-                                            <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs sticky top-0">
-                                                <tr><th className="p-4 w-48">Timestamp</th><th className="p-4 w-48">Event Type</th><th className="p-4">Details</th></tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-700 text-gray-300 font-mono">
-                                                {events.length === 0 ? <tr><td colSpan={3} className="p-8 text-center text-gray-500 italic">No logs recorded.</td></tr> : events.map((evt, i) => (
-                                                    <tr key={i} className="hover:bg-gray-700/30">
-                                                        <td className="p-4 text-gray-500">{new Date(evt.timestamp).toLocaleString()}</td>
-                                                        <td className="p-4 font-bold"> <span className="text-blue-400">{evt.type}</span> </td>
-                                                        <td className="p-4 break-all">{evt.details}</td>
-                                                    </tr>
+                                </div>
+                            )}
+
+                            {viewMode === 'monitor' && (
+                                <div className={`flex-1 ${isScreenMaximized ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-3'} gap-0 overflow-hidden min-h-0`}>
+                                    {!isScreenMaximized && (
+                                        <div className="flex flex-col border-r border-gray-800 bg-gray-900/50 col-span-1 overflow-hidden min-h-0">
+                                            <div className="p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2"> <List className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-300 uppercase">Recent Activity</span> </div>
+                                            <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
+                                                <div className="mb-4 bg-black/40 p-2 rounded border border-gray-700 h-32">
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
+                                                            <YAxis hide domain={[0, 100]} />
+                                                            <Line type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} isAnimationActive={false} />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                                {events.map((evt, i) => (
+                                                    <div key={i} className="p-3 bg-gray-800 rounded border border-gray-700/50 hover:border-gray-600">
+                                                        <div className="flex justify-between text-xs text-gray-500 mb-1"> <span>{new Date(normalizeTimestamp(evt.timestamp)).toLocaleTimeString()}</span> <span className="font-bold text-blue-500">{evt.type}</span> </div>
+                                                        <p className="text-gray-300 break-all line-clamp-2" title={evt.details}>{evt.details}</p>
+                                                    </div>
                                                 ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {viewMode === 'monitor' && (
-                            <div className={`flex-1 ${isScreenMaximized ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-3'} gap-0 overflow-hidden min-h-0`}>
-                                {!isScreenMaximized && (
-                                    <div className="flex flex-col border-r border-gray-800 bg-gray-900/50 col-span-1 overflow-hidden min-h-0">
-                                        <div className="p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2"> <List className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-300 uppercase">Recent Activity</span> </div>
-                                        <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
-                                            <div className="mb-4 bg-black/40 p-2 rounded border border-gray-700 h-32">
-                                                <ResponsiveContainer width="100%" height="100%">
-                                                    <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
-                                                        <YAxis hide domain={[0, 100]} />
-                                                        <Line type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} isAnimationActive={false} />
-                                                    </LineChart>
-                                                </ResponsiveContainer>
                                             </div>
-                                            {events.map((evt, i) => (
-                                                <div key={i} className="p-3 bg-gray-800 rounded border border-gray-700/50 hover:border-gray-600">
-                                                    <div className="flex justify-between text-xs text-gray-500 mb-1"> <span>{new Date(normalizeTimestamp(evt.timestamp)).toLocaleTimeString()}</span> <span className="font-bold text-blue-500">{evt.type}</span> </div>
-                                                    <p className="text-gray-300 break-all line-clamp-2" title={evt.details}>{evt.details}</p>
-                                                </div>
-                                            ))}
                                         </div>
-                                    </div>
-                                )}
-                                <div ref={monitorContainerRef} className={`flex flex-col bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0`}>
-                                    <div className={`p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
-                                        <Image className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-300 uppercase">Live Screen Feed</span>
-                                        <div className="ml-auto flex items-center gap-3">
-                                            {isStreaming ? (
-                                                <button onClick={handleStopStream} className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Stop Stream </button>
+                                    )}
+                                    <div ref={monitorContainerRef} className={`flex flex-col bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0`}>
+                                        <div className={`p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
+                                            <Image className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-300 uppercase">Live Screen Feed</span>
+                                            <div className="ml-auto flex items-center gap-3">
+                                                {isStreaming ? (
+                                                    <button onClick={handleStopStream} className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Stop Stream </button>
+                                                ) : (
+                                                    <button onClick={handleStartStream} className="px-3 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-500 border border-green-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <Server className="w-3 h-3" /> Start Stream </button>
+                                                )}
+                                                {isStreaming && (
+                                                    <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`px-3 py-1 border rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-700/50 text-gray-300 border-gray-600'}`}>
+                                                        {isRecording ? <StopCircle className="w-3 h-3 animate-pulse" /> : <Video className="w-3 h-3" />} {isRecording ? 'Rec ON' : 'Record'}
+                                                    </button>
+                                                )}
+                                                <button onClick={handleToggleFullscreen} className="text-gray-400 hover:text-white transition-colors"> {isScreenMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 relative overflow-hidden bg-black min-h-0">
+                                            {liveScreen ? (
+                                                <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain z-10" autoPlay playsInline muted />
                                             ) : (
-                                                <button onClick={handleStartStream} className="px-3 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-500 border border-green-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <Server className="w-3 h-3" /> Start Stream </button>
+                                                <div className="text-center text-gray-600 bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-700 h-full flex flex-col justify-center items-center">
+                                                    <div className="w-12 h-12 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+                                                    <h3 className="text-white font-bold mb-2">Waiting for video stream...</h3>
+                                                    <div className="text-xs font-mono text-left inline-block bg-black/50 p-3 rounded border border-gray-800 space-y-1">
+                                                        <p className="text-gray-400">Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
+                                                        <p className="text-gray-400">Socket: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
+                                                        <p className="text-gray-400">Streaming: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
+                                                    </div>
+                                                </div>
                                             )}
-                                            {isStreaming && (
-                                                <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`px-3 py-1 border rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-700/50 text-gray-300 border-gray-600'}`}>
-                                                    {isRecording ? <StopCircle className="w-3 h-3 animate-pulse" /> : <Video className="w-3 h-3" />} {isRecording ? 'Rec ON' : 'Record'}
-                                                </button>
-                                            )}
-                                            <button onClick={handleToggleFullscreen} className="text-gray-400 hover:text-white transition-colors"> {isScreenMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} </button>
                                         </div>
                                     </div>
-                                    <div className="flex-1 relative overflow-hidden bg-black min-h-0">
-                                        {liveScreen ? (
-                                            <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain z-10" autoPlay playsInline muted />
-                                        ) : (
-                                            <div className="text-center text-gray-600 bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-700 h-full flex flex-col justify-center items-center">
-                                                <div className="w-12 h-12 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                                                <h3 className="text-white font-bold mb-2">Waiting for video stream...</h3>
-                                                <div className="text-xs font-mono text-left inline-block bg-black/50 p-3 rounded border border-gray-800 space-y-1">
-                                                    <p className="text-gray-400">Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
-                                                    <p className="text-gray-400">Socket: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
-                                                    <p className="text-gray-400">Streaming: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {viewMode === 'screenshots' && (
-                            <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} token={token} />
-                            </div>
-                        )}
+                            {viewMode === 'screenshots' && (
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                    <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                                </div>
+                            )}
 
-                        {viewMode === 'activity' && (
-                            <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                <ActivityLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
-                            </div>
-                        )}
+                            {viewMode === 'activity' && (
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                    <ActivityLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                                </div>
+                            )}
 
-                        {viewMode === 'remote' && (
-                            <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 font-sans">
-                                <RemoteDesktop agentId={selectedAgentId!} />
-                            </div>
-                        )}
+                            {viewMode === 'remote' && (
+                                <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 font-sans">
+                                    <RemoteDesktop agentId={selectedAgentId!} />
+                                </div>
+                            )}
 
-                        {viewMode === 'mail' && (
-                            <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                <MailLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
-                            </div>
-                        )}
+                            {viewMode === 'mail' && (
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                    <MailLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                                </div>
+                            )}
 
-                        <div className="p-4 border-t border-gray-800 bg-gray-800/50 flex justify-end">
-                            <button onClick={closeModal} className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">Close Viewer</button>
+                            <div className="p-4 border-t border-gray-800 bg-gray-800/50 flex justify-end">
+                                <button onClick={closeModal} className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">Close Viewer</button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
 

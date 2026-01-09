@@ -11,6 +11,7 @@ interface ProductivityData {
         productive: number;
         unproductive: number;
         neutral: number;
+        idle: number;
     };
     topApps: {
         name: string;
@@ -66,12 +67,13 @@ export default function Productivity() {
         return `${h}h ${m}m`;
     };
 
-    const COLORS = ['#10B981', '#EF4444', '#F59E0B']; // Green, Red, Yellow (Neutral)
+    const COLORS = ['#10B981', '#EF4444', '#F59E0B', '#9CA3AF']; // Green, Red, Yellow, Gray (Idle)
 
     const pieData = data ? [
         { name: 'Productive', value: data.breakdown.productive },
         { name: 'Unproductive', value: data.breakdown.unproductive },
-        { name: 'Neutral', value: data.breakdown.neutral }
+        { name: 'Neutral', value: data.breakdown.neutral },
+        { name: 'Idle', value: data.breakdown.idle }
     ] : [];
 
     return (
@@ -101,7 +103,7 @@ export default function Productivity() {
             {!loading && data && (
                 <>
                     {/* TOP STATS */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
                         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg relative overflow-hidden transition-colors">
                             <div className="absolute top-0 right-0 p-4 opacity-10"><Brain size={64} className="text-purple-500" /></div>
                             <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Productivity Score</p>
@@ -134,6 +136,20 @@ export default function Productivity() {
                             </div>
                             <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
                                 <div className="bg-red-500 h-full" style={{ width: `${(data.breakdown.unproductive / data.totalSeconds) * 100}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* IDLE TIME CARD */}
+                        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
+                            <div className="flex justify-between">
+                                <div>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase">Idle Time</p>
+                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{formatTime(data.breakdown.idle)}</h2>
+                                </div>
+                                <Clock className="text-gray-500 opacity-50" />
+                            </div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 mt-4 rounded-full overflow-hidden">
+                                <div className="bg-gray-500 h-full" style={{ width: `${(data.breakdown.idle / data.totalSeconds) * 100}%` }}></div>
                             </div>
                         </div>
 
