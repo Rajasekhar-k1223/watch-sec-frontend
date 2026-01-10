@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { X, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 
 interface AgentCapabilitiesModalProps {
