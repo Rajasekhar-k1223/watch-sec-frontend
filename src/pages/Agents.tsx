@@ -26,6 +26,7 @@ interface AgentReport {
     usbBlockingEnabled: boolean;
     networkMonitoringEnabled: boolean; // [NEW]
     fileDlpEnabled: boolean; // [NEW]
+    hardwareJson?: string; // [NEW]
 }
 
 // Helper for consistent date parsing (SQL -> ISO UTC -> Local)
@@ -99,7 +100,8 @@ export default function Agents() {
                         locationTrackingEnabled: a.locationTrackingEnabled ?? a.LocationTrackingEnabled ?? false,
                         usbBlockingEnabled: a.usbBlockingEnabled ?? a.UsbBlockingEnabled ?? false,
                         networkMonitoringEnabled: a.networkMonitoringEnabled ?? a.NetworkMonitoringEnabled ?? false,
-                        fileDlpEnabled: a.fileDlpEnabled ?? a.FileDlpEnabled ?? false
+                        fileDlpEnabled: a.fileDlpEnabled ?? a.FileDlpEnabled ?? false,
+                        hardwareJson: a.hardwareJson
                     };
                 });
 
@@ -284,7 +286,7 @@ export default function Agents() {
     };
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | null>(null);
+    const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | 'specs' | null>(null);
     const [events, setEvents] = useState<any[]>([]);
     const [showGraphs, setShowGraphs] = useState(false);
 
@@ -842,7 +844,7 @@ export default function Agents() {
                                 <div>
                                     <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Agent: <span className="text-blue-400 font-mono">{selectedAgentId}</span> </h2>
                                     <div className="flex gap-4 mt-2">
-                                        {['logs', 'monitor', 'remote', 'screenshots', 'activity', 'mail'].map(m => (
+                                        {['logs', 'monitor', 'remote', 'screenshots', 'activity', 'mail', 'specs'].map(m => (
                                             <button key={m} onClick={() => setViewMode(m as any)} className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors ${viewMode === m ? 'text-white border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-300'}`}> {m} </button>
                                         ))}
                                     </div>
@@ -990,6 +992,87 @@ export default function Agents() {
                             {viewMode === 'mail' && (
                                 <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
                                     <MailLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                                </div>
+                            )}
+
+                            {viewMode === 'specs' && (
+                                <div className="flex-1 overflow-y-auto p-8 bg-gray-900/50 font-sans">
+                                    <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-4xl mx-auto shadow-lg">
+                                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 border-b border-gray-700 pb-4">
+                                            <Cpu className="w-5 h-5 text-blue-500" /> System Specifications
+                                        </h3>
+                                        {(() => {
+                                            const currentAgent = agents.find(a => a.agentId === selectedAgentId);
+                                            let hw = null;
+                                            try {
+                                                if (currentAgent?.hardwareJson) hw = JSON.parse(currentAgent.hardwareJson);
+                                            } catch (e) { console.error("JSON Parse Error", e); }
+
+                                            if (!hw) return <div className="text-gray-500 italic text-center py-8">No hardware data available for this agent. Ensure agent version is up to date (Monitorix v2.1+).</div>;
+
+                                            return (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                    <div className="space-y-6">
+                                                        <div>
+                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Processor</label>
+                                                            <div className="text-white text-lg font-medium">{hw.CpuModel || 'Unknown'}</div>
+                                                            <div className="text-sm text-gray-400 mt-1 flex gap-4">
+                                                                <span>Cores: <b className="text-gray-300">{hw.CpuCores}</b></span>
+                                                                <span>Threads: <b className="text-gray-300">{hw.CpuThreads}</b></span>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Memory (RAM)</label>
+                                                            <div className="flex items-end gap-2">
+                                                                <span className="text-2xl font-bold text-green-400">{hw.RamTotalGB} GB</span>
+                                                                <span className="text-sm text-gray-500 mb-1">Total</span>
+                                                            </div>
+                                                            <div className="w-full bg-gray-700 h-2 rounded-full mt-2 overflow-hidden">
+                                                                <div className="bg-green-500 h-full" style={{ width: `${hw.RamPercent}%` }}></div>
+                                                            </div>
+                                                            <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                                                <span>Used: {hw.RamUsedGB} GB</span>
+                                                                <span>Free: {hw.RamAvailableGB} GB</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-6">
+                                                        <div>
+                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Storage (C: / Root)</label>
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="relative w-24 h-24 flex items-center justify-center">
+                                                                    <div className="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
+                                                                    <div className="absolute inset-0 border-4 border-blue-500 rounded-full" style={{ clipPath: `polygon(0 0, 100% 0, 100% 100%, 0 100%)`, transform: `rotate(${(1 - (hw.DiskFreeGB / hw.DiskTotalGB)) * 360}deg)` }}></div>
+                                                                    {/* Simple visualization, SVG would be better but keeping it text-based for safety */}
+                                                                    <div className="text-center">
+                                                                        <div className="text-xl font-bold text-white">{hw.DiskTotalGB}</div>
+                                                                        <div className="text-[10px] text-gray-500">GB Total</div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-2 text-sm text-gray-300">
+                                                                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Used: {(hw.DiskTotalGB - hw.DiskFreeGB).toFixed(2)} GB</div>
+                                                                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-600"></div> Free: {hw.DiskFreeGB} GB</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">System</label>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div className="bg-gray-700/50 p-3 rounded text-sm">
+                                                                    <span className="text-gray-400 block text-xs">Hostname</span>
+                                                                    <span className="font-mono text-white">{currentAgent?.hostname}</span>
+                                                                </div>
+                                                                <div className="bg-gray-700/50 p-3 rounded text-sm">
+                                                                    <span className="text-gray-400 block text-xs">Agent ID</span>
+                                                                    <span className="font-mono text-white truncate" title={currentAgent?.agentId}>{currentAgent?.agentId}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             )}
 
