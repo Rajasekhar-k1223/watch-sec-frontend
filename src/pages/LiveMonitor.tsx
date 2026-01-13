@@ -171,7 +171,7 @@ export default function LiveMonitor() {
     if (selectedAgentId) {
         // --- SINGLE AGENT VIEW ---
         return (
-            <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white p-6 overflow-hidden transition-colors">
+            <div className="flex flex-col h-full text-gray-900 dark:text-white p-6 overflow-hidden transition-colors">
                 <div className="mb-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setSearchParams({})} className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">
@@ -241,7 +241,7 @@ export default function LiveMonitor() {
                                 </div>
 
                                 {/* Performance Chart */}
-                                <div className="bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
+                                <div className="glass-panel rounded-xl p-6 shadow-sm">
                                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={18} className="text-purple-400" /> Live Performance Data</h3>
                                     <div className="h-64 w-full">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -261,7 +261,7 @@ export default function LiveMonitor() {
                         /* ANALYTICS TAB CONTENT */
                         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 content-start">
                             {/* 1. PIE CHART */}
-                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 flex flex-col items-center shadow-lg">
+                            <div className="glass-panel border-gray-200 dark:border-gray-700/50 rounded-xl p-6 flex flex-col items-center shadow-lg">
                                 <h3 className="text-lg font-bold mb-4 self-start text-gray-900 dark:text-white">Event Distribution</h3>
                                 <div className="w-full h-64 relative">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -289,7 +289,7 @@ export default function LiveMonitor() {
                             </div>
 
                             {/* 2. BAR CHART (Top Events) */}
-                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-lg">
+                            <div className="glass-panel border-gray-200 dark:border-gray-700/50 rounded-xl p-6 shadow-lg">
                                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Event Frequency</h3>
                                 <div className="w-full h-64">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -308,7 +308,7 @@ export default function LiveMonitor() {
                             </div>
 
                             {/* 3. AREA CHART (Timeline) */}
-                            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 md:col-span-2 shadow-lg">
+                            <div className="glass-panel border-gray-200 dark:border-gray-700/50 rounded-xl p-6 md:col-span-2 shadow-lg">
                                 <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Event Velocity (Last 100)</h3>
                                 <div className="w-full h-64">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -326,8 +326,8 @@ export default function LiveMonitor() {
                     )}
 
                     {/* RIGHT COL: Event Log */}
-                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-0 flex flex-col h-full lg:h-auto overflow-hidden shadow-lg">
-                        <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                    <div className="glass-panel border-gray-200 dark:border-gray-700/50 rounded-xl p-0 flex flex-col h-full lg:h-auto overflow-hidden shadow-lg">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50/10 dark:bg-black/20">
                             <h3 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white"><ShieldAlert size={18} className="text-red-400" /> Event Feed</h3>
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs custom-scrollbar">
@@ -377,7 +377,7 @@ export default function LiveMonitor() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {reports.map(report => (
-                    <div key={report.agentId} className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-xl hover:border-blue-500/50 transition-colors">
+                    <div key={report.agentId} className="glass-panel rounded-lg p-6 border-gray-200 dark:border-gray-700/50 shadow-xl hover:border-cyan-500/50 transition-colors">
                         <div className="flex justify-between items-center mb-4 cursor-pointer" onClick={() => setSearchParams({ agentId: report.agentId })}>
                             <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex flex-col group">
                                 <div className="flex items-center gap-2">
@@ -393,22 +393,22 @@ export default function LiveMonitor() {
 
                         {/* Status Summary */}
                         <div className="mb-6 grid grid-cols-2 gap-4">
-                            <div className="bg-gray-50 dark:bg-gray-900 rounded p-4 border border-gray-200 dark:border-gray-700 text-center">
+                            <div className="bg-gray-50/50 dark:bg-black/30 rounded p-4 border border-gray-200 dark:border-gray-700/50 text-center">
                                 <span className="text-gray-500 text-xs uppercase">CPU</span>
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{(report.cpuUsage || 0).toFixed(1)}%</div>
                             </div>
-                            <div className="bg-gray-50 dark:bg-gray-900 rounded p-4 border border-gray-200 dark:border-gray-700 text-center">
+                            <div className="bg-gray-50/50 dark:bg-black/30 rounded p-4 border border-gray-200 dark:border-gray-700/50 text-center">
                                 <span className="text-gray-500 text-xs uppercase">Memory</span>
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{(report.memoryUsage || 0).toFixed(0)} MB</div>
                             </div>
                         </div>
 
                         {/* Events Preview */}
-                        <div className="bg-gray-50 dark:bg-gray-900 rounded p-4 h-32 overflow-hidden mb-4 border border-gray-200 dark:border-gray-700 font-mono text-xs relative">
+                        <div className="bg-gray-50/50 dark:bg-black/30 rounded p-4 h-32 overflow-hidden mb-4 border border-gray-200 dark:border-gray-700/50 font-mono text-xs relative">
                             {/* Assuming events might be global or we fetch per agent, for now we leave empty or mock */}
                             <div className="text-gray-400 dark:text-gray-500 text-center italic mt-10">Click to view details</div>
 
-                            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-gray-50 dark:from-gray-900 to-transparent" />
+                            <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-gray-50 dark:from-black/50 to-transparent" />
                         </div>
                     </div>
                 ))}
