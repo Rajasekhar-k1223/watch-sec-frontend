@@ -4,13 +4,13 @@ import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 interface AuditLog {
-    id: number;
-    tenantId: number;
-    actor: string;
-    action: string;
-    target: string;
-    details: string;
-    timestamp: string;
+    Id: number;
+    TenantId: number;
+    Actor: string;
+    Action: string;
+    Target: string;
+    Details: string;
+    Timestamp: string;
 }
 
 export default function SystemAudit() {
@@ -32,9 +32,9 @@ export default function SystemAudit() {
     }, [user, token]);
 
     const filteredLogs = logs.filter(log =>
-        log.actor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.target.toLowerCase().includes(searchTerm.toLowerCase())
+        (log.Actor || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (log.Action || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (log.Target || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -72,26 +72,26 @@ export default function SystemAudit() {
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {filteredLogs.map(log => (
-                            <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                            <tr key={log.Id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                 <td className="p-4 px-6 flex items-center gap-2 font-mono text-gray-500">
-                                    <Clock size={14} /> {new Date(log.timestamp).toLocaleString()}
+                                    <Clock size={14} /> {new Date(log.Timestamp).toLocaleString()}
                                 </td>
                                 <td className="p-4 px-6 font-bold text-gray-900 dark:text-white">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs text-white">{(log.actor[0] || 'U').toUpperCase()}</div>
-                                        {log.actor}
+                                        <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs text-white">{(log.Actor?.[0] || 'U').toUpperCase()}</div>
+                                        {log.Actor}
                                     </div>
                                 </td>
                                 <td className="p-4 px-6">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${log.action.includes('Delete') ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800' :
-                                        log.action.includes('Create') ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800' :
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${log.Action?.includes('Delete') ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800' :
+                                        log.Action?.includes('Create') ? 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-800' :
                                             'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
                                         }`}>
-                                        {log.action}
+                                        {log.Action}
                                     </span>
                                 </td>
-                                <td className="p-4 px-6 font-mono text-gray-700 dark:text-gray-300">{log.target}</td>
-                                <td className="p-4 px-6 text-gray-600 dark:text-gray-400">{log.details}</td>
+                                <td className="p-4 px-6 font-mono text-gray-700 dark:text-gray-300">{log.Target}</td>
+                                <td className="p-4 px-6 text-gray-600 dark:text-gray-400">{log.Details}</td>
                             </tr>
                         ))}
                         {filteredLogs.length === 0 && (

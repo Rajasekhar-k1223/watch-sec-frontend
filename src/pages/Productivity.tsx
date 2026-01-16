@@ -40,6 +40,8 @@ export default function Productivity() {
     const [data, setData] = useState<ProductivityData | null>(null);
     const [loading, setLoading] = useState(false);
 
+    const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+
     // 1. Fetch Agents List First
     useEffect(() => {
         if (!token) return;
@@ -58,7 +60,15 @@ export default function Productivity() {
     useEffect(() => {
         if (!selectedAgent) return;
         setLoading(true);
-        fetch(`${API_URL}/api/productivity/summary/${selectedAgent}`, {
+
+        let url = `${API_URL}/api/productivity/summary/${selectedAgent}`;
+        if (selectedDate) {
+            const from = `${selectedDate}T00:00:00`;
+            const to = `${selectedDate}T23:59:59`;
+            url += `?from_date=${from}&to_date=${to}`;
+        }
+
+        fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
             .then(res => res.json())
@@ -74,7 +84,7 @@ export default function Productivity() {
             })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, [selectedAgent, token]);
+    }, [selectedAgent, token, selectedDate]);
 
     const formatTime = (sec: number) => {
         const h = Math.floor(sec / 3600);
@@ -102,14 +112,34 @@ export default function Productivity() {
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Real-time Productivity & Behavior Monitoring</p>
                 </div>
 
-                <div className="flex glass-panel rounded-lg p-1">
-                    <select
-                        value={selectedAgent}
-                        onChange={(e) => setSelectedAgent(e.target.value)}
-                        className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-4 py-2 outline-none cursor-pointer"
-                    >
-                        {agents.map(a => <option key={a.agentId} value={a.agentId} className="text-black">{a.agentId} ({a.status})</option>)}
-                    </select>
+                <div className="flex gap-3">
+                    <div className="flex glass-panel rounded-lg p-1 items-center">
+                        <input
+                            type="date"
+                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-4 py-2 outline-none cursor-pointer"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            title="Filter by Date"
+                        />
+                        {selectedDate && (
+                            <button
+                                onClick={() => setSelectedDate('')}
+                                className="mr-2 text-xs text-blue-400 hover:text-white font-bold"
+                            >
+                                CLEAR
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex glass-panel rounded-lg p-1">
+                        <select
+                            value={selectedAgent}
+                            onChange={(e) => setSelectedAgent(e.target.value)}
+                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-4 py-2 outline-none cursor-pointer"
+                        >
+                            {agents.map(a => <option key={a.agentId} value={a.agentId} className="text-black">{a.agentId} ({a.status})</option>)}
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -138,7 +168,7 @@ export default function Productivity() {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Productive</p>
-                                    <h2 className="text-2xl font-bold mt-1 text-white">{formatTime(data.breakdown.productive)}</h2>
+                                    <h2 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{formatTime(data.breakdown.productive)}</h2>
                                 </div>
                                 <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20">
                                     <Monitor size={20} className="text-green-500" />
@@ -154,7 +184,7 @@ export default function Productivity() {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Distracted</p>
-                                    <h2 className="text-2xl font-bold mt-1 text-white">{formatTime(data.breakdown.unproductive)}</h2>
+                                    <h2 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{formatTime(data.breakdown.unproductive)}</h2>
                                 </div>
                                 <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20">
                                     <Coffee size={20} className="text-red-500" />
@@ -170,7 +200,7 @@ export default function Productivity() {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Idle</p>
-                                    <h2 className="text-2xl font-bold mt-1 text-white">{formatTime(data.breakdown.idle)}</h2>
+                                    <h2 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{formatTime(data.breakdown.idle)}</h2>
                                 </div>
                                 <div className="p-2 bg-gray-500/10 rounded-lg border border-gray-500/20">
                                     <Clock size={20} className="text-gray-400" />
@@ -184,7 +214,7 @@ export default function Productivity() {
 
                     {/* NEW: FOCUS TREND CHART */}
                     <div className="glass-panel rounded-xl p-6 shadow-lg">
-                        <h3 className="text-white font-bold mb-6 flex items-center gap-2">
+                        <h3 className="text-gray-900 dark:text-white font-bold mb-6 flex items-center gap-2">
                             <TrendingUp className="text-cyan-400" size={20} />
                             Focus Trend (24h)
                         </h3>
@@ -214,7 +244,7 @@ export default function Productivity() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* DONUT CHART */}
                         <div className="glass-panel rounded-xl p-6 lg:col-span-1 flex flex-col items-center justify-center">
-                            <h3 className="text-white font-bold mb-4 self-start">Time Distribution</h3>
+                            <h3 className="text-gray-900 dark:text-white font-bold mb-4 self-start">Time Distribution</h3>
                             <div className="w-full h-64 relative">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -238,7 +268,7 @@ export default function Productivity() {
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                    <span className="text-2xl font-bold text-white">{formatTime(data.totalSeconds)}</span>
+                                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{formatTime(data.totalSeconds)}</span>
                                     <span className="text-xs text-gray-500 uppercase">Total Logged</span>
                                 </div>
                             </div>
@@ -246,7 +276,7 @@ export default function Productivity() {
 
                         {/* TOP APPS BAR CHART */}
                         <div className="glass-panel rounded-xl p-6 lg:col-span-2">
-                            <h3 className="text-white font-bold mb-6">Top Applications</h3>
+                            <h3 className="text-gray-900 dark:text-white font-bold mb-6">Top Applications</h3>
                             <div className="w-full h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={data.topApps} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
@@ -270,8 +300,8 @@ export default function Productivity() {
 
                     {/* DETAILED TABLE */}
                     <div className="glass-panel rounded-xl overflow-hidden">
-                        <div className="p-6 border-b border-gray-800 bg-black/20">
-                            <h3 className="text-white font-bold">Session Detail</h3>
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
+                            <h3 className="text-gray-900 dark:text-white font-bold">Session Detail</h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
@@ -286,7 +316,7 @@ export default function Productivity() {
                                 <tbody className="divide-y divide-gray-800 text-gray-300">
                                     {data.topApps.map((app, i) => (
                                         <tr key={i} className="hover:bg-cyan-500/5 transition-colors">
-                                            <td className="p-4 font-bold text-white">{app.name}</td>
+                                            <td className="p-4 font-bold text-gray-900 dark:text-white">{app.name}</td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-bold border ${app.category === 'Productive' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
                                                     app.category === 'Unproductive' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
@@ -315,7 +345,7 @@ export default function Productivity() {
             {!loading && !data && (
                 <div className="glass-panel text-center py-20 rounded-xl">
                     <AlertTriangle className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-white">No Metric Data</h3>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">No Metric Data</h3>
                     <p className="text-gray-400 mt-2">No activity logs found for this agent.</p>
                 </div>
             )}

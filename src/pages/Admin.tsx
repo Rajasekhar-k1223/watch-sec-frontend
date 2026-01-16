@@ -1,5 +1,6 @@
 import { Shield, Lock, Mail, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
@@ -15,6 +16,7 @@ export default function Admin() {
     const [users, setUsers] = useState<UserDto[]>([]);
     const [loading, setLoading] = useState(true);
     const { token } = useAuth();
+    const navigate = useNavigate();
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     useEffect(() => {
@@ -141,7 +143,9 @@ export default function Admin() {
                         </div>
 
                         <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                            <button className="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white py-2 rounded-lg text-sm transition-colors font-medium">
+                            <button
+                                onClick={() => navigate('/audit')}
+                                className="w-full bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white py-2 rounded-lg text-sm transition-colors font-medium">
                                 View Audit Logs
                             </button>
                         </div>

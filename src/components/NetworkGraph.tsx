@@ -3,6 +3,7 @@ import ForceGraph2D from 'react-force-graph-2d';
 import { Loader2, Globe } from 'lucide-react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface NetworkNode {
     id: string;
@@ -22,6 +23,7 @@ interface NetworkLink {
 
 export const NetworkTopology = () => {
     const { token } = useAuth();
+    const { theme } = useTheme();
     const [graphData, setGraphData] = useState<{ nodes: NetworkNode[], links: NetworkLink[] }>({ nodes: [], links: [] });
     const [loading, setLoading] = useState(true);
     const graphRef = useRef<any>(null);
@@ -148,13 +150,13 @@ export const NetworkTopology = () => {
             const label = node.id;
             const fontSize = 12 / globalScale;
             ctx.font = `${fontSize}px Sans-Serif`;
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillStyle = theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(17, 24, 39, 0.8)';
             ctx.fillText(label, x, y + size + fontSize + 2);
         }
-    }, []);
+    }, [theme]);
 
     return (
-        <div ref={containerRef} className="w-full h-[600px] bg-gray-950 rounded-xl overflow-hidden relative border border-gray-800 shadow-2xl">
+        <div ref={containerRef} className="w-full h-[600px] bg-white dark:bg-gray-950 rounded-xl overflow-hidden relative border border-gray-200 dark:border-gray-800 shadow-2xl transition-colors">
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
                     <Loader2 className="animate-spin text-blue-500 w-8 h-8" />
@@ -173,10 +175,10 @@ export const NetworkTopology = () => {
                 width={dimensions.width}
                 height={dimensions.height}
                 graphData={graphData}
-                backgroundColor="#0b0f19"
+                backgroundColor={theme === 'dark' ? "#0b0f19" : "#f9fafb"}
                 nodeLabel="ip"
                 nodeRelSize={6}
-                linkColor={() => "#1f2937"} // Dark gray links
+                linkColor={() => theme === 'dark' ? "#1f2937" : "#e5e7eb"} // Dark gray links vs light gray
                 linkWidth={1.5}
                 linkDirectionalParticles={2} // Flow animation
                 linkDirectionalParticleSpeed={0.005} // Slow flow

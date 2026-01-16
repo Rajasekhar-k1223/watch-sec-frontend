@@ -7,6 +7,7 @@ import AgentCapabilitiesModal from '../components/AgentCapabilitiesModal'; // [N
 // import MailProcessing from './MailProcessing.tsx'; 
 import MailLogViewer from '../components/MailLogViewer';
 import { useRef, useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
@@ -837,9 +838,9 @@ export default function Agents() {
             </div>
 
             {
-                selectedAgentId && (
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
-                        <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-6xl h-[85vh] flex flex-col">
+                selectedAgentId && createPortal(
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-[95vw] h-[95vh] flex flex-col">
                             <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
                                 <div>
                                     <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Agent: <span className="text-blue-400 font-mono">{selectedAgentId}</span> </h2>
@@ -1080,7 +1081,8 @@ export default function Agents() {
                                 <button onClick={closeModal} className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">Close Viewer</button>
                             </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )
             }
         </div >
