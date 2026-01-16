@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, Bell, Search, Menu, X, AlertTriangle, Info, LayoutDashboard, Users, FileText, List, LogOut, Command, ArrowRight as ArrowRightIcon, Activity } from 'lucide-react';
+import { Sun, Moon, Bell, Search, Menu, X, AlertTriangle, Info, LayoutDashboard, Users, FileText, List, LogOut, ArrowRight as ArrowRightIcon, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
