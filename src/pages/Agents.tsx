@@ -769,25 +769,25 @@ export default function Agents() {
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg transition-colors">
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
-                        <tr><th className="p-4">Agent ID</th><th className="p-4">Hostname</th><th className="p-4">Status</th><th className="p-4">Resources</th><th className="p-4">Last Seen</th><th className="p-4">Actions</th></tr>
+                        <tr><th className="p-4">Agent ID</th><th className="p-4 hidden md:table-cell">Hostname</th><th className="p-4">Status</th><th className="p-4 hidden md:table-cell">Resources</th><th className="p-4 hidden md:table-cell">Last Seen</th><th className="p-4">Actions</th></tr>
                     </thead>
                     <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
                         {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : agents.map(agent => (
                             <tr key={agent.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
                                 <td className="p-4 font-bold text-gray-900 dark:text-white flex items-center gap-2"> <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" /> {agent.agentId} </td>
-                                <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-400"> {agent.hostname || 'Unknown'} </td>
+                                <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-400 hidden md:table-cell"> {agent.hostname || 'Unknown'} </td>
                                 <td className="p-4">
                                     <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
                                         {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
                                     </div>
                                 </td>
-                                <td className="p-4">
+                                <td className="p-4 hidden md:table-cell">
                                     <div className="text-xs space-y-1">
                                         <div className="flex justify-between w-32"> <span className="text-gray-500">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
                                         <div className="flex justify-between w-32"> <span className="text-gray-500">MEM:</span> <span className="text-gray-700 dark:text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
                                     </div>
                                 </td>
-                                <td className="p-4 text-gray-500 dark:text-gray-400 text-sm"> {new Date(agent.timestamp).toLocaleString()} </td>
+                                <td className="p-4 text-gray-500 dark:text-gray-400 text-sm hidden md:table-cell"> {new Date(agent.timestamp).toLocaleString()} </td>
                                 <td className="p-4">
                                     <div className="flex gap-3 items-center">
                                         <button

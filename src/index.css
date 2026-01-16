@@ -72,7 +72,7 @@ body {
 
 /* Glassmorphism Utilities */
 .glass-panel {
-    @apply bg-gray-800/40 backdrop-blur-md border border-gray-700/50 shadow-xl;
+    @apply bg-white/70 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 shadow-xl;
 }
 
 /* Chart Gradients */
