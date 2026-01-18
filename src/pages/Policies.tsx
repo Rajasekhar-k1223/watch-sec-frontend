@@ -37,7 +37,7 @@ export default function Policies() {
 
     const fetchPolicies = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/policies?tenantId=1`, {
+            const res = await fetch(`${API_URL}/policies?tenantId=1`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -51,7 +51,7 @@ export default function Policies() {
     const handleSave = async () => {
         try {
             const method = editingId ? 'PUT' : 'POST';
-            const url = editingId ? `${API_URL}/api/policies/${editingId}` : `${API_URL}/api/policies`;
+            const url = editingId ? `${API_URL}/policies/${editingId}` : `${API_URL}/policies`;
 
             const res = await fetch(url, {
                 method: method,
@@ -98,7 +98,7 @@ export default function Policies() {
     const handleDelete = async (id: number) => {
         if (!confirm("Are you sure?")) return;
         try {
-            await fetch(`${API_URL}/api/policies/${id}`, {
+            await fetch(`${API_URL}/policies/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

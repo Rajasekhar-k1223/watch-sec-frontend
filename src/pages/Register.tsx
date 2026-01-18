@@ -28,7 +28,7 @@ export default function Register() {
         setLoading(true);
 
         try {
-            const res = await fetch(`${API_URL}/api/auth/register-tenant`, {
+            const res = await fetch(`${API_URL}/auth/register-tenant`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ tenantName, adminUsername: username, password, plan }),

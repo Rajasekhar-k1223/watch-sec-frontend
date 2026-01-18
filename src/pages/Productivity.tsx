@@ -45,7 +45,7 @@ export default function Productivity() {
     // 1. Fetch Agents List First
     useEffect(() => {
         if (!token) return;
-        fetch(`${API_URL}/api/status`, {
+        fetch(`${API_URL}/status`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
             .then(res => res.json())
@@ -61,7 +61,7 @@ export default function Productivity() {
         if (!selectedAgent) return;
         setLoading(true);
 
-        let url = `${API_URL}/api/productivity/summary/${selectedAgent}`;
+        let url = `${API_URL}/productivity/summary/${selectedAgent}`;
         if (selectedDate) {
             const from = `${selectedDate}T00:00:00`;
             const to = `${selectedDate}T23:59:59`;

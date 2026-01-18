@@ -195,7 +195,7 @@ function ThesaurusSettingsTab() {
     const fetchEntries = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/thesaurus`, {
+            const res = await fetch(`${API_URL}/thesaurus`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -216,7 +216,7 @@ function ThesaurusSettingsTab() {
         if (!newKeyword) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/thesaurus`, {
+            const res = await fetch(`${API_URL}/thesaurus`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -244,7 +244,7 @@ function ThesaurusSettingsTab() {
     const handleDelete = async (id: number) => {
         if (!confirm("Delete this entry?")) return;
         try {
-            await fetch(`${API_URL}/api/thesaurus/${id}`, {
+            await fetch(`${API_URL}/thesaurus/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -443,7 +443,7 @@ function HashBanksTab() {
     const fetchHashes = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/hashbank`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(`${API_URL}/hashbank`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) setHashes(await res.json());
         } catch (e) { console.error(e); }
         setLoading(false);
@@ -454,7 +454,7 @@ function HashBanksTab() {
     const handleAdd = async () => {
         if (!form.hash) return;
         try {
-            const res = await fetch(`${API_URL}/api/hashbank`, {
+            const res = await fetch(`${API_URL}/hashbank`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ Hash: form.hash, Reputation: form.reputation, Description: form.description })
@@ -471,7 +471,7 @@ function HashBanksTab() {
     const handleDelete = async (id: number) => {
         if (!confirm("Delete this hash?")) return;
         try {
-            await fetch(`${API_URL}/api/hashbank/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            await fetch(`${API_URL}/hashbank/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             fetchHashes();
         } catch (e) { console.error(e); }
     };
@@ -570,7 +570,7 @@ function SearchesTab() {
 
     const fetchSearches = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/searches`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(`${API_URL}/searches`, { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) setSearches(await res.json());
         } catch (e) { console.error(e); }
     };
@@ -580,7 +580,7 @@ function SearchesTab() {
     const handleSave = async () => {
         if (!newSearch.name) return;
         try {
-            await fetch(`${API_URL}/api/searches`, {
+            await fetch(`${API_URL}/searches`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ Name: newSearch.name, QueryJson: newSearch.query, Category: newSearch.category })
@@ -593,7 +593,7 @@ function SearchesTab() {
     const handleDelete = async (id: number) => {
         if (!confirm("Delete search?")) return;
         try {
-            await fetch(`${API_URL}/api/searches/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            await fetch(`${API_URL}/searches/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
             fetchSearches();
         } catch (e) { console.error(e); }
     };

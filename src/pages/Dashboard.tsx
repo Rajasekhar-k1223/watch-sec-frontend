@@ -65,7 +65,7 @@ export default function Dashboard() {
         const fetchStats = async () => {
             try {
                 // 1. Dashboard Aggregate Stats
-                const res = await fetch(`${API_URL}/api/dashboard/stats?hours=${timeRange}`, {
+                const res = await fetch(`${API_URL}/dashboard/stats?hours=${timeRange}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.status === 401) return logout(); // Handle 401
@@ -76,7 +76,7 @@ export default function Dashboard() {
                 }
 
                 // 2. Agent List for Map
-                const resAgents = await fetch(`${API_URL}/api/status`, {
+                const resAgents = await fetch(`${API_URL}/status`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (resAgents.status === 401) return logout(); // Handle 401

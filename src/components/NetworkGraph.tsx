@@ -40,7 +40,7 @@ export const NetworkTopology = () => {
             // but for now we trust the API or handle error.
 
             if (!token) return;
-            const res = await fetch(`${API_URL}/api/dashboard/topology`, {
+            const res = await fetch(`${API_URL}/dashboard/topology`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 

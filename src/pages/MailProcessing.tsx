@@ -32,7 +32,7 @@ export default function MailProcessing() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/mail/`, {
+            const res = await fetch(`${API_URL}/mail/`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -187,7 +187,7 @@ export default function MailProcessing() {
                                                         <span className="text-xs text-gray-500">({formatBytes(att.Size)})</span>
                                                     </div>
                                                     <a
-                                                        href={`${API_URL}/api/mail/attachment/${att.Id}`}
+                                                        href={`${API_URL}/mail/attachment/${att.Id}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
                                                         className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1 transition-colors"

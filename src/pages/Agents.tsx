@@ -55,12 +55,12 @@ export default function Agents() {
 
     const fetchStats = useCallback(async (dateStr?: string) => {
         try {
-            let url = `${API_URL}/api/dashboard/stats?hours=24`;
+            let url = `${API_URL}/dashboard/stats?hours=24`;
             if (dateStr) {
                 // Ensure we request the full UTC day corresponding to the selected date string (YYYY-MM-DD)
                 const from = `${dateStr}T00:00:00Z`;
                 const to = `${dateStr}T23:59:59Z`;
-                url = `${API_URL}/api/dashboard/stats?from_date=${from}&to_date=${to}`;
+                url = `${API_URL}/dashboard/stats?from_date=${from}&to_date=${to}`;
             }
             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) setStats(await res.json());
@@ -78,7 +78,7 @@ export default function Agents() {
         try {
             const query = user?.tenantId ? `?tenantId=${user.tenantId}` : '';
             if (!token) return;
-            const res = await fetch(`${API_URL}/api/status${query}`, {
+            const res = await fetch(`${API_URL}/status${query}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.status === 401) {
@@ -124,7 +124,7 @@ export default function Agents() {
 
     const handleToggleNetwork = async (agentId: string, currentStatus: boolean) => {
         try {
-            const res = await fetch(`${API_URL}/api/agents/${agentId}/toggle-network?enabled=${!currentStatus}`, {
+            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-network?enabled=${!currentStatus}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -134,7 +134,7 @@ export default function Agents() {
 
     const handleToggleFile = async (agentId: string, currentStatus: boolean) => {
         try {
-            const res = await fetch(`${API_URL}/api/agents/${agentId}/toggle-file-dlp?enabled=${!currentStatus}`, {
+            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-file-dlp?enabled=${!currentStatus}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -145,7 +145,7 @@ export default function Agents() {
     // [NEW] Toggle USB
     const handleToggleUsb = async (agentId: string, currentStatus: boolean) => {
         try {
-            const res = await fetch(`${API_URL}/api/agents/${agentId}/toggle-usb?enabled=${!currentStatus}`, {
+            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-usb?enabled=${!currentStatus}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -168,7 +168,7 @@ export default function Agents() {
 
     useEffect(() => {
         if (showDeployModal && !tenantApiKey && token) {
-            fetch(`${API_URL}/api/tenants/api-key`, {
+            fetch(`${API_URL}/tenants/api-key`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
                 .then(res => res.json())
@@ -184,7 +184,7 @@ export default function Agents() {
 
     const handleGenerateToken = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/install/token`, {
+            const res = await fetch(`${API_URL}/install/token`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -207,10 +207,10 @@ export default function Agents() {
             let filename = '';
 
             if (os === 'windows') {
-                downloadUrl = `${API_URL}/api/downloads/script?key=${tenantApiKey}`;
+                downloadUrl = `${API_URL}/downloads/script?key=${tenantApiKey}`;
                 filename = 'monitorix-install.ps1';
             } else {
-                downloadUrl = `${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os_type=${os}&payload=false`;
+                downloadUrl = `${API_URL}/downloads/public/agent?key=${tenantApiKey}&os_type=${os}&payload=false`;
                 filename = 'monitorix-install.sh';
             }
 
@@ -242,7 +242,7 @@ export default function Agents() {
     // [NEW] Toggle Location
     const handleToggleLocation = async (agentId: string, currentStatus: boolean) => {
         try {
-            const res = await fetch(`${API_URL}/api/agents/${agentId}/toggle-location?enabled=${!currentStatus}`, {
+            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-location?enabled=${!currentStatus}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -268,7 +268,7 @@ export default function Agents() {
         if (!confirm(`Are you sure you want to delete this agent (${finalId})? This action cannot be undone.`)) return;
 
         try {
-            const res = await fetch(`${API_URL}/api/agents/${finalId}`, {
+            const res = await fetch(`${API_URL}/agents/${finalId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -363,7 +363,7 @@ export default function Agents() {
         const fetchData = async () => {
             try {
                 // 1. Fetch Security Events
-                const eventsRes = await fetch(`${API_URL}/api/events/${selectedAgentId}`, {
+                const eventsRes = await fetch(`${API_URL}/events/${selectedAgentId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 let eventsData = await eventsRes.json();
@@ -375,7 +375,7 @@ export default function Agents() {
                 }));
 
                 // 2. Fetch Metrics History
-                const historyRes = await fetch(`${API_URL}/api/history/${selectedAgentId}`, {
+                const historyRes = await fetch(`${API_URL}/history/${selectedAgentId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 let historyData: AgentReport[] = await historyRes.json();
@@ -521,7 +521,7 @@ export default function Agents() {
     const handleSimulateEvent = async () => {
         if (!selectedAgentId) return;
         try {
-            await fetch(`${API_URL}/api/events/simulate/${selectedAgentId}`, { method: 'POST' });
+            await fetch(`${API_URL}/events/simulate/${selectedAgentId}`, { method: 'POST' });
         } catch (e) {
             console.error("Failed to trigger simulation", e);
         }
@@ -718,10 +718,10 @@ export default function Agents() {
                                     <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">PowerShell Command (Run as Admin)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-12">
-                                            powershell -Ep Bypass -C "irm '{API_URL}/api/downloads/script?key={tenantApiKey || 'Loading...'}' | iex"
+                                            powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key={tenantApiKey || 'Loading...'}' | iex"
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm '${API_URL}/api/downloads/script?key=${tenantApiKey}' | iex"`).then(() => alert("Copied!"))}
+                                            onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key=${tenantApiKey}' | iex"`).then(() => alert("Copied!"))}
                                             className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >
@@ -734,10 +734,10 @@ export default function Agents() {
                                     <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">Terminal Command</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-12">
-                                            curl -sL "{API_URL}/api/downloads/public/agent?key={tenantApiKey || 'Loading...'}&os_type={deployOS}" | bash
+                                            curl -sL "https://monitorix.co.in/api/downloads/public/agent?key={tenantApiKey || 'Loading...'}&os_type={deployOS}" | bash
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/api/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | bash`).then(() => alert("Copied!"))}
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "https://monitorix.co.in/api/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | bash`).then(() => alert("Copied!"))}
                                             className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >

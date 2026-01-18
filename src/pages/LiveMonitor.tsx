@@ -43,7 +43,7 @@ export default function LiveMonitor() {
             if (!token) return;
             try {
                 const query = user?.tenantId ? `?tenantId=${user.tenantId}` : '';
-                const res = await fetch(`${API_URL}/api/status${query}`, {
+                const res = await fetch(`${API_URL}/status${query}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
@@ -72,7 +72,7 @@ export default function LiveMonitor() {
         if (!selectedAgentId || !token) return;
 
         // 1. Fetch History
-        fetch(`${API_URL}/api/events/${selectedAgentId}`, {
+        fetch(`${API_URL}/events/${selectedAgentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
             .then(res => res.json())

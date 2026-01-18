@@ -23,7 +23,7 @@ export default function Billing() {
     const fetchBilling = async () => {
         if (!user?.tenantId) return;
         try {
-            const res = await fetch(`${API_URL}/api/billing?tenantId=${user.tenantId}`, {
+            const res = await fetch(`${API_URL}/billing?tenantId=${user.tenantId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) setInfo(await res.json());
@@ -42,7 +42,7 @@ export default function Billing() {
 
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/billing/upgrade?tenantId=${user.tenantId}&newPlan=${newPlan}`, {
+            const res = await fetch(`${API_URL}/billing/upgrade?tenantId=${user.tenantId}&newPlan=${newPlan}`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

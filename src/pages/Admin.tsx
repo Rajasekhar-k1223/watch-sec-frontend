@@ -25,7 +25,7 @@ export default function Admin() {
 
     const fetchUsers = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/users`, {
+            const res = await fetch(`${API_URL}/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {

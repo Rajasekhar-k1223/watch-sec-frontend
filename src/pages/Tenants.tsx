@@ -36,7 +36,7 @@ export default function Tenants() {
 
     const fetchTenants = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/tenants`, {
+            const res = await fetch(`${API_URL}/tenants`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -53,7 +53,7 @@ export default function Tenants() {
 
         setIsCreating(true);
         try {
-            const res = await fetch(`${API_URL}/api/tenants`, {
+            const res = await fetch(`${API_URL}/tenants`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

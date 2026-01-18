@@ -21,7 +21,7 @@ export default function SystemAudit() {
 
     useEffect(() => {
         const fetchLogs = async () => {
-            const res = await fetch(`${API_URL}/api/audit?tenantId=${user?.tenantId || ''}`, {
+            const res = await fetch(`${API_URL}/audit?tenantId=${user?.tenantId || ''}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {

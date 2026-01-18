@@ -36,7 +36,7 @@ export default function Settings() {
 
         setIsLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/users/change-password`, {
+            const res = await fetch(`${API_URL}/users/change-password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

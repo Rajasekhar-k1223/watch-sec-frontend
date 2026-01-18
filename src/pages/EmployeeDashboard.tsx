@@ -13,7 +13,7 @@ export default function EmployeeDashboard() {
         const fetchStats = async () => {
             if (!token) return;
             try {
-                const res = await fetch(`${API_URL}/api/productivity/me`, {
+                const res = await fetch(`${API_URL}/productivity/me`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) setStats(await res.json());

@@ -13,7 +13,7 @@ export default function Reports() {
 
     useEffect(() => {
         if (!token) return;
-        fetch(`${API_URL}/api/reports`, {
+        fetch(`${API_URL}/reports`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
             .then(res => res.json())
@@ -23,7 +23,7 @@ export default function Reports() {
 
     const handleGenerate = async () => {
         try {
-            const res = await fetch(`${API_URL}/api/reports/generate`, {
+            const res = await fetch(`${API_URL}/reports/generate`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -22,7 +22,7 @@ export default function ImageRecognition() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/api/ocr`, {
+            const res = await fetch(`${API_URL}/ocr`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -41,7 +41,7 @@ export default function ImageRecognition() {
 
     const triggerSimulation = async () => {
         // Simulate processing a random screenshot
-        await fetch(`${API_URL}/api/ocr/process/simulated-screen-123?agentId=DESKTOP-DEMO`, {
+        await fetch(`${API_URL}/ocr/process/simulated-screen-123?agentId=DESKTOP-DEMO`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
         });
