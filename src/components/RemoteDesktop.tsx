@@ -1,13 +1,14 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Lock, Wifi, WifiOff, Video, StopCircle, Maximize2, Minimize2, Play, Square } from 'lucide-react';
+import { Lock, Wifi, WifiOff, Video, StopCircle, Maximize2, Minimize2, Play, Square, EyeOff, Eye } from 'lucide-react';
 import { API_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 
 interface Props {
     agentId: string;
+    token: string | null;
 }
 
-export default function RemoteDesktop({ agentId }: Props) {
+export default function RemoteDesktop({ agentId, token }: Props) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const socketRef = useRef<Socket | null>(null);
@@ -16,6 +17,9 @@ export default function RemoteDesktop({ agentId }: Props) {
 
     // Recording State
     const [isRecording, setIsRecording] = useState(false);
+
+    // Privacy State
+    const [isPrivacyMode, setIsPrivacyMode] = useState(false);
 
     // Fullscreen State
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -27,6 +31,8 @@ export default function RemoteDesktop({ agentId }: Props) {
         const socket = io(API_URL, {
             transports: ['websocket'],
             reconnection: true,
+            auth: { token: token }, // Pass token
+            query: { token: token } // Fallback
         });
         socketRef.current = socket;
 
@@ -124,6 +130,12 @@ export default function RemoteDesktop({ agentId }: Props) {
         }
     };
 
+    const handleTogglePrivacy = () => {
+        const newState = !isPrivacyMode;
+        sendInput('block_input', { enabled: newState });
+        setIsPrivacyMode(newState);
+    };
+
     const handleToggleFullscreen = () => {
         if (!document.fullscreenElement) {
             containerRef.current?.requestFullscreen().catch(err => console.error(err));
@@ -204,6 +216,14 @@ export default function RemoteDesktop({ agentId }: Props) {
 
                     <button onClick={handleLock} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1 rounded border border-gray-700 flex items-center gap-1 transition-colors">
                         <Lock size={12} /> Lock
+                    </button>
+
+                    <button
+                        onClick={handleTogglePrivacy}
+                        className={`px-2 py-1 rounded border flex items-center gap-1 transition-colors ${isPrivacyMode ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}
+                        title="Privacy Mode: Block User Input & Blank Screen"
+                    >
+                        {isPrivacyMode ? <EyeOff size={12} /> : <Eye size={12} />} {isPrivacyMode ? 'Unblock' : 'Block User'}
                     </button>
 
                     <button onClick={handleToggleFullscreen} className="bg-gray-800 hover:bg-gray-700 text-gray-300 p-1.5 rounded border border-gray-700 transition-colors" title="Toggle Fullscreen">

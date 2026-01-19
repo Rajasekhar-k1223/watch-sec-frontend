@@ -410,7 +410,8 @@ export default function Agents() {
         fetchData();
 
         const socket = io(API_URL, {
-            query: { token: token },
+            auth: { token: token }, // Pass token in auth object for better compatibility
+            query: { token: token }, // Keep query for fallback
             transports: ['websocket']
         });
         socketRef.current = socket;
@@ -986,7 +987,7 @@ export default function Agents() {
 
                             {viewMode === 'remote' && (
                                 <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 font-sans">
-                                    <RemoteDesktop agentId={selectedAgentId!} />
+                                    <RemoteDesktop agentId={selectedAgentId!} token={token} />
                                 </div>
                             )}
 

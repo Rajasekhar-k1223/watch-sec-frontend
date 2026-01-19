@@ -26,7 +26,8 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [showInsights, setShowInsights] = useState(true);
-    const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
     const { logout } = useAuth();
 
     const fetchLogs = useCallback(() => {
@@ -34,10 +35,15 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
         setLoading(true);
 
         let url = `${apiUrl}/api/events/activity/${agentId}`;
-        if (selectedDate) {
-            const start = `${selectedDate}T00:00:00`;
-            const end = `${selectedDate}T23:59:59`;
-            url += `?start_date=${start}&end_date=${end}`;
+        if (startDate || endDate) {
+            let start = startDate ? `${startDate}T00:00:00` : '';
+            let end = endDate ? `${endDate}T23:59:59` : '';
+
+            const params = new URLSearchParams();
+            if (start) params.append('start_date', start);
+            if (end) params.append('end_date', end);
+
+            if (params.toString()) url += `?${params.toString()}`;
         }
 
         fetch(url, {
@@ -50,16 +56,16 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
             .then(data => { if (Array.isArray(data)) setLogs(data); })
             .catch(e => console.error(e))
             .finally(() => setLoading(false));
-    }, [agentId, logout, apiUrl, token, selectedDate]);
+    }, [agentId, logout, apiUrl, token, startDate, endDate]);
 
     useEffect(() => {
         fetchLogs();
         // Only auto-refresh if no date selected (Live Mode)
-        if (!selectedDate) {
+        if (!startDate && !endDate) {
             const interval = setInterval(fetchLogs, 30000);
             return () => clearInterval(interval);
         }
-    }, [fetchLogs, selectedDate]);
+    }, [fetchLogs, startDate, endDate]);
 
     // Data Processing for Charts
     const { volumeData, topApps, timeMetrics } = useMemo(() => {
@@ -132,8 +138,9 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
 
     // Real-time updates via Socket.IO
     useEffect(() => {
-        if (!agentId || selectedDate) return; // Disable live updates if filtering history
+        if (!agentId || startDate || endDate) return; // Disable live updates if filtering history
         const socket = io(API_URL); // Use API_URL from config
+        // ... (rest is same, no changes needed inside)
 
         socket.on('connect', () => {
             console.log("ActivityViewer Connected to Socket");
@@ -149,7 +156,7 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
             socket.off('new_client_activity');
             socket.disconnect();
         };
-    }, [agentId, selectedDate]);
+    }, [agentId, startDate, endDate]);
 
     const handleDownloadReport = async () => {
         try {
@@ -186,26 +193,36 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
             <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                 <div className="flex items-center gap-3">
                     <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300">Activity History</h4>
-                    {selectedDate && (
+                    {(startDate || endDate) && (
                         <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border border-yellow-500/20 uppercase">
-                            Historical Data ({selectedDate})
+                            Filtered ({startDate} - {endDate || 'Now'})
                         </span>
                     )}
                 </div>
                 <div className="flex gap-2 items-center">
-                    <div className="relative flex items-center">
+                    <div className="relative flex items-center gap-1">
                         <div className="absolute left-2 text-gray-400 dark:text-gray-500 pointer-events-none">
                             <Calendar className="w-3 h-3" />
                         </div>
                         <input
                             type="date"
-                            className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-300 text-xs rounded pl-7 pr-2 py-1 focus:outline-none focus:border-blue-500 transition-colors"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
+                            className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-300 text-xs rounded pl-7 pr-2 py-1 focus:outline-none focus:border-blue-500 transition-colors w-28"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            placeholder="Start"
                         />
-                        {selectedDate && (
+                        <span className="text-gray-400">-</span>
+                        <input
+                            type="date"
+                            className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-300 text-xs rounded pl-2 pr-2 py-1 focus:outline-none focus:border-blue-500 transition-colors w-28"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            placeholder="End"
+                            min={startDate}
+                        />
+                        {(startDate || endDate) && (
                             <button
-                                onClick={() => setSelectedDate('')}
+                                onClick={() => { setStartDate(''); setEndDate(''); }}
                                 className="ml-1 text-xs text-blue-400 hover:text-white"
                                 title="Clear Filter (Show Live)"
                             >

@@ -40,7 +40,8 @@ export default function Productivity() {
     const [data, setData] = useState<ProductivityData | null>(null);
     const [loading, setLoading] = useState(false);
 
-    const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
 
     // 1. Fetch Agents List First
     useEffect(() => {
@@ -62,10 +63,27 @@ export default function Productivity() {
         setLoading(true);
 
         let url = `${API_URL}/productivity/summary/${selectedAgent}`;
-        if (selectedDate) {
-            const from = `${selectedDate}T00:00:00`;
-            const to = `${selectedDate}T23:59:59`;
-            url += `?from_date=${from}&to_date=${to}`;
+
+        if (startDate || endDate) {
+            // Default From to Start of Day, To to End of Day
+            // If only one is selected, default the other to the same day (single day view)
+            // or just leave open-ended? Better to enforce logic.
+
+            let from = startDate ? `${startDate}T00:00:00` : '';
+            let to = endDate ? `${endDate}T23:59:59` : '';
+
+            // Auto-fill missing bound for single-day UX if preferred, OR allow open ranges.
+            // Let's allow open ranges if backend supports it.
+            // Backend `productivity.py` checks `if from_date:` and `if to_date:` independently.
+
+            const params = new URLSearchParams();
+            if (from) params.append('from_date', from);
+            if (to) params.append('to_date', to);
+
+            // If explicit range, override default days=7
+            if (params.toString()) {
+                url += `?${params.toString()}`;
+            }
         }
 
         fetch(url, {
@@ -84,7 +102,7 @@ export default function Productivity() {
             })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, [selectedAgent, token, selectedDate]);
+    }, [selectedAgent, token, startDate, endDate]);
 
     const formatTime = (sec: number) => {
         const h = Math.floor(sec / 3600);
@@ -113,18 +131,27 @@ export default function Productivity() {
                 </div>
 
                 <div className="flex gap-3">
-                    <div className="flex glass-panel rounded-lg p-1 items-center">
+                    <div className="flex glass-panel rounded-lg p-1 items-center gap-2">
                         <input
                             type="date"
-                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-4 py-2 outline-none cursor-pointer"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            title="Filter by Date"
+                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-2 py-2 outline-none cursor-pointer"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            title="From Date"
                         />
-                        {selectedDate && (
+                        <span className="text-gray-400 text-xs">to</span>
+                        <input
+                            type="date"
+                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-2 py-2 outline-none cursor-pointer"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            title="To Date"
+                            min={startDate}
+                        />
+                        {(startDate || endDate) && (
                             <button
-                                onClick={() => setSelectedDate('')}
-                                className="mr-2 text-xs text-blue-400 hover:text-white font-bold"
+                                onClick={() => { setStartDate(''); setEndDate(''); }}
+                                className="mr-2 text-xs text-blue-400 hover:text-white font-bold px-2 py-1 hover:bg-white/10 rounded"
                             >
                                 CLEAR
                             </button>
