@@ -4,7 +4,7 @@ import {
     LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend
 } from 'recharts';
-import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video } from 'lucide-react';
+import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, Calendar } from 'lucide-react';
 import { API_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +32,20 @@ export default function LiveMonitor() {
     const [screens] = useState<Record<string, boolean>>({});
     const [isStreamActive, setIsStreamActive] = useState(false);
     const [activeTab, setActiveTab] = useState<'stream' | 'analytics'>('stream');
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date();
+        d.setHours(d.getHours() - 24);
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+    const setQuickFilter = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+        setStartDate(start.toISOString().split('T')[0]);
+        setEndDate(end.toISOString().split('T')[0]);
+    };
 
     // Refs
     const socketRef = useRef<Socket | null>(null);
@@ -72,7 +86,11 @@ export default function LiveMonitor() {
         if (!selectedAgentId || !token) return;
 
         // 1. Fetch History
-        fetch(`${API_URL}/events/${selectedAgentId}`, {
+        const params = new URLSearchParams();
+        if (startDate) params.append('start_date', startDate + "T00:00:00");
+        if (endDate) params.append('end_date', endDate + "T23:59:59");
+
+        fetch(`${API_URL}/events/${selectedAgentId}?${params.toString()}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
             .then(res => res.json())
@@ -110,7 +128,7 @@ export default function LiveMonitor() {
                 socketRef.current = null;
             }
         };
-    }, [selectedAgentId, token]);
+    }, [selectedAgentId, token, startDate, endDate]);
 
 
     // Stream Handlers
@@ -328,7 +346,77 @@ export default function LiveMonitor() {
                     {/* RIGHT COL: Event Log */}
                     <div className="glass-panel border-gray-200 dark:border-gray-700/50 rounded-xl p-0 flex flex-col h-full lg:h-auto overflow-hidden shadow-lg">
                         <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50/10 dark:bg-black/20">
-                            <h3 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white"><ShieldAlert size={18} className="text-red-400" /> Event Feed</h3>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+                                    <ShieldAlert size={18} className="text-red-400" /> Event Feed
+                                </h3>
+                            </div>
+
+                            {/* Simulate Event Button (Top of stack) */}
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        // Use a default agent ID for simulation if none selected, or the selected one
+                                        const targetId = selectedAgentId || 'vmi3011362-root-F39F2ABC';
+                                        const res = await fetch(`${API_URL}/api/events/simulate/${targetId}`, {
+                                            method: 'POST',
+                                            headers: { 'Authorization': `Bearer ${token}` }
+                                        });
+                                        if (res.ok) {
+                                            alert("Event Simulated!");
+                                        }
+                                    } catch (e) { console.error(e); }
+                                }}
+                                className="w-full mb-3 px-3 py-2 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold border border-red-600/50 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <ShieldAlert size={14} /> Simulate Event
+                            </button>
+
+                            {/* Standardized Filtering UI (Stacked) */}
+                            <div className="flex flex-col gap-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3 mb-2">
+                                <div className="flex justify-between items-center">
+                                    <div className="flex bg-gray-200 dark:bg-gray-800 rounded p-1 shadow-inner">
+                                        <button onClick={() => setQuickFilter(1)} className={`text-[10px] px-3 py-1 rounded transition-colors font-bold ${startDate === new Date(Date.now() - 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-200'}`}>24H</button>
+                                        <button onClick={() => setQuickFilter(7)} className={`text-[10px] px-3 py-1 rounded transition-colors font-bold ${startDate === new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-200'}`}>7D</button>
+                                        <button onClick={() => setQuickFilter(30)} className={`text-[10px] px-3 py-1 rounded transition-colors font-bold ${startDate === new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-200'}`}>30D</button>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setStartDate('');
+                                            setEndDate('');
+                                        }}
+                                        className="text-[10px] text-gray-500 hover:text-red-500 font-bold px-2 uppercase tracking-wide"
+                                    >
+                                        Clear
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-2 bg-gray-200/50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-700/50">
+                                    <Calendar size={14} className="text-gray-500" />
+                                    <div className="flex flex-col flex-1 gap-1">
+                                        <input
+                                            type="date"
+                                            value={startDate}
+                                            onChange={(e) => setStartDate(e.target.value)}
+                                            className="bg-transparent text-[11px] text-gray-600 dark:text-gray-300 outline-none w-full"
+                                        />
+                                        <div className="h-px bg-gray-300 dark:bg-gray-700 w-full my-0.5"></div>
+                                        <input
+                                            type="date"
+                                            value={endDate}
+                                            onChange={(e) => setEndDate(e.target.value)}
+                                            className="bg-transparent text-[11px] text-gray-600 dark:text-gray-300 outline-none w-full"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            {startDate && (
+                                <div className="mt-1">
+                                    <span className="text-[10px] bg-blue-500/10 text-blue-500 px-3 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider block w-full text-center">
+                                        Showing: {startDate.split('-').reverse().join('-')} to {endDate.split('-').reverse().join('-')}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs custom-scrollbar">
                             {events[selectedAgentId]?.map((evt, i) => (

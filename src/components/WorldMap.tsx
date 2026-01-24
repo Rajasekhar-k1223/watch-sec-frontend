@@ -74,7 +74,7 @@ export default function WorldMap({ agents }: WorldMapProps) {
                     {markers.map((agent, idx) => (
                         <Marker
                             key={idx}
-                            position={[agent.latitude, agent.longitude]}
+                            position={[agent.latitude || 0, agent.longitude || 0]}
                             icon={agent.icon}
                         >
                             <Popup className="custom-popup">
@@ -82,7 +82,7 @@ export default function WorldMap({ agents }: WorldMapProps) {
                                     <div className="font-bold text-gray-900">{agent.agentId}</div>
                                     <div className="text-xs text-gray-600">Status: {agent.status}</div>
                                     <div className="text-xs text-gray-500 mt-1 font-mono">
-                                        {agent.latitude.toFixed(2)}, {agent.longitude.toFixed(2)}
+                                        {(agent.latitude || 0).toFixed(2)}, {(agent.longitude || 0).toFixed(2)}
                                     </div>
                                 </div>
                             </Popup>

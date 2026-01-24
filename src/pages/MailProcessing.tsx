@@ -1,6 +1,6 @@
 
-import { Mail, ShieldAlert, CheckCircle, Paperclip, RefreshCw, Eye, EyeOff, Printer, Download, FileText, File } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Mail, ShieldAlert, CheckCircle, Paperclip, RefreshCw, Eye, EyeOff, Printer, Download, FileText, File, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -28,11 +28,23 @@ export default function MailProcessing() {
     const [logs, setLogs] = useState<MailLog[]>([]);
     const [selectedLog, setSelectedLog] = useState<MailLog | null>(null);
     const [loading, setLoading] = useState(true);
+    const [startDate, setStartDate] = useState<string>(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/mail/`, {
+            let url = `${API_URL}/mail/`;
+            const params = new URLSearchParams();
+            if (startDate) params.append('start_date', `${startDate}T00:00:00`);
+            if (endDate) params.append('end_date', `${endDate}T23:59:59`);
+            if (params.toString()) url += `?${params.toString()}`;
+
+            const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -43,15 +55,24 @@ export default function MailProcessing() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, startDate, endDate]);
 
     useEffect(() => {
         if (token) {
             fetchLogs();
-            const interval = setInterval(fetchLogs, 5000);
+            const interval = setInterval(fetchLogs, 30000);
             return () => clearInterval(interval);
         }
-    }, [token]);
+    }, [token, fetchLogs]);
+
+    const setQuickFilter = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - days);
+        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+        setStartDate(formatDate(start));
+        setEndDate(formatDate(end));
+    };
 
     const handlePrint = () => {
         const content = document.getElementById('mail-print-area')?.innerHTML;
@@ -109,7 +130,36 @@ export default function MailProcessing() {
                         Intercept, inspect, and audit email traffic from Outlook and Webmail.
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-4 items-center">
+                    {(startDate || endDate) && (
+                        <div className="text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded uppercase inline-block">
+                            Showing: {startDate.split('-').reverse().join('-')} - {(endDate || '').split('-').reverse().join('-')}
+                        </div>
+                    )}
+                    <div className="flex bg-gray-800 border border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner">
+                        <div className="flex bg-gray-700 rounded p-0.5 mr-1">
+                            <button onClick={() => setQuickFilter(1)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-600 rounded transition-all text-gray-400">24H</button>
+                            <button onClick={() => setQuickFilter(7)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-600 rounded transition-all text-gray-400 border-l border-gray-700">7D</button>
+                            <button onClick={() => setQuickFilter(30)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-600 rounded transition-all text-gray-400 border-l border-gray-700">30D</button>
+                        </div>
+                        <Calendar className="w-3.5 h-3.5 text-gray-500 ml-1" />
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="bg-transparent border-none text-gray-300 text-xs focus:ring-0 w-28 p-0"
+                        />
+                        <span className="text-gray-500 text-[10px]">-</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="bg-transparent border-none text-gray-300 text-xs focus:ring-0 w-28 p-0"
+                        />
+                        {(startDate || endDate) && (
+                            <button onClick={() => { setStartDate(''); setEndDate(''); }} className="px-2 text-[10px] font-bold text-teal-500 hover:text-teal-400 uppercase">Clear</button>
+                        )}
+                    </div>
                     <button
                         onClick={handleExportCSV}
                         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold text-xs"
@@ -120,7 +170,7 @@ export default function MailProcessing() {
                         onClick={fetchLogs}
                         className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold text-xs"
                     >
-                        <RefreshCw size={16} /> Refresh
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
                     </button>
                 </div>
             </div>

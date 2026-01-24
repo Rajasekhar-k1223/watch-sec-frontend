@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, Calendar } from 'lucide-react';
+import { useCallback } from 'react';
 
 interface Props {
     agentId: string | null;
@@ -20,22 +21,79 @@ const normalizeTimestamp = (ts: any) => {
 export default function MailLogViewer({ agentId, apiUrl, token }: Props) {
     const [mails, setMails] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [startDate, setStartDate] = useState<string>(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
-    useEffect(() => {
+    const fetchLogs = useCallback(() => {
         if (!agentId || !token) return;
         setLoading(true);
-        fetch(`${apiUrl}/api/mail/${agentId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        let url = `${apiUrl}/api/mail/${agentId}`;
+        const params = new URLSearchParams();
+        if (startDate) params.append('start_date', `${startDate}T00:00:00`);
+        if (endDate) params.append('end_date', `${endDate}T23:59:59`);
+        if (params.toString()) url += `?${params.toString()}`;
+
+        fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
             .then(res => res.json())
             .then(data => { if (Array.isArray(data)) setMails(data); })
             .catch(e => console.error(e))
             .finally(() => setLoading(false));
-    }, [agentId, apiUrl, token]);
+    }, [agentId, apiUrl, token, startDate, endDate]);
+
+    useEffect(() => {
+        fetchLogs();
+    }, [fetchLogs]);
+
+    const setQuickFilter = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - days);
+        const formatDate = (d: Date) => d.toISOString().split('T')[0];
+        setStartDate(formatDate(start));
+        setEndDate(formatDate(end));
+    };
 
     return (
         <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
             <div className="p-4 border-b border-gray-700 bg-gray-800 flex justify-between items-center">
-                <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2"><Mail size={16} /> Email Interception Logs</h4>
-                <div className="text-xs text-gray-500">{mails.length} Records</div>
+                <div className="flex items-center gap-3">
+                    <h4 className="text-sm font-bold text-gray-300 flex items-center gap-2"><Mail size={16} /> Email Interception Logs</h4>
+                </div>
+                <div className="flex gap-4 items-center">
+                    {(startDate || endDate) && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 uppercase">
+                            Showing: {startDate.split('-').reverse().join('-')} - {(endDate || '').split('-').reverse().join('-')}
+                        </span>
+                    )}
+                    <div className="flex bg-gray-900 border border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner">
+                        <div className="flex bg-gray-800 rounded p-0.5 mr-1">
+                            <button onClick={() => setQuickFilter(1)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-700 rounded transition-all text-gray-400">24H</button>
+                            <button onClick={() => setQuickFilter(7)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-700 rounded transition-all text-gray-400 border-l border-gray-700">7D</button>
+                            <button onClick={() => setQuickFilter(30)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-700 rounded transition-all text-gray-400 border-l border-gray-700">30D</button>
+                        </div>
+                        <Calendar className="w-3.5 h-3.5 text-gray-500 ml-1" />
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="bg-transparent border-none text-gray-300 text-xs focus:ring-0 w-28 p-0"
+                        />
+                        <span className="text-gray-500 text-[10px]">-</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="bg-transparent border-none text-gray-300 text-xs focus:ring-0 w-28 p-0"
+                        />
+                        {(startDate || endDate) && (
+                            <button onClick={() => { setStartDate(''); setEndDate(''); }} className="px-2 text-[10px] font-bold text-teal-500 hover:text-teal-400 uppercase">Clear</button>
+                        )}
+                    </div>
+                </div>
             </div>
             <table className="w-full text-left text-sm">
                 <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs sticky top-0">

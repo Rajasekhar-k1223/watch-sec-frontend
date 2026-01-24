@@ -1,17 +1,17 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
 import AgentCapabilitiesModal from '../components/AgentCapabilitiesModal'; // [NEW]
 // import MailProcessing from './MailProcessing.tsx'; 
 import MailLogViewer from '../components/MailLogViewer';
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
-import { API_URL } from '../config';
+import { API_URL, SOCKET_URL } from '../config';
 import { Analytics } from '../services/analytics';
 
 interface AgentReport {
@@ -23,11 +23,14 @@ interface AgentReport {
     memoryUsage: number;
     timestamp: string;
     hostname: string;
-    locationTrackingEnabled: boolean; // [NEW]
+    locationTrackingEnabled: boolean;
     usbBlockingEnabled: boolean;
-    networkMonitoringEnabled: boolean; // [NEW]
-    fileDlpEnabled: boolean; // [NEW]
-    hardwareJson?: string; // [NEW]
+    networkMonitoringEnabled: boolean;
+    fileDlpEnabled: boolean;
+    hardwareJson?: string;
+    powerStatusJson?: string; // [NEW]
+    version?: string;
+    targetVersion?: string;
 }
 
 // Helper for consistent date parsing (SQL -> ISO UTC -> Local)
@@ -52,6 +55,22 @@ export default function Agents() {
 
     const [stats, setStats] = useState<any>(null);
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [agentSearch, setAgentSearch] = useState('');
+
+    const [modalStartDate, setModalStartDate] = useState(() => {
+        const d = new Date();
+        d.setHours(d.getHours() - 24);
+        return d.toISOString().split('T')[0];
+    });
+    const [modalEndDate, setModalEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+    const setModalQuickFilter = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+        setModalStartDate(start.toISOString().split('T')[0]);
+        setModalEndDate(end.toISOString().split('T')[0]);
+    };
 
     const fetchStats = useCallback(async (dateStr?: string) => {
         try {
@@ -78,7 +97,8 @@ export default function Agents() {
         try {
             const query = user?.tenantId ? `?tenantId=${user.tenantId}` : '';
             if (!token) return;
-            const res = await fetch(`${API_URL}/status${query}`, {
+            // Use standard /agents endpoint instead of dashboard status
+            const res = await fetch(`${API_URL}/agents${query}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.status === 401) {
@@ -98,11 +118,15 @@ export default function Agents() {
                         timestamp: normalizeTimestamp(a.timestamp || a.Timestamp),
                         tenantId: a.tenantId ?? a.TenantId ?? 0,
                         agentId: a.agentId || a.AgentId || 'Unknown',
+                        hostname: a.hostname || a.Hostname || 'Unknown',
                         locationTrackingEnabled: a.locationTrackingEnabled ?? a.LocationTrackingEnabled ?? false,
                         usbBlockingEnabled: a.usbBlockingEnabled ?? a.UsbBlockingEnabled ?? false,
                         networkMonitoringEnabled: a.networkMonitoringEnabled ?? a.NetworkMonitoringEnabled ?? false,
                         fileDlpEnabled: a.fileDlpEnabled ?? a.FileDlpEnabled ?? false,
-                        hardwareJson: a.hardwareJson
+                        hardwareJson: a.hardwareJson || a.HardwareJson,
+                        powerStatusJson: a.powerStatusJson || a.PowerStatusJson,
+                        version: a.version || a.Version || '1.0.0',
+                        targetVersion: a.targetVersion || a.TargetVersion || '1.0.0'
                     };
                 });
 
@@ -122,6 +146,14 @@ export default function Agents() {
         }
     };
 
+    const filteredAgents = useMemo(() => {
+        return agents.filter(a =>
+            (a.hostname || '').toLowerCase().includes(agentSearch.toLowerCase()) ||
+            (a.agentId || '').toLowerCase().includes(agentSearch.toLowerCase()) ||
+            (a.status || '').toLowerCase().includes(agentSearch.toLowerCase())
+        );
+    }, [agents, agentSearch]);
+
     const handleToggleNetwork = async (agentId: string, currentStatus: boolean) => {
         try {
             const res = await fetch(`${API_URL}/agents/${agentId}/toggle-network?enabled=${!currentStatus}`, {
@@ -139,6 +171,22 @@ export default function Agents() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) fetchAgents();
+        } catch (e) { console.error(e); }
+    };
+
+    const handleUpdateAgent = async (agentId: string) => {
+        if (!window.confirm("Trigger remote software update for this agent?")) return;
+        try {
+            const res = await fetch(`${API_URL}/agents/${agentId}/update`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                alert("Update command sent to agent. It will update and restart shortly.");
+                fetchAgents();
+            } else {
+                alert("Failed to trigger update.");
+            }
         } catch (e) { console.error(e); }
     };
     // ... 
@@ -207,11 +255,13 @@ export default function Agents() {
             let filename = '';
 
             if (os === 'windows') {
-                downloadUrl = `${API_URL}/downloads/script?key=${tenantApiKey}`;
-                filename = 'monitorix-install.ps1';
+                // [UPDATED] Use Zip Bundle to bypass browser blocks and auto-install Root CA
+                downloadUrl = `${API_URL}/downloads/installer/exe?key=${tenantApiKey}&format=zip`;
+                filename = `monitorix-installer-${tenantApiKey}.zip`;
+                alert("Download Started!\n\nNOTE: The zip is password protected to avoid browser blocking.\n\nPassword: monitorix\n\n1. Unzip using password 'monitorix'.\n2. Run 'install.bat' to install safely.");
             } else {
                 downloadUrl = `${API_URL}/downloads/public/agent?key=${tenantApiKey}&os_type=${os}&payload=false`;
-                filename = 'monitorix-install.sh';
+                filename = 'monitorix-installer.sh';
             }
 
             const res = await fetch(downloadUrl);
@@ -362,8 +412,12 @@ export default function Agents() {
 
         const fetchData = async () => {
             try {
+                const params = new URLSearchParams();
+                if (modalStartDate) params.append('start_date', modalStartDate + "T00:00:00");
+                if (modalEndDate) params.append('end_date', modalEndDate + "T23:59:59");
+
                 // 1. Fetch Security Events
-                const eventsRes = await fetch(`${API_URL}/events/${selectedAgentId}`, {
+                const eventsRes = await fetch(`${API_URL}/events/${selectedAgentId}?${params.toString()}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 let eventsData = await eventsRes.json();
@@ -375,7 +429,7 @@ export default function Agents() {
                 }));
 
                 // 2. Fetch Metrics History
-                const historyRes = await fetch(`${API_URL}/history/${selectedAgentId}`, {
+                const historyRes = await fetch(`${API_URL}/history/${selectedAgentId}?${params.toString()}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 let historyData: AgentReport[] = await historyRes.json();
@@ -409,18 +463,23 @@ export default function Agents() {
 
         fetchData();
 
-        const socket = io(API_URL, {
+        const socket = io(SOCKET_URL, {
             auth: { token: token }, // Pass token in auth object for better compatibility
             query: { token: token }, // Keep query for fallback
-            transports: ['websocket']
+            transports: ['polling', 'websocket']
         });
         socketRef.current = socket;
 
         socket.on("connect", () => {
             setSocketStatus('Connected');
-            if (selectedAgentId) {
-                socket.emit("join_room", { room: selectedAgentId });
-                setSocketStatus(`Joined Room: ${selectedAgentId}`);
+            // [DEBUG] Log user state to backend
+            socket.emit("client_debug", { component: 'Agents', user: user, token: token ? 'HAS_TOKEN' : 'NO_TOKEN' });
+
+            socket.emit("client_debug", { component: 'ActivityLogViewer', user: user, agentId: selectedAgentId });
+
+            // Join the tenant room to receive activity updates
+            if (user?.tenantId) {
+                socket.emit("join_room", { room: `tenant_${user.tenantId}` });
             }
         });
 
@@ -499,7 +558,7 @@ export default function Agents() {
             setEvents([]);
             setIsStreaming(false);
         };
-    }, [selectedAgentId, token]);
+    }, [selectedAgentId, token, user?.tenantId, SOCKET_URL, modalStartDate, modalEndDate]);
 
     const handleViewLogs = (agentId: string) => {
         setSelectedAgentId(agentId);
@@ -688,6 +747,29 @@ export default function Agents() {
                         </div>
                     </div>
                 </div>
+
+
+
+                <div className="flex bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm items-center justify-between gap-4 transition-colors">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
+                        <input
+                            type="text"
+                            placeholder="Find agent (Hostname, ID, Status)..."
+                            className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-gray-200"
+                            value={agentSearch}
+                            onChange={(e) => setAgentSearch(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">
+                            {filteredAgents.length} Agents Found
+                        </div>
+                        <button onClick={() => fetchAgents()} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Refresh Fleet">
+                            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {showDeployModal && (
@@ -774,9 +856,24 @@ export default function Agents() {
                         <tr><th className="p-4">Agent ID</th><th className="p-4 hidden md:table-cell">Hostname</th><th className="p-4">Status</th><th className="p-4 hidden md:table-cell">Resources</th><th className="p-4 hidden md:table-cell">Last Seen</th><th className="p-4">Actions</th></tr>
                     </thead>
                     <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
-                        {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : agents.map(agent => (
+                        {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : filteredAgents.map((agent: AgentReport) => (
                             <tr key={agent.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
-                                <td className="p-4 font-bold text-gray-900 dark:text-white flex items-center gap-2"> <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" /> {agent.agentId} </td>
+                                <td className="p-4 font-bold text-gray-900 dark:text-white">
+                                    <div className="flex items-center gap-2">
+                                        <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                        {agent.agentId}
+                                    </div>
+                                    <div className="mt-1 flex gap-1">
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">
+                                            v{agent.version}
+                                        </span>
+                                        {agent.version !== agent.targetVersion && (
+                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 animate-pulse">
+                                                Update Pending
+                                            </span>
+                                        )}
+                                    </div>
+                                </td>
                                 <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-400 hidden md:table-cell"> {agent.hostname || 'Unknown'} </td>
                                 <td className="p-4">
                                     <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
@@ -787,6 +884,22 @@ export default function Agents() {
                                     <div className="text-xs space-y-1">
                                         <div className="flex justify-between w-32"> <span className="text-gray-500">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
                                         <div className="flex justify-between w-32"> <span className="text-gray-500">MEM:</span> <span className="text-gray-700 dark:text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
+                                        {agent.powerStatusJson && (
+                                            <div className="flex justify-between w-32 items-center">
+                                                <span className="text-gray-500">BAT:</span>
+                                                {(() => {
+                                                    try {
+                                                        const pwr = JSON.parse(agent.powerStatusJson);
+                                                        return (
+                                                            <span className={`flex items-center gap-1 ${pwr.battery_percent < 20 && !pwr.power_plugged ? 'text-red-500 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
+                                                                {pwr.power_plugged ? <Zap size={10} className="text-yellow-500" /> : <Monitor size={10} />}
+                                                                {pwr.battery_percent}%
+                                                            </span>
+                                                        );
+                                                    } catch (e) { return null; }
+                                                })()}
+                                            </div>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="p-4 text-gray-500 dark:text-gray-400 text-sm hidden md:table-cell"> {new Date(agent.timestamp).toLocaleString()} </td>
@@ -855,13 +968,61 @@ export default function Agents() {
                                     {viewMode === 'logs' && (
                                         <button onClick={() => setShowGraphs(!showGraphs)} className={`p-2 rounded-full transition-colors ${showGraphs ? 'bg-purple-900/50 text-purple-400' : 'hover:bg-gray-700 text-gray-400'}`} title="Toggle Graphs"> <Activity className="w-5 h-5" /> </button>
                                     )}
-                                    <button onClick={handleSimulateEvent} className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold border border-red-600/50"> Simulate Event </button>
+                                    {(() => {
+                                        const agent = agents.find(a => a.agentId === selectedAgentId);
+                                        if (agent && agent.version !== agent.targetVersion) {
+                                            return (
+                                                <button
+                                                    onClick={() => handleUpdateAgent(agent.agentId)}
+                                                    className="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20"
+                                                >
+                                                    <Download size={12} /> Update Software
+                                                </button>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                    {viewMode === 'logs' && (
+                                        <button onClick={handleSimulateEvent} className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold border border-red-600/50"> Simulate Event </button>
+                                    )}
                                     <button onClick={closeModal} className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white transition-colors"> <X className="w-6 h-6" /> </button>
                                 </div>
                             </div>
 
                             {viewMode === 'logs' && (
                                 <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 flex flex-col">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <div className="flex items-center gap-3">
+                                            {modalStartDate && (
+                                                <span className="text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider shadow-sm">
+                                                    Showing: {modalStartDate.split('-').reverse().join('-')} to {modalEndDate.split('-').reverse().join('-')}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner">
+                                            <div className="flex bg-gray-200 dark:bg-gray-900/50 rounded p-0.5">
+                                                <button onClick={() => setModalQuickFilter(1)} className={`text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>24H</button>
+                                                <button onClick={() => setModalQuickFilter(7)} className={`text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>7D</button>
+                                                <button onClick={() => setModalQuickFilter(30)} className={`text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>30D</button>
+                                            </div>
+                                            <Calendar size={14} className="text-gray-500 ml-1" />
+                                            <input
+                                                type="date"
+                                                value={modalStartDate}
+                                                onChange={(e) => setModalStartDate(e.target.value)}
+                                                className="bg-transparent text-[10px] text-gray-400 outline-none w-24"
+                                            />
+                                            <span className="text-gray-600 dark:text-gray-500 text-[10px]">-</span>
+                                            <input
+                                                type="date"
+                                                value={modalEndDate}
+                                                onChange={(e) => setModalEndDate(e.target.value)}
+                                                className="bg-transparent text-[10px] text-gray-400 outline-none w-24"
+                                            />
+                                            <button onClick={() => { setModalStartDate(''); setModalEndDate(''); }} className="text-[10px] text-gray-500 hover:text-red-500 font-bold px-2">Clear</button>
+                                        </div>
+                                    </div>
                                     {showGraphs && events.length > 0 && (
                                         <div className="mb-4 grid grid-cols-2 gap-4 h-48">
                                             <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
@@ -1070,6 +1231,38 @@ export default function Agents() {
                                                                 </div>
                                                             </div>
                                                         </div>
+
+                                                        {/* [NEW] Battery Analysis Section */}
+                                                        {(() => {
+                                                            try {
+                                                                const pwr = currentAgent?.powerStatusJson ? JSON.parse(currentAgent.powerStatusJson) : null;
+                                                                if (!pwr) return null;
+                                                                return (
+                                                                    <div className="mt-6 border-t border-gray-700 pt-6">
+                                                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-3">Power & Battery Analysis</label>
+                                                                        <div className="bg-gray-700/30 p-4 rounded-lg flex items-center justify-between">
+                                                                            <div className="flex items-center gap-4">
+                                                                                <div className={`p-3 rounded-full ${pwr.power_plugged ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-500'}`}>
+                                                                                    {pwr.power_plugged ? <Zap size={24} /> : <Monitor size={24} />}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="text-white font-bold text-xl">{pwr.battery_percent}%</div>
+                                                                                    <div className="text-xs text-gray-400 uppercase tracking-tighter">
+                                                                                        {pwr.power_plugged ? 'AC Power Connected' : 'Running on Battery'}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <div className="text-gray-400 text-xs mb-1">Estimated Time Remaining</div>
+                                                                                <div className="text-white font-mono">
+                                                                                    {pwr.time_left_min > 0 ? `${Math.floor(pwr.time_left_min / 60)}h ${pwr.time_left_min % 60}m` : (pwr.power_plugged ? 'Calculating...' : 'Unlimited')}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            } catch (e) { return null; }
+                                                        })()}
                                                     </div>
                                                 </div>
                                             );
