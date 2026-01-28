@@ -14,6 +14,7 @@ import MailProcessing from './pages/MailProcessing';
 import IcapServer from './pages/IcapServer';
 import ImageRecognition from './pages/ImageRecognition';
 import SpeechRecognition from './pages/SpeechRecognition';
+import Vulnerabilities from './pages/Vulnerabilities';
 import Login from './pages/Login';
 import Policies from './pages/Policies';
 import Reports from './pages/Reports';
@@ -75,6 +76,7 @@ function App() {
                 <Route path="/icap" element={<IcapServer />} />
                 <Route path="/image-recognition" element={<ImageRecognition />} />
                 <Route path="/speech-recognition" element={<SpeechRecognition />} />
+                <Route path="/vulnerabilities" element={<Vulnerabilities />} />
                 <Route path="/events" element={<LiveMonitor />} />
                 <Route path="/policies" element={<Policies />} />
                 <Route path="/reports" element={<Reports />} />

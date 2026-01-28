@@ -16,13 +16,13 @@ interface OCRLog {
 export default function ImageRecognition() {
     const { token } = useAuth();
     const [logs, setLogs] = useState<OCRLog[]>([]);
-    const [loading, setLoading] = useState(true);
-    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
+    const [searchAgent, setSearchAgent] = useState('');
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_URL}/ocr`, {
+            const query = searchAgent ? `?agent_id=${searchAgent}` : '';
+            const res = await fetch(`${API_URL}/ocr${query}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -37,7 +37,7 @@ export default function ImageRecognition() {
 
     useEffect(() => {
         if (token) fetchLogs();
-    }, [token]);
+    }, [token, searchAgent]);
 
     const triggerSimulation = async () => {
         // Simulate processing a random screenshot
@@ -61,12 +61,21 @@ export default function ImageRecognition() {
                     </p>
                 </div>
                 <div className="flex gap-3">
+                    <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700 items-center">
+                        <input
+                            type="text"
+                            placeholder="Filter by Agent ID..."
+                            className="bg-transparent text-white text-xs px-3 py-1 outline-none w-48"
+                            value={searchAgent}
+                            onChange={(e) => setSearchAgent(e.target.value)}
+                        />
+                    </div>
                     <button
-                        onClick={triggerSimulation}
+                        onClick={fetchLogs}
                         className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                     >
                         <RefreshCw size={18} />
-                        Refresh Logs
+                        Refresh
                     </button>
                     <button className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors">
                         <Search size={18} />

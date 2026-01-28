@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,6 +27,9 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { name: 'Billing', path: '/billing', icon: CreditCard, roles: ['TenantAdmin'] },
         { name: 'Settings', path: '/settings', icon: Settings, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
         { name: 'DLP Policies', path: '/policies', icon: Shield, roles: ['SuperAdmin', 'TenantAdmin'] },
+        { name: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
+        { name: 'Image Analysis', path: '/image-recognition', icon: Image, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
+        { name: 'Speech Intel', path: '/speech-recognition', icon: Mic, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
     ];
 
     const navItems = allNavItems.filter(item => item.roles.includes(role));
