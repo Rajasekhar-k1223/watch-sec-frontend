@@ -1,4 +1,4 @@
-import { Mic, AlertCircle, Play, Calendar, Search } from 'lucide-react';
+import { Mic, AlertCircle, Play, Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';

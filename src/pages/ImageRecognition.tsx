@@ -17,6 +17,7 @@ export default function ImageRecognition() {
     const { token } = useAuth();
     const [logs, setLogs] = useState<OCRLog[]>([]);
     const [searchAgent, setSearchAgent] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -39,14 +40,6 @@ export default function ImageRecognition() {
         if (token) fetchLogs();
     }, [token, searchAgent]);
 
-    const triggerSimulation = async () => {
-        // Simulate processing a random screenshot
-        await fetch(`${API_URL}/ocr/process/simulated-screen-123?agentId=DESKTOP-DEMO`, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        fetchLogs();
-    };
 
     return (
         <div className="p-8">
