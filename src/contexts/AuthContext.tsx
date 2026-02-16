@@ -5,6 +5,7 @@ interface User {
     username: string;
     role: string;
     tenantId: number | null;
+    plan: string;
 }
 
 interface AuthContextType {

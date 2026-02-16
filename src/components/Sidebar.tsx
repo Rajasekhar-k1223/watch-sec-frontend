@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert, Lock, Activity, Wifi } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -13,23 +13,35 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
     const { user, logout } = useAuth();
     const role = user?.role || 'Analyst';
 
+    const tierLevels: Record<string, number> = {
+        'Starter': 1,
+        'Professional': 2,
+        'Pro': 2,
+        'Enterprise': 3,
+        'Unlimited': 100
+    };
+    const currentTier = tierLevels[user?.plan || 'Starter'] || 1;
+
     const allNavItems = [
-        { name: 'Dashboard', path: '/status', icon: LayoutDashboard, roles: ['SuperAdmin', 'TenantAdmin'] },
-        { name: 'My Dashboard', path: '/my-dashboard', icon: LayoutDashboard, roles: ['Analyst'] },
-        { name: 'Central Server', path: '/central-server', icon: Server, roles: ['SuperAdmin'] }, // Global Config
-        { name: 'Users and Privileges', path: '/users', icon: Users, roles: ['SuperAdmin', 'TenantAdmin'] },
-        { name: 'Tenants', path: '/tenants', icon: Share2, roles: ['SuperAdmin'] }, // Org Management
-        { name: 'Agents', path: '/agents', icon: Monitor, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] }, // Device Monitoring
-        { name: 'Event Log', path: '/events', icon: List, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
-        { name: 'System Audit', path: '/audit', icon: ShieldCheck, roles: ['SuperAdmin', 'TenantAdmin'] },
-        { name: 'Employee Pulse', path: '/productivity', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
-        { name: 'Reports', path: '/reports', icon: FileText, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
-        { name: 'Billing', path: '/billing', icon: CreditCard, roles: ['TenantAdmin'] },
-        { name: 'Settings', path: '/settings', icon: Settings, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
-        { name: 'DLP Policies', path: '/policies', icon: Shield, roles: ['SuperAdmin', 'TenantAdmin'] },
-        { name: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
-        { name: 'Image Analysis', path: '/image-recognition', icon: Image, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
-        { name: 'Speech Intel', path: '/speech-recognition', icon: Mic, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'] },
+        { name: 'Dashboard', path: '/status', icon: LayoutDashboard, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
+        { name: 'My Dashboard', path: '/my-dashboard', icon: LayoutDashboard, roles: ['Analyst'], minTier: 1 },
+        { name: 'Central Server', path: '/central-server', icon: Server, roles: ['SuperAdmin'], minTier: 1 },
+        { name: 'Users and Privileges', path: '/users', icon: Users, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
+        { name: 'Tenants', path: '/tenants', icon: Share2, roles: ['SuperAdmin'], minTier: 1 },
+        { name: 'Agents', path: '/agents', icon: Monitor, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Event Log', path: '/events', icon: List, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'System Audit', path: '/audit', icon: ShieldCheck, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
+        { name: 'Employee Pulse', path: '/productivity', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Productivity', path: '/productivity', icon: Activity, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Bandwidth', path: '/bandwidth', icon: Wifi, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Reports', path: '/reports', icon: FileText, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Bandwidth', path: '/bandwidth', icon: Share2, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 }, // [NEW] Use Share2 or Wifi if imported
+        { name: 'Billing', path: '/billing', icon: CreditCard, roles: ['TenantAdmin'], minTier: 1 },
+        { name: 'Settings', path: '/settings', icon: Settings, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'DLP Policies', path: '/policies', icon: Shield, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 2 }, // Pro
+        { name: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
+        { name: 'Image Analysis', path: '/image-recognition', icon: Image, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Speech Intel', path: '/speech-recognition', icon: Mic, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
     ];
 
     const navItems = allNavItems.filter(item => item.roles.includes(role));
@@ -63,32 +75,50 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 <div className="mt-4 px-3 py-2 bg-gray-100 dark:bg-gray-900/80 rounded border border-gray-200 dark:border-gray-800 inline-flex items-center gap-2 w-full">
                     <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
                     <span className="text-xs text-gray-700 dark:text-gray-400 uppercase font-bold tracking-wider truncate">
-                        {user?.username} :: {role}
+                        {user?.username} :: {role} ({user?.plan || 'Starter'})
                     </span>
                 </div>
             </div>
 
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
-                {navItems.map((item) => (
-                    <NavLink
-                        key={item.path}
-                        to={item.path}
-                        className={({ isActive }) =>
-                            `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-semibold transition-all group border ${isActive
-                                ? 'bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/30 shadow-sm'
-                                : 'text-gray-600 dark:text-gray-500 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-200 dark:hover:border-gray-700'
-                            }`
-                        }
-                    >
-                        {({ isActive }) => (
-                            <>
-                                <item.icon className={`w-5 h-5 transition-colors ${item.name === 'Employee Pulse' ? 'group-hover:text-purple-500 dark:group-hover:text-purple-400' : 'group-hover:text-cyan-600 dark:group-hover:text-cyan-400'}`} />
-                                <span className="uppercase tracking-wide truncate">{item.name}</span>
-                                {isActive && <div className="ml-auto w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]"></div>}
-                            </>
-                        )}
-                    </NavLink>
-                ))}
+                {navItems.map((item) => {
+                    const isLocked = item.minTier > currentTier && role !== 'SuperAdmin';
+
+                    if (isLocked) {
+                        return (
+                            <div key={item.path} className="relative group/lock cursor-not-allowed opacity-60">
+                                <div className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-semibold text-gray-400 border border-transparent bg-gray-50/50 dark:bg-gray-800/20">
+                                    <item.icon className="w-5 h-5 text-gray-300 dark:text-gray-600" />
+                                    <span className="uppercase tracking-wide truncate">{item.name}</span>
+                                    <div className="ml-auto">
+                                        <Lock size={14} className="text-gray-300 dark:text-gray-600" />
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    return (
+                        <NavLink
+                            key={item.path}
+                            to={item.path}
+                            className={({ isActive }) =>
+                                `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-semibold transition-all group border ${isActive
+                                    ? 'bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/30 shadow-sm'
+                                    : 'text-gray-600 dark:text-gray-500 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-200 dark:hover:border-gray-700'
+                                }`
+                            }
+                        >
+                            {({ isActive }) => (
+                                <>
+                                    <item.icon className={`w-5 h-5 transition-colors ${item.name === 'Employee Pulse' ? 'group-hover:text-purple-500 dark:group-hover:text-purple-400' : 'group-hover:text-cyan-600 dark:group-hover:text-cyan-400'}`} />
+                                    <span className="uppercase tracking-wide truncate">{item.name}</span>
+                                    {isActive && <div className="ml-auto w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]"></div>}
+                                </>
+                            )}
+                        </NavLink>
+                    );
+                })}
             </nav>
 
             <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3 bg-gray-50/50 dark:bg-black/20">

@@ -8,6 +8,7 @@ import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, C
 import { API_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 // ... (Rest of imports or interfaces if needed, keeping AgentReport)
 
@@ -363,7 +364,7 @@ export default function LiveMonitor() {
                                             headers: { 'Authorization': `Bearer ${token}` }
                                         });
                                         if (res.ok) {
-                                            alert("Event Simulated!");
+                                            toast.success("Event Simulated!");
                                         }
                                     } catch (e) { console.error(e); }
                                 }}

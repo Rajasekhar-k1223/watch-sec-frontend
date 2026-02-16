@@ -2,6 +2,19 @@ import { Mic, AlertCircle, Play, Search } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { Lock, Zap } from 'lucide-react';
+
+const PLAN_LEVELS: Record<string, number> = {
+    "Starter": 1,
+    "Professional": 2,
+    "Pro": 2,
+    "Enterprise": 3,
+    "Unlimited": 100
+};
+
+const FEATURE_TIERS: Record<string, number> = {
+    "speech": 3
+};
 
 interface AudioLog {
     id: number;
@@ -15,10 +28,11 @@ interface AudioLog {
 }
 
 export default function SpeechRecognition() {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const [logs, setLogs] = useState<AudioLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchAgent, setSearchAgent] = useState('');
+    const [planLevel, setPlanLevel] = useState<number>(1);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -42,11 +56,49 @@ export default function SpeechRecognition() {
     };
 
     useEffect(() => {
-        if (token) fetchLogs();
-    }, [token, searchAgent]);
+        if (!token) return;
+
+        // Fetch Plan
+        if (user?.tenantId) {
+            fetch(`${API_URL}/tenants/${user.tenantId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    const p = data.Plan || "Starter";
+                    setPlanLevel(PLAN_LEVELS[p] || 1);
+                })
+                .catch(e => console.error("Plan error", e));
+        }
+
+        fetchLogs();
+    }, [token, searchAgent, user?.tenantId]);
+
+    const isLocked = planLevel < (FEATURE_TIERS["speech"] || 3);
 
     return (
-        <div className="p-8 animate-fade-in transition-colors text-gray-900 dark:text-white">
+        <div className="p-8 animate-fade-in transition-colors text-gray-900 dark:text-white relative min-h-screen">
+            {isLocked && (
+                <div className="absolute inset-0 z-[60] bg-gray-900/90 backdrop-blur-xl flex flex-col items-center justify-center text-center p-6">
+                    <div className="p-6 bg-red-500/10 rounded-full mb-6 ring-8 ring-red-500/5 animate-pulse">
+                        <Lock className="w-16 h-16 text-red-500" />
+                    </div>
+                    <h2 className="text-4xl font-extrabold text-white mb-4 tracking-tight">Enterprise Access Required</h2>
+                    <p className="text-gray-400 max-w-md mb-10 text-lg leading-relaxed">
+                        <b>Speech Recognition</b> and Real-time Audio Intelligence are premium modules reserved for <b>Enterprise Plan</b> customers.
+                    </p>
+                    <button
+                        onClick={() => window.location.hash = '#billing'}
+                        className="px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-2xl shadow-2xl shadow-blue-500/30 transition-all flex items-center gap-3 group text-lg"
+                    >
+                        <Zap className="w-6 h-6 group-hover:scale-125 transition-transform" />
+                        Upgrade to Enterprise
+                    </button>
+                    <p className="mt-6 text-gray-500 text-sm">
+                        Contact support for a trial license.
+                    </p>
+                </div>
+            )}
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-6">
                 <Mic className="text-red-500" />
                 Speech Recognition (Audio Analysis)

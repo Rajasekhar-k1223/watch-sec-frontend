@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
-import { Shield, Lock, User as UserIcon, Building2, Check, ArrowRight } from 'lucide-react';
+import { Shield, Lock, User as UserIcon, Building2, Check, ArrowRight, Mail } from 'lucide-react';
 
 export default function Register() {
     const [tenantName, setTenantName] = useState('');
     const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [plan, setPlan] = useState('Starter');
     const [error, setError] = useState('');
@@ -31,7 +32,7 @@ export default function Register() {
             const res = await fetch(`${API_URL}/auth/register-tenant`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tenantName, adminUsername: username, password, plan }),
+                body: JSON.stringify({ tenantName, adminUsername: username, email, password, plan }),
             });
 
             if (!res.ok) {
@@ -98,6 +99,20 @@ export default function Register() {
                                     onChange={(e) => setUsername(e.target.value)}
                                     className="block w-full pl-10 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                     placeholder="admin_acme"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Admin Email</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400 dark:text-gray-500" />
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="block w-full pl-10 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg py-2.5 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    placeholder="admin@company.com"
                                     required
                                 />
                             </div>

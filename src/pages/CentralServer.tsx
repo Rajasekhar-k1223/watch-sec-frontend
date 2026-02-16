@@ -2,6 +2,7 @@ import { Server, Plus, Trash, Save } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function CentralServer() {
     const tabs = [
@@ -90,7 +91,7 @@ function GeneralSettingsTab() {
 
     const handleSave = () => {
         // fetch('/api/system/settings', { method: 'POST', body: JSON.stringify(...) })
-        alert("Settings Saved!");
+        toast.success("Settings Saved!");
     };
 
     return (
@@ -176,7 +177,7 @@ function AuthSettingsTab() {
             </div>
 
             <div className="flex justify-end">
-                <button onClick={() => alert("Auth Settings Saved")} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-blue-900/20 transition-all">Save Security Settings</button>
+                <button onClick={() => toast.success("Auth Settings Saved")} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold shadow-lg shadow-blue-900/20 transition-all">Save Security Settings</button>
             </div>
         </div>
     );
@@ -230,11 +231,11 @@ function ThesaurusSettingsTab() {
             });
 
             if (res.ok) {
-                setNewKeyword("");
                 setNewSynonyms("");
                 fetchEntries();
+                toast.success("Thesaurus Entry Saved!");
             } else {
-                alert("Failed to save entry");
+                toast.error("Failed to save entry");
             }
         } catch (e) {
             console.error(e);
@@ -367,7 +368,7 @@ function RecognitionSettingsTab() {
     }, []);
 
     const handleSave = () => {
-        alert("Recognition Settings Saved (Simulated)");
+        toast.success("Recognition Settings Saved (Simulated)");
     };
 
     return (
@@ -462,8 +463,9 @@ function HashBanksTab() {
             if (res.ok) {
                 setForm({ hash: '', reputation: 'Malicious', description: '' });
                 fetchHashes();
+                toast.success("Hash added to database!");
             } else {
-                alert("Failed to add hash (might be duplicate)");
+                toast.error("Failed to add hash (might be duplicate)");
             }
         } catch (e) { console.error(e); }
     };

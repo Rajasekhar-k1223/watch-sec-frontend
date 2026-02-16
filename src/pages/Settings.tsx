@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Lock, Bell, User, Check, AlertCircle } from 'lucide-react';
+import { Lock, Bell, User, Check, AlertCircle, Building2 } from 'lucide-react';
+import MaintenanceSettings from '../components/MaintenanceSettings';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Settings() {
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const [activeTab, setActiveTab] = useState('security');
 
     // Security State
@@ -88,6 +89,14 @@ export default function Settings() {
                     >
                         <Bell size={18} /> Notifications
                     </button>
+                    {(user?.role === 'TenantAdmin' || user?.role === 'SuperAdmin') && (
+                        <button
+                            onClick={() => setActiveTab('organization')}
+                            className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'organization' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        >
+                            <Building2 size={18} /> Organization
+                        </button>
+                    )}
                 </div>
 
                 {/* Content Area */}
@@ -170,6 +179,15 @@ export default function Settings() {
                                     <ToggleSwitch enabled={weeklyReport} onChange={setWeeklyReport} />
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'organization' && (
+                        <div className="max-w-xl">
+                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+                                <Building2 className="text-blue-400" /> Organization Settings
+                            </h2>
+                            <MaintenanceSettings />
                         </div>
                     )}
                 </div>

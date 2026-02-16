@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 interface Tenant {
     id: number;
@@ -64,9 +65,12 @@ export default function Tenants() {
             if (res.ok) {
                 setNewTenantName("");
                 fetchTenants(); // Refresh list
+                toast.success("Tenant created successfully!");
+            } else {
+                toast.error("Failed to create tenant");
             }
         } catch (e) {
-            alert("Failed to create tenant");
+            toast.error("Failed to create tenant");
         }
         setIsCreating(false);
     };

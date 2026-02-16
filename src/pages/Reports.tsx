@@ -2,6 +2,7 @@ import { FileText, Download, Calendar, Filter, Printer } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function Reports() {
     const { token } = useAuth();
@@ -45,14 +46,13 @@ export default function Reports() {
                 a.click();
                 a.remove();
                 window.URL.revokeObjectURL(url);
-
-                alert("Report generated and downloaded successfully!");
+                toast.success("Report generated and downloaded successfully!");
             } else {
-                alert("Failed to generate report.");
+                toast.error("Failed to generate report.");
             }
         } catch (e) {
             console.error(e);
-            alert("Error generating report.");
+            toast.error("Error generating report.");
         }
     };
 

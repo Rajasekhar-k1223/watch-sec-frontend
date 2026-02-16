@@ -6,11 +6,16 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pi
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config';
+import toast from 'react-hot-toast';
 
 interface Props {
     agentId: string | null;
     apiUrl: string;
     token: string | null;
+    isEnabled?: boolean;
+    onEnable?: () => Promise<void>;
+    planLevel?: number;
+    requiredTier?: number;
 }
 
 const normalizeTimestamp = (ts: any) => {
@@ -22,7 +27,57 @@ const normalizeTimestamp = (ts: any) => {
     return str;
 };
 
-export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
+export default function ActivityLogViewer({
+    agentId, apiUrl, token,
+    isEnabled = true, onEnable,
+    planLevel = 1, requiredTier = 1
+}: Props) {
+    // 1. Plan Restriction Check (Hardening)
+    if (planLevel < requiredTier) {
+        return (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-10 flex flex-col items-center justify-center text-center h-full relative overflow-hidden">
+                <div className="absolute inset-0 bg-gray-900/10 dark:bg-black/20 backdrop-blur-[1px]"></div>
+                <div className="relative z-10 flex flex-col items-center">
+                    <div className="p-4 bg-amber-100 dark:bg-amber-400/10 rounded-full mb-4 ring-4 ring-amber-500/10">
+                        <Zap className="w-12 h-12 text-amber-500" />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Plan Restricted</h3>
+                    <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-6">
+                        Real-time activity logging requires the <b>Starter Plan</b> or higher.
+                        Your current plan does not include this feature.
+                    </p>
+                    <button
+                        onClick={() => window.location.hash = '#billing'}
+                        className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2"
+                    >
+                        Upgrade Now
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isEnabled) {
+        return (
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-10 flex flex-col items-center justify-center text-center h-full">
+                <div className="p-4 bg-gray-100 dark:bg-gray-700/50 rounded-full mb-4">
+                    <Monitor className="w-12 h-12 text-gray-400" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Activity Monitor Disabled</h3>
+                <p className="text-gray-500 dark:text-gray-400 max-w-sm mb-6">
+                    Activity monitoring is currently disabled for this agent. To view logs, enable "Activity Monitor" in the Feature Policy tab.
+                </p>
+                {onEnable && (
+                    <button
+                        onClick={onEnable}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center gap-2"
+                    >
+                        <Zap className="w-4 h-4" /> Enable Activity Monitor
+                    </button>
+                )}
+            </div>
+        );
+    }
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [showInsights, setShowInsights] = useState(true);
@@ -38,7 +93,7 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
     const fetchLogs = useCallback(() => {
         if (!agentId) return;
         setLoading(true);
-
+        console.log(`[ActivityViewer] Fetching logs for agent: ${agentId}`);
         // [FIX] URL Encode AgentId to handle special characters like '$'
         let url = `${apiUrl}/events/activity/${encodeURIComponent(agentId)}`;
         if (startDate || endDate) {
@@ -52,6 +107,7 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
             if (params.toString()) url += `?${params.toString()}`;
         }
 
+        console.log(`[ActivityViewer] Fetching: ${url}`);
         fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -59,7 +115,10 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
                 if (res.status === 401) { logout(); return []; }
                 return res.json();
             })
-            .then(data => { if (Array.isArray(data)) setLogs(data); })
+            .then(data => {
+                console.log(`[ActivityViewer] Received ${Array.isArray(data) ? data.length : 'Invalid'} records`);
+                if (Array.isArray(data)) setLogs(data);
+            })
             .catch(e => console.error(e))
             .finally(() => setLoading(false));
     }, [agentId, logout, apiUrl, token, startDate, endDate]);
@@ -227,7 +286,7 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
             document.body.removeChild(a);
         } catch (e) {
             console.error("Download failed", e);
-            alert("Failed to download report");
+            toast.error("Failed to download report");
         }
     };
 
@@ -282,12 +341,12 @@ export default function ActivityLogViewer({ agentId, apiUrl, token }: Props) {
                         <button
                             onClick={async () => {
                                 try {
-                                    const res = await fetch(`${apiUrl}/api/events/simulate/${agentId}`, {
+                                    const res = await fetch(`${apiUrl}/events/simulate/${agentId}`, {
                                         method: 'POST',
                                         headers: { 'Authorization': `Bearer ${token}` }
                                     });
                                     if (res.ok) {
-                                        alert("Event Simulated! Check Events tab.");
+                                        toast.success("Event Simulated! Check Events tab.");
                                         fetchLogs(); // Refresh after simulation
                                     }
                                 } catch (e) { console.error(e); }

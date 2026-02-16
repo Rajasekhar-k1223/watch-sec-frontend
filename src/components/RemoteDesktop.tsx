@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Lock, Wifi, WifiOff, Video, StopCircle, Maximize2, Minimize2, Play, Square, EyeOff, Eye } from 'lucide-react';
 import { API_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
+import toast from 'react-hot-toast';
 
 interface Props {
     agentId: string;
@@ -122,7 +123,9 @@ export default function RemoteDesktop({ agentId, token }: Props) {
             // Stop Agent Recording
             sendInput('stop_recording');
             setIsRecording(false);
-            alert("Recording stopped. Agent is uploading the video to the backend.");
+            toast("Recording stopped. Agent is uploading the video to the backend.", {
+                icon: '🎬',
+            });
         } else {
             // Start Agent Recording
             sendInput('start_recording');

@@ -183,7 +183,7 @@ export default function MailProcessing() {
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                 <Mail className="text-blue-500" /> Message Details
                             </h2>
-                            <button onClick={() => setSelectedLog(null)} className="text-gray-400 hover:text-white"><EyeOff className="w-5 h-5" /></button>
+                            <button onClick={() => setSelectedLog(null)} className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"><EyeOff className="w-5 h-5" /></button>
                         </div>
 
                         <div className="p-6 overflow-y-auto space-y-6 font-mono text-sm" id="mail-print-area">
@@ -269,7 +269,7 @@ export default function MailProcessing() {
                             <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold flex items-center gap-2 transition-colors">
                                 <Printer size={16} /> Print / Save PDF
                             </button>
-                            <button onClick={() => setSelectedLog(null)} className="px-4 py-2 text-gray-400 hover:text-white font-bold">Close</button>
+                            <button onClick={() => setSelectedLog(null)} className="px-4 py-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-bold">Close</button>
                         </div>
                     </div>
                 </div>

@@ -1,21 +1,35 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, Bell, Search, Menu, X, AlertTriangle, Info, LayoutDashboard, Users, FileText, List, LogOut, ArrowRight as ArrowRightIcon, Activity } from 'lucide-react';
+import { Sun, Moon, Bell, Search, Menu, LayoutDashboard, Users, FileText, List, LogOut, ArrowRight as ArrowRightIcon, Activity, AlertTriangle, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { io, Socket } from 'socket.io-client';
+import { API_URL } from '../config';
 
 interface HeaderProps {
     onMenuClick?: () => void;
 }
 
+interface Notification {
+    Id: number;
+    Title: string;
+    Message: string;
+    Type: 'Info' | 'Warning' | 'Error' | 'Critical';
+    CreatedAt: string;
+    IsRead: boolean;
+    AgentId?: string;
+}
+
 export default function Header({ onMenuClick }: HeaderProps) {
     const { theme, toggleTheme } = useTheme();
-    const { user, logout } = useAuth();
+    const { user, logout, token } = useAuth();
     const navigate = useNavigate();
 
     // Notifications State
     const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const notifRef = useRef<HTMLDivElement>(null);
+    const socketRef = useRef<Socket | null>(null);
 
     // Search/Command State
     const [showSearch, setShowSearch] = useState(false);
@@ -23,12 +37,49 @@ export default function Header({ onMenuClick }: HeaderProps) {
     const searchRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Mock Notifications
-    const [notifications, setNotifications] = useState([
-        { id: 1, type: 'critical', title: 'Malware Detected', message: 'Ransomware attempt blocked on Agent-007', time: '2m ago' },
-        { id: 2, type: 'warning', title: 'High CPU Usage', message: 'Server-01 running at 98% load', time: '15m ago' },
-        { id: 3, type: 'info', title: 'System Update', message: 'Patch v2.4.1 installed successfully', time: '1h ago' },
-    ]);
+    // Fetch History & Init Socket
+    useEffect(() => {
+        if (!token || !user) return;
+
+        // 1. Fetch Initial Notifications
+        const fetchNotifs = async () => {
+            const res = await fetch(`${API_URL}/notifications`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) setNotifications(await res.json());
+        };
+        fetchNotifs();
+
+        // 2. Connect Socket for Real-time
+        const socket = io(API_URL, {
+            transports: ['websocket'],
+            auth: { token }
+        });
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+            if (user.tenantId) {
+                socket.emit('join', { room: `tenant_${user.tenantId}` });
+            }
+        });
+
+        socket.on('NewNotification', (notif: any) => {
+            setNotifications(prev => [
+                {
+                    Id: notif.id || Date.now(),
+                    Title: notif.title,
+                    Message: notif.message,
+                    Type: notif.type,
+                    CreatedAt: new Date().toISOString(),
+                    IsRead: false,
+                    AgentId: notif.agentId
+                },
+                ...prev
+            ].slice(0, 50));
+        });
+
+        return () => { socket.disconnect(); };
+    }, [token, user]);
 
     // Commands Definition
     const commands = [
@@ -78,14 +129,34 @@ export default function Header({ onMenuClick }: HeaderProps) {
         };
     }, []);
 
-    const clearNotification = (id: number) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
-    };
-
     const handleCommandClick = (action: () => void) => {
         action();
         setShowSearch(false);
         setSearchQuery('');
+    };
+
+    const clearAllNotifications = async () => {
+        try {
+            await fetch(`${API_URL}/notifications/clear`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setNotifications([]);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const markAllAsRead = async () => {
+        try {
+            await fetch(`${API_URL}/notifications/read-all`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setNotifications(prev => prev.map(n => ({ ...n, IsRead: true })));
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     return (
@@ -94,7 +165,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <div className="flex items-center gap-4 flex-1">
                 <button
                     onClick={onMenuClick}
-                    className="p-2 md:hidden text-gray-400 hover:text-white"
+                    className="p-2 md:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white"
                 >
                     <Menu size={20} />
                 </button>
@@ -162,12 +233,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 {/* Notifications */}
                 <div className="relative" ref={notifRef}>
                     <button
-                        onClick={() => setShowNotifications(!showNotifications)}
+                        onClick={() => {
+                            setShowNotifications(!showNotifications);
+                            if (!showNotifications) markAllAsRead();
+                        }}
                         className={`p-2 rounded border transition-all relative shadow-sm ${showNotifications ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 border-cyan-500/30' : 'bg-white dark:bg-black/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-500 hover:text-cyan-600 dark:hover:text-cyan-400 hover:border-cyan-500/30'}`}
                     >
                         <Bell size={18} />
-                        {notifications.length > 0 && (
-                            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_5px_rgba(239,68,68,0.8)] animate-pulse"></span>
+                        {notifications.filter(n => !n.IsRead).length > 0 && (
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
                         )}
                     </button>
 
@@ -175,26 +249,34 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     {showNotifications && (
                         <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                             <div className="p-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
-                                <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Notifications</h3>
-                                <button onClick={() => setNotifications([])} className="text-[10px] text-blue-500 hover:underline font-bold">Clear All</button>
+                                <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Alerts & System Feed</h3>
+                                <button onClick={clearAllNotifications} className="text-[10px] text-blue-500 hover:underline font-bold">Clear All</button>
                             </div>
-                            <div className="max-h-64 overflow-y-auto">
+                            <div className="max-h-96 overflow-y-auto">
                                 {notifications.length === 0 ? (
-                                    <div className="p-6 text-center text-gray-400 dark:text-gray-500 text-xs italic">
+                                    <div className="p-10 text-center text-gray-400 dark:text-gray-500 text-xs italic flex flex-col items-center gap-2">
+                                        <Bell className="opacity-20" size={32} />
                                         No new notifications
                                     </div>
                                 ) : (
                                     notifications.map(n => (
-                                        <div key={n.id} className="p-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group relative">
-                                            <button onClick={() => clearNotification(n.id)} className="absolute top-2 right-2 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><X size={12} /></button>
+                                        <div key={n.Id} className={`p-4 border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors relative ${!n.IsRead ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
                                             <div className="flex gap-3">
-                                                <div className={`mt-1 p-1.5 rounded-full h-fit ${n.type === 'critical' ? 'bg-red-100 dark:bg-red-900/30 text-red-500' : n.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-500' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-500'}`}>
-                                                    {n.type === 'critical' ? <AlertTriangle size={12} /> : n.type === 'warning' ? <AlertTriangle size={12} /> : <Info size={12} />}
+                                                <div className={`p-2 rounded-lg h-fit ${n.Type === 'Critical' ? 'bg-red-100 dark:bg-red-900/30 text-red-500' :
+                                                    n.Type === 'Warning' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-500' :
+                                                        'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
+                                                    }`}>
+                                                    {n.Type === 'Critical' ? <AlertTriangle size={14} /> : n.Type === 'Warning' ? <AlertTriangle size={14} /> : <Info size={14} />}
                                                 </div>
-                                                <div>
-                                                    <h4 className={`text-sm font-bold ${n.type === 'critical' ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}`}>{n.title}</h4>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{n.message}</p>
-                                                    <span className="text-[10px] text-gray-400 font-mono mt-1 block">{n.time}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start">
+                                                        <h4 className={`text-sm font-bold truncate ${n.Type === 'Critical' ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}`}>{n.Title}</h4>
+                                                    </div>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{n.Message}</p>
+                                                    <div className="flex justify-between items-center mt-2">
+                                                        <span className="text-[10px] text-gray-400 font-medium">{new Date(n.CreatedAt).toLocaleTimeString()}</span>
+                                                        {n.AgentId && <span className="text-[9px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded font-mono">{n.AgentId}</span>}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>

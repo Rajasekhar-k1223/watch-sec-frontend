@@ -15,12 +15,14 @@ import IcapServer from './pages/IcapServer';
 import ImageRecognition from './pages/ImageRecognition';
 import SpeechRecognition from './pages/SpeechRecognition';
 import Vulnerabilities from './pages/Vulnerabilities';
+import FleetInventory from './pages/FleetInventory';
 import Login from './pages/Login';
 import Policies from './pages/Policies';
 import Reports from './pages/Reports';
 import Productivity from './pages/Productivity';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
+import BandwidthSettings from './pages/BandwidthSettings';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -51,11 +53,19 @@ function AnalyticsTracker() {
 }
 
 import { ThemeProvider } from './contexts/ThemeContext';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
+        <Toaster position="top-right" toastOptions={{
+          style: {
+            background: '#1f2937',
+            color: '#fff',
+            border: '1px solid #374151'
+          }
+        }} />
         <BrowserRouter>
           <AnalyticsTracker />
           <Routes>
@@ -77,6 +87,7 @@ function App() {
                 <Route path="/image-recognition" element={<ImageRecognition />} />
                 <Route path="/speech-recognition" element={<SpeechRecognition />} />
                 <Route path="/vulnerabilities" element={<Vulnerabilities />} />
+                <Route path="/fleet-inventory" element={<FleetInventory />} />
                 <Route path="/events" element={<LiveMonitor />} />
                 <Route path="/policies" element={<Policies />} />
                 <Route path="/reports" element={<Reports />} />
@@ -85,6 +96,7 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/my-dashboard" element={<EmployeeDashboard />} />
                 <Route path="/productivity" element={<Productivity />} />
+                <Route path="/bandwidth" element={<BandwidthSettings />} />
               </Route>
             </Route>
           </Routes>

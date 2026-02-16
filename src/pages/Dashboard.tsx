@@ -3,12 +3,31 @@ import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts';
-import { Activity, Server, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, ArrowRight, Globe, Zap } from 'lucide-react';
+import { Activity, Server, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, ArrowRight, Globe, Zap, Lock } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import WorldMap from '../components/WorldMap';
 import { NetworkTopology } from '../components/NetworkGraph';
+
+// [NEW] Feature Matrix for UI Enforcement
+const PLAN_LEVELS: Record<string, number> = {
+    "Starter": 1,
+    "Professional": 2,
+    "Pro": 2,
+    "Enterprise": 3,
+    "Unlimited": 100
+};
+
+const FEATURE_TIERS: Record<string, number> = {
+    "network": 3,
+    "live_stream": 3,
+    "remote_shell": 3,
+    "mail": 3,
+    "shadow": 3,
+    "speech": 3,
+    "vulnerabilities": 3
+};
 
 interface LogEntry {
     type: string;
@@ -52,6 +71,7 @@ export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [mapAgents, setMapAgents] = useState<any[]>([]);
+    const [planLevel, setPlanLevel] = useState<number>(1);
     const [timeRange, setTimeRange] = useState(24);
     const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -82,6 +102,18 @@ export default function Dashboard() {
                 if (resAgents.status === 401) return logout(); // Handle 401
                 if (resAgents.ok) {
                     setMapAgents(await resAgents.json());
+                }
+
+                // 3. Current User Tenant Plan
+                if (user?.tenantId) {
+                    const resTenant = await fetch(`${API_URL}/tenants/${user.tenantId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (resTenant.ok) {
+                        const tData = await resTenant.json();
+                        const pName = tData.Plan || "Starter";
+                        setPlanLevel(PLAN_LEVELS[pName] || 1);
+                    }
                 }
             } catch { }
         };
@@ -128,11 +160,45 @@ export default function Dashboard() {
         socket.on("ReceiveEvent", handleNewLog);
         socket.on("new_alert", handleNewLog);
 
+        socket.on("dashboard_stats_update", (payload: any) => {
+            if (payload.type === 'resource' && payload.data) {
+                setStats(prev => {
+                    if (!prev) return null;
+                    const next = { ...prev };
+
+                    // Append new point to trend
+                    const newPoint = {
+                        time: payload.data.time,
+                        cpu: payload.data.cpu,
+                        mem: payload.data.mem,
+                        full_date: payload.data.full_date
+                    };
+
+                    // Keep last 50 points to avoid memory issues if graph gets too big? 
+                    // Or just append. The API returns 24h which could be many points.
+                    // Let's just append. Recharts handles it.
+                    next.resources = {
+                        ...next.resources,
+                        trend: [...(next.resources.trend || []), newPoint]
+                    };
+
+                    // Update current averages too? 
+                    // Ideally avg is over 24h, one point won't shift it much, but we can leave it.
+                    return next;
+                });
+            }
+        });
+
         return () => {
             clearInterval(interval);
             socket.disconnect();
         };
-    }, [timeRange]);
+    }, [timeRange, token, user?.tenantId]);
+
+    const isFeatureLocked = (featureKey: string) => {
+        const req = FEATURE_TIERS[featureKey] || 3;
+        return planLevel < req;
+    };
 
     // Prepare Pie Data
     const pieData = stats?.threats.byType.map((t, i) => ({
@@ -338,6 +404,23 @@ export default function Dashboard() {
                         <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">LIVE SCAN</span>
                     </div>
                     <div className="h-[350px] w-full bg-gray-50 dark:bg-gray-950/50 rounded-xl border border-gray-200 dark:border-gray-800/50 relative overflow-hidden">
+                        {isFeatureLocked('network') && (
+                            <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                    <Lock className="w-10 h-10 text-purple-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Enterprise Visualization</h3>
+                                <p className="text-gray-400 max-w-xs mb-6 text-xs leading-relaxed">
+                                    Real-time <b>Network Topology</b> mapping is available on <b>Enterprise Plan</b>.
+                                </p>
+                                <button
+                                    onClick={() => window.location.hash = '#billing'}
+                                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 group text-sm"
+                                >
+                                    <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade Now
+                                </button>
+                            </div>
+                        )}
                         <NetworkTopology />
                     </div>
                 </div>
@@ -361,7 +444,7 @@ export default function Dashboard() {
                                         }`}>
                                         {log.type}
                                     </span>
-                                    <span className="text-[10px] text-gray-500 font-mono">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                    <span className="text-[10px] text-gray-500 font-mono">{new Date(normalizeTimestamp(log.timestamp)).toLocaleTimeString()}</span>
                                 </div>
                                 <div className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors line-clamp-1" title={log.details}>{log.details}</div>
                                 {log.agentId && <div className="text-[10px] text-gray-500 dark:text-gray-600 mt-1 flex items-center gap-1 font-mono"><Server className="w-3 h-3" /> {log.agentId}</div>}

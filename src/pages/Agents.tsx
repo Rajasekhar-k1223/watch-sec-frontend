@@ -1,18 +1,25 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, ChevronDown, Check } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
 import AgentCapabilitiesModal from '../components/AgentCapabilitiesModal'; // [NEW]
+import SpeechLogViewer from '../components/SpeechLogViewer'; // [NEW]
 // import MailProcessing from './MailProcessing.tsx'; 
 import MailLogViewer from '../components/MailLogViewer';
+import FeaturePolicyManager from '../components/FeaturePolicyManager';
+import ShadowVault from '../components/ShadowVault';
+import AgentSecurityLedger from '../components/AgentSecurityLedger'; // [NEW]
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
+import toast from 'react-hot-toast';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 import { API_URL, SOCKET_URL } from '../config';
 import { Analytics } from '../services/analytics';
+
+// [v1.8.2] Dynamic Versioning: Fetched via API
 
 interface AgentReport {
     id: number;
@@ -31,6 +38,46 @@ interface AgentReport {
     powerStatusJson?: string; // [NEW]
     version?: string;
     targetVersion?: string;
+    screenshotsEnabled?: boolean;
+    screenshotsQuality?: number;
+    screenshotsResolution?: string;
+    activityMonitorEnabled?: boolean;
+    keyloggerEnabled?: boolean;
+    clipboardMonitorEnabled?: boolean;
+    appBlockerEnabled?: boolean;
+    browserEnforcerEnabled?: boolean;
+    printerMonitorEnabled?: boolean;
+    shadowMonitorEnabled?: boolean;
+    liveStreamEnabled?: boolean;
+    remoteShellEnabled?: boolean;
+    mailMonitorEnabled?: boolean;
+    updateStatus?: string;
+    updateFailureReason?: string;
+    lastUpdateAttempt?: string;
+}
+
+interface DashStats {
+    active_agents: number;
+    total_alerts: number;
+    today_events: number;
+    security_score: number;
+    incidents_trend: any[];
+    threat_level: string;
+    recentLogs?: any[];
+    agents?: { online: number; total: number; offline: number };
+    resources?: { trend: any[] };
+    threats?: { total: number; total24h: number; trend: any[] };
+}
+
+interface AgentEvent {
+    type: string;
+    details: string;
+    timestamp: string;
+    isMetric?: boolean;
+    cpu?: number;
+    mem?: number;
+    RiskLevel?: string;
+    Category?: string;
 }
 
 // Helper for consistent date parsing (SQL -> ISO UTC -> Local)
@@ -48,14 +95,75 @@ const normalizeTimestamp = (ts: any) => {
     return str;
 };
 
+// [NEW] Feature Matrix for UI Enforcement
+const PLAN_LEVELS: Record<string, number> = {
+    "Starter": 1,
+    "Professional": 2,
+    "Pro": 2, // Alias
+    "Enterprise": 3,
+    "Unlimited": 100
+};
+
+const FEATURE_TIERS: Record<string, number> = {
+    "activity": 1,
+    "screenshots": 1,
+    "browser": 1,
+    "keylogger": 2,
+    "clipboard": 2,
+    "app_blocker": 2,
+    "printer": 2,
+    "location": 2,
+    "usb": 2,
+    "shadow": 3,
+    "live_stream": 3,
+    "remote_shell": 3,
+    "mail": 3,
+    "network": 3,
+    "file_dlp": 3,
+    "speech": 3,
+    "vuln": 3
+};
+
+const TAB_TABS = [
+    { id: 'logs', label: 'Logs', feat: null },
+    { id: 'monitor', label: 'Monitor', feat: null },
+    { id: 'remote', label: 'Remote', feat: 'remote_shell' },
+    { id: 'screenshots', label: 'Screenshots', feat: 'screenshots' },
+    { id: 'activity', label: 'Activity', feat: 'activity' },
+    { id: 'mail', label: 'Mail', feat: 'mail' },
+    { id: 'speech', label: 'Speech', feat: 'speech' },
+    { id: 'vuln', label: 'Security', feat: 'vuln' },
+    { id: 'specs', label: 'Specs', feat: null },
+    { id: 'apps', label: 'Apps', feat: 'app_blocker' },
+    { id: 'vault', label: 'Vault', feat: 'shadow' },
+    { id: 'policy', label: 'Policy', feat: null, role: 'TenantAdmin' }
+];
+
 export default function Agents() {
     const { user, token, logout } = useAuth();
     const [agents, setAgents] = useState<AgentReport[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [stats, setStats] = useState<any>(null);
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [stats, setStats] = useState<DashStats | null>(null);
+    const [selectedDate, setSelectedDate] = useState(''); // Default to empty for rolling 24h
     const [agentSearch, setAgentSearch] = useState('');
+
+    const [latestVersion, setLatestVersion] = useState("v1.8.1"); // Default fallback
+    const [updateProgressMap, setUpdateProgressMap] = useState<Record<string, number>>({});
+    const updateTimeouts = useRef<Record<string, any>>({});
+
+
+
+    // [NEW] Plan State
+    const [currentPlan, setCurrentPlan] = useState<string>("Starter");
+    const [planLevel, setPlanLevel] = useState<number>(1);
+
+    const isFeatureLocked = (featureKey: string) => {
+        // Super Admins override? Maybe not, simulate plan strictly.
+        // User.role check? If TenantAdmin, enforce plan.
+        const req = FEATURE_TIERS[featureKey] || 3;
+        return planLevel < req;
+    };
 
     const [modalStartDate, setModalStartDate] = useState(() => {
         const d = new Date();
@@ -82,16 +190,50 @@ export default function Agents() {
                 url = `${API_URL}/dashboard/stats?from_date=${from}&to_date=${to}`;
             }
             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (res.ok) setStats(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                console.log("[Agents] Dashboard Stats (24h Data):", data);
+                setStats(data);
+            }
         } catch (e) { console.error("Stats error", e); }
     }, [token]);
 
+    // [v1.8.2] Fetch LATEST_AGENT_VERSION from Backend
     useEffect(() => {
+        const fetchVersions = async () => {
+            try {
+                const res = await fetch(`${API_URL}/agents/config/versions`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setLatestVersion(data.latest);
+                }
+            } catch (e) {
+                console.error("[Agents] Version fetch error:", e);
+            }
+        };
+        if (token) fetchVersions();
+    }, [token]);
+
+    useEffect(() => {
+        // [NEW] Fetch Tenant Plan
+        if (token && user?.tenantId) {
+            fetch(`${API_URL}/billing/`, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(res => res.json())
+                .then(data => {
+                    const p = data.plan || "Starter";
+                    setCurrentPlan(p);
+                    setPlanLevel(PLAN_LEVELS[p] || 1);
+                })
+                .catch(e => console.error("Failed to fetch plan", e));
+        }
+
         fetchAgents();
         fetchStats(selectedDate);
         const interval = setInterval(() => { fetchAgents(); fetchStats(selectedDate); }, 10000);
         return () => clearInterval(interval);
-    }, [fetchStats, selectedDate]);
+    }, [fetchStats, selectedDate, token, user?.tenantId]);
 
     const fetchAgents = async () => {
         try {
@@ -108,14 +250,13 @@ export default function Agents() {
             if (res.ok) {
                 const data = await res.json();
                 console.log("[Agents] Raw API Data:", data);
-                const normalizedData = (Array.isArray(data) ? data : []).map((a: any) => {
+                const normalizedData: AgentReport[] = (Array.isArray(data) ? data : []).map((a: any) => {
                     return {
-                        ...a,
                         id: a.id || a.Id,
                         status: a.status || a.Status || 'Unknown',
                         cpuUsage: a.cpuUsage ?? a.CpuUsage ?? 0,
                         memoryUsage: a.memoryUsage ?? a.MemoryUsage ?? 0,
-                        timestamp: normalizeTimestamp(a.timestamp || a.Timestamp),
+                        timestamp: normalizeTimestamp(a.timestamp || a.Timestamp || a.LastSeen),
                         tenantId: a.tenantId ?? a.TenantId ?? 0,
                         agentId: a.agentId || a.AgentId || 'Unknown',
                         hostname: a.hostname || a.Hostname || 'Unknown',
@@ -126,12 +267,27 @@ export default function Agents() {
                         hardwareJson: a.hardwareJson || a.HardwareJson,
                         powerStatusJson: a.powerStatusJson || a.PowerStatusJson,
                         version: a.version || a.Version || '1.0.0',
-                        targetVersion: a.targetVersion || a.TargetVersion || '1.0.0'
+                        targetVersion: a.targetVersion || a.TargetVersion || '1.0.0',
+                        screenshotsEnabled: a.screenshotsEnabled ?? a.ScreenshotsEnabled ?? false,
+                        screenshotsQuality: a.screenshotsQuality ?? a.ScreenshotQuality ?? 80,
+                        screenshotsResolution: a.screenshotsResolution ?? a.ScreenshotResolution ?? 'Original',
+                        activityMonitorEnabled: a.activityMonitorEnabled ?? a.ActivityMonitorEnabled ?? true,
+                        keyloggerEnabled: a.keyloggerEnabled ?? a.KeyloggerEnabled ?? false,
+                        clipboardMonitorEnabled: a.clipboardMonitorEnabled ?? a.ClipboardMonitorEnabled ?? false,
+                        appBlockerEnabled: a.appBlockerEnabled ?? a.AppBlockerEnabled ?? false,
+                        browserEnforcerEnabled: a.browserEnforcerEnabled ?? a.BrowserEnforcerEnabled ?? false,
+                        printerMonitorEnabled: a.printerMonitorEnabled ?? a.PrinterMonitorEnabled ?? false,
+                        shadowMonitorEnabled: a.shadowMonitorEnabled ?? a.ShadowMonitorEnabled ?? false,
+                        liveStreamEnabled: a.liveStreamEnabled ?? a.LiveStreamEnabled ?? true,
+                        remoteShellEnabled: a.remoteShellEnabled ?? a.RemoteShellEnabled ?? true,
+                        mailMonitorEnabled: a.mailMonitorEnabled ?? a.MailMonitorEnabled ?? false,
+                        speechMonitorEnabled: a.speechMonitorEnabled ?? a.SpeechMonitorEnabled ?? false,
+                        vulnerabilityIntelligenceEnabled: a.vulnerabilityIntelligenceEnabled ?? a.VulnerabilityIntelligenceEnabled ?? false
                     };
                 });
 
                 // Sort: Online first, then by timestamp desc
-                normalizedData.sort((a: any, b: any) => {
+                normalizedData.sort((a: AgentReport, b: AgentReport) => {
                     if (a.status === 'Online' && b.status !== 'Online') return -1;
                     if (a.status !== 'Online' && b.status === 'Online') return 1;
                     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
@@ -146,6 +302,18 @@ export default function Agents() {
         }
     };
 
+    const toggleAgentSetting = async (agentId: string, feature: string, enabled: boolean) => {
+        try {
+            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-feature?feature=${feature}&enabled=${enabled}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) fetchAgents();
+        } catch (error) {
+            console.error("Failed to toggle setting", error);
+        }
+    };
+
     const filteredAgents = useMemo(() => {
         return agents.filter(a =>
             (a.hostname || '').toLowerCase().includes(agentSearch.toLowerCase()) ||
@@ -155,6 +323,10 @@ export default function Agents() {
     }, [agents, agentSearch]);
 
     const handleToggleNetwork = async (agentId: string, currentStatus: boolean) => {
+        if (isFeatureLocked('network')) {
+            toast.error(`Upgrade specific to ${currentPlan} Plan required for Network Monitoring.`);
+            return;
+        }
         try {
             const res = await fetch(`${API_URL}/agents/${agentId}/toggle-network?enabled=${!currentStatus}`, {
                 method: 'POST',
@@ -165,6 +337,10 @@ export default function Agents() {
     };
 
     const handleToggleFile = async (agentId: string, currentStatus: boolean) => {
+        if (isFeatureLocked('file_dlp')) {
+            toast.error(`Upgrade specific to ${currentPlan} Plan required for File DLP.`);
+            return;
+        }
         try {
             const res = await fetch(`${API_URL}/agents/${agentId}/toggle-file-dlp?enabled=${!currentStatus}`, {
                 method: 'POST',
@@ -176,22 +352,62 @@ export default function Agents() {
 
     const handleUpdateAgent = async (agentId: string) => {
         if (!window.confirm("Trigger remote software update for this agent?")) return;
+
+        // [v1.7.0] Optimistic UI & Timeout
+        setUpdateProgressMap(prev => ({ ...prev, [agentId]: 1 })); // Start at 1%
+
+        // Clear existing timeout
+        if (updateTimeouts.current[agentId]) clearTimeout(updateTimeouts.current[agentId]);
+
+        // Set 5m Timeout
+        updateTimeouts.current[agentId] = setTimeout(() => {
+            toast.error(`Update for ${agentId} timed out (5m). Resetting status.`);
+            setUpdateProgressMap(prev => {
+                const next = { ...prev };
+                delete next[agentId];
+                return next;
+            });
+        }, 300000);
+
         try {
             const res = await fetch(`${API_URL}/agents/${agentId}/update`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                alert("Update command sent to agent. It will update and restart shortly.");
+                toast.success("Update command sent to agent.");
                 fetchAgents();
             } else {
-                alert("Failed to trigger update.");
+                if (res.status === 429) {
+                    toast.error("Rate limit exceeded. Please wait."); // [v1.7.0] Rate Limit Feedback
+                } else {
+                    toast.error("Failed to trigger update.");
+                }
+                // Revert optimistic state on failure
+                setUpdateProgressMap(prev => {
+                    const next = { ...prev };
+                    delete next[agentId];
+                    return next;
+                });
+                clearTimeout(updateTimeouts.current[agentId]);
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            setUpdateProgressMap(prev => {
+                const next = { ...prev };
+                delete next[agentId];
+                return next;
+            });
+            clearTimeout(updateTimeouts.current[agentId]);
+        }
     };
     // ... 
     // [NEW] Toggle USB
     const handleToggleUsb = async (agentId: string, currentStatus: boolean) => {
+        if (isFeatureLocked('usb')) {
+            toast.error(`Upgrade specific to ${currentPlan} Plan required for USB Blocking.`);
+            return;
+        }
         try {
             const res = await fetch(`${API_URL}/agents/${agentId}/toggle-usb?enabled=${!currentStatus}`, {
                 method: 'POST',
@@ -206,13 +422,17 @@ export default function Agents() {
         }
     };
 
+
     const [showDeployModal, setShowDeployModal] = useState(false);
     const [deployOS, setDeployOS] = useState<'windows' | 'linux' | 'mac'>('windows');
-    const [showOtpModal, setShowOtpModal] = useState(false);
-    const [showCapabilities, setShowCapabilities] = useState(false); // [NEW]
-    const [otpToken, setOtpToken] = useState<string | null>(null);
-
+    // const [showOtpModal, setShowOtpModal] = useState(false);
+    // const [otpToken, setOtpToken] = useState<string | null>(null);
     const [tenantApiKey, setTenantApiKey] = useState<string | null>(null);
+
+    const [showCapabilities, setShowCapabilities] = useState(false); // [NEW]
+
+
+
 
     useEffect(() => {
         if (showDeployModal && !tenantApiKey && token) {
@@ -230,6 +450,10 @@ export default function Agents() {
     const pcRef = useRef<RTCPeerConnection | null>(null);
     const remoteStreamRef = useRef<MediaStream | null>(null);
 
+
+
+
+    /*
     const handleGenerateToken = async () => {
         try {
             const res = await fetch(`${API_URL}/install/token`, {
@@ -245,9 +469,11 @@ export default function Agents() {
             console.error("Failed to generate OTP", e);
         }
     };
+    */
 
-    const [isDownloading, setIsDownloading] = useState(false);
+    // const [isDownloading, setIsDownloading] = useState(false);
 
+    /*
     const handleDownload = async (os: string) => {
         setIsDownloading(true);
         try {
@@ -258,7 +484,7 @@ export default function Agents() {
                 // [UPDATED] Use Zip Bundle to bypass browser blocks and auto-install Root CA
                 downloadUrl = `${API_URL}/downloads/installer/exe?key=${tenantApiKey}&format=zip`;
                 filename = `monitorix-installer-${tenantApiKey}.zip`;
-                alert("Download Started!\n\nNOTE: The zip is password protected to avoid browser blocking.\n\nPassword: monitorix\n\n1. Unzip using password 'monitorix'.\n2. Run 'install.bat' to install safely.");
+                toast.success("Download Started!\n\nNOTE: The zip is password protected to avoid browser blocking.\n\nPassword: monitorix\n\n1. Unzip using password 'monitorix'.\n2. Run 'install.bat' to install safely.");
             } else {
                 downloadUrl = `${API_URL}/downloads/public/agent?key=${tenantApiKey}&os_type=${os}&payload=false`;
                 filename = 'monitorix-installer.sh';
@@ -283,14 +509,19 @@ export default function Agents() {
         } catch (e) {
             console.error("Download error:", e);
             Analytics.track('Download Installer Failed', { os: os, error: e });
-            alert("Failed to download agent. Please try again.");
+            toast.error("Failed to download agent. Please try again.");
         } finally {
             setIsDownloading(false);
         }
     };
+    */
 
     // [NEW] Toggle Location
     const handleToggleLocation = async (agentId: string, currentStatus: boolean) => {
+        if (isFeatureLocked('location')) {
+            toast.error(`Upgrade specific to ${currentPlan} Plan required for Location Tracking.`);
+            return;
+        }
         try {
             const res = await fetch(`${API_URL}/agents/${agentId}/toggle-location?enabled=${!currentStatus}`, {
                 method: 'POST',
@@ -311,7 +542,7 @@ export default function Agents() {
         // Fallback: If passed null/undefined, try to find the agent string ID from the list
         if (!finalId) {
             console.error("[Agents] Delete called with invalid ID");
-            alert("Error: Invalid Agent ID.");
+            toast.error("Error: Invalid Agent ID.");
             return;
         }
 
@@ -328,25 +559,50 @@ export default function Agents() {
                 Analytics.track('Delete Agent', { id: finalId });
             } else {
                 const err = await res.json();
-                alert(`Failed to delete agent: ${err.detail || 'Unknown error'}`);
+                toast.error(`Failed to delete agent: ${err.detail || 'Unknown error'}`);
             }
         } catch (e) {
             console.error("Delete failed", e);
-            alert("Delete request failed. See console.");
+            toast.error("Delete request failed.");
         }
     };
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-    const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | 'specs' | null>(null);
-    const [events, setEvents] = useState<any[]>([]);
+    const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | 'specs' | 'apps' | 'vault' | 'policy' | 'speech' | 'vuln' | null>(null);
+    const [events, setEvents] = useState<AgentEvent[]>([]);
     const [showGraphs, setShowGraphs] = useState(false);
+    const [logFilter, setLogFilter] = useState(''); // [NEW] Filter State: Text
+    const [eventTypeFilter, setEventTypeFilter] = useState('All'); // [NEW] Filter State: Dropdown
+
+    // Get Unique Event Types (Memoized)
+    const eventTypes = useMemo(() => {
+        const types = new Set(events.map(e => e.type));
+        return ['All', ...Array.from(types)].sort();
+    }, [events]);
+
+    const filteredEvents = useMemo(() => {
+        let res = events;
+        // 1. Type Filter
+        if (eventTypeFilter !== 'All') {
+            res = res.filter(e => e.type === eventTypeFilter);
+        }
+        // 2. Text Filter
+        if (logFilter) {
+            const lower = logFilter.toLowerCase();
+            res = res.filter(e =>
+                (e.type || '').toLowerCase().includes(lower) ||
+                (e.details || '').toLowerCase().includes(lower)
+            );
+        }
+        return res;
+    }, [events, logFilter, eventTypeFilter]);
 
     // Live Screen State
     const [isScreenMaximized, setIsScreenMaximized] = useState(false);
     const [liveScreen, setLiveScreen] = useState<string | null>(null);
     const [isStreaming, setIsStreaming] = useState(false);
     const [socketStatus, setSocketStatus] = useState<string>('Disconnected');
-    const socketRef = useRef<any>(null);
+    const socketRef = useRef<any>(null); // socketio types are complex, any is okayish here but let's keep it for now
 
     // Recording Logic
     const [isRecording, setIsRecording] = useState(false);
@@ -384,7 +640,7 @@ export default function Agents() {
             setIsRecording(true);
         } catch (err) {
             console.error("Failed to start recording:", err);
-            alert("Failed to start recording. MediaRecorder might not be supported.");
+            toast.error("Failed to start recording.");
         }
     };
 
@@ -435,8 +691,17 @@ export default function Agents() {
                 let historyData: AgentReport[] = await historyRes.json();
                 if (!Array.isArray(historyData)) historyData = [];
 
-                // 3. Merge and Sort
-                const historyAsEvents = historyData.map((h: any) => {
+                // 3. Fetch Activity Logs (Merged View) [NEW]
+                const activityRes = await fetch(`${API_URL}/events/activity/${selectedAgentId}?${params.toString()}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                let activityData = [];
+                if (activityRes.ok) {
+                    activityData = await activityRes.json();
+                }
+
+                // 4. Merge and Sort
+                const historyAsEvents: AgentEvent[] = historyData.map((h: any) => {
                     const status = h.status || h.Status || 'Unknown';
                     let cpu = h.cpuUsage ?? h.CpuUsage ?? 0;
                     let mem = h.memoryUsage ?? h.MemoryUsage ?? 0;
@@ -451,9 +716,26 @@ export default function Agents() {
                     };
                 });
 
-                const combined = [...normalizedEvents, ...historyAsEvents].sort((a, b) =>
-                    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-                );
+                const activityAsEvents: AgentEvent[] = (Array.isArray(activityData) ? activityData : []).map((a: any) => ({
+                    type: a.ActivityType || 'Activity',
+                    details: `${a.ProcessName || ''} - ${a.WindowTitle || a.Url || ''}`.trim(),
+                    timestamp: normalizeTimestamp(a.Timestamp),
+                    RiskLevel: a.RiskLevel,
+                    Category: a.Category
+                }));
+
+                let combined = [...normalizedEvents, ...historyAsEvents, ...activityAsEvents];
+
+                // [FIX] Remove Gaps (Empty Type/Details) and duplicates (optional)
+                combined = combined.filter(c => c.type && c.details && c.details.length > 1);
+
+                combined.sort((a, b) => {
+                    const timeA = new Date(a.timestamp).getTime();
+                    const timeB = new Date(b.timestamp).getTime();
+                    if (timeB !== timeA) return timeB - timeA;
+                    // Tie-breaker: Type then Details
+                    return (a.type || '').localeCompare(b.type || '') || (a.details || '').localeCompare(b.details || '');
+                });
 
                 setEvents(combined);
             } catch (err) {
@@ -499,6 +781,70 @@ export default function Agents() {
 
             if (agentId && selectedAgentId && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
                 setEvents(prev => [{ type: title, details, timestamp }, ...prev]);
+            }
+        });
+
+        socket.on("agent_list_update", (updatedAgent: any) => {
+            setAgents(prev => {
+                const index = prev.findIndex(a => a.agentId === updatedAgent.agentId);
+                if (index === -1) return prev;
+
+                // [v1.7.0] Clear progress if update finished
+                if (updatedAgent.version && updatedAgent.targetVersion && updatedAgent.version === updatedAgent.targetVersion) {
+                    setUpdateProgressMap(prevMap => {
+                        const next = { ...prevMap };
+                        delete next[updatedAgent.agentId];
+                        return next;
+                    });
+                    if (updateTimeouts.current[updatedAgent.agentId]) {
+                        clearTimeout(updateTimeouts.current[updatedAgent.agentId]);
+                    }
+                }
+
+                const next = [...prev];
+                next[index] = {
+                    ...next[index],
+                    status: updatedAgent.status || next[index].status,
+                    version: updatedAgent.version || next[index].version,
+                    targetVersion: updatedAgent.targetVersion || next[index].targetVersion,
+                    cpuUsage: updatedAgent.cpuUsage ?? next[index].cpuUsage,
+                    memoryUsage: updatedAgent.memoryUsage ?? next[index].memoryUsage,
+                    timestamp: normalizeTimestamp(updatedAgent.timestamp || next[index].timestamp)
+                };
+                return next;
+            });
+        });
+
+        // [v1.7.0] Progress Event
+        socket.on("update_progress", (data: { agentId: string, progress: number }) => {
+            setUpdateProgressMap(prev => ({ ...prev, [data.agentId]: data.progress }));
+        });
+
+        socket.on("dashboard_stats_update", (payload: any) => {
+            if (payload.type === 'resource' && payload.data) {
+                setStats(prev => {
+                    if (!prev) return null;
+                    const next = { ...prev };
+
+                    // Append new point to trend
+                    const newPoint = {
+                        time: payload.data.time,
+                        cpu: payload.data.cpu,
+                        mem: payload.data.mem
+                    };
+
+                    // Update Resource Trend
+                    if (next.resources) {
+                        next.resources = {
+                            ...next.resources,
+                            trend: [...(next.resources.trend || []), newPoint]
+                        };
+                    }
+
+                    // Update Agent Counts dynamically if needed (Online/Offline status requires separate event, but strictly resources here)
+
+                    return next;
+                });
             }
         });
 
@@ -640,7 +986,7 @@ export default function Agents() {
                                     }
                                 }}
                             />
-                            <span className="text-gray-400 dark:text-gray-500 text-xs py-1 border-l border-gray-200 dark:border-gray-700 px-2 cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors" onClick={() => fetchStats()}>24H (Default)</span>
+                            <span className="text-gray-400 dark:text-gray-500 text-xs py-1 border-l border-gray-200 dark:border-gray-700 px-2 cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors" onClick={() => setSelectedDate('')}>24H (Default)</span>
                         </div>
 
                         {user?.role === 'TenantAdmin' && (
@@ -648,9 +994,10 @@ export default function Agents() {
                                 <button onClick={() => setShowDeployModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20">
                                     <Download size={18} /> Deploy Agent
                                 </button>
-                                <button onClick={handleGenerateToken} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold border border-gray-600">
+                                {/* <button onClick={handleGenerateToken} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold border border-gray-600">
                                     <AlertTriangle size={18} className="text-yellow-500" /> Generate OTP
-                                </button>
+                                </button> */}
+
                                 <button onClick={() => setShowCapabilities(true)} className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-300 dark:border-gray-600" title="Feature Matrix">
                                     <List size={18} /> Features
                                 </button>
@@ -738,7 +1085,7 @@ export default function Agents() {
                                             <span className={`font-bold shrink-0 ${['Critical', 'High', 'Error'].includes(log.type) ? 'text-red-500 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>{log.type}</span>
                                             <span className="text-gray-600 dark:text-gray-500 truncate">{log.details}</span>
                                         </div>
-                                        <span className="text-gray-500 shrink-0 ml-2">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                        <span className="text-gray-500 shrink-0 ml-2">{new Date(normalizeTimestamp(log.timestamp)).toLocaleTimeString()}</span>
                                     </div>
                                 ))
                             ) : (
@@ -772,6 +1119,9 @@ export default function Agents() {
                 </div>
             </div>
 
+
+
+
             {showDeployModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
                     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden transition-colors">
@@ -789,22 +1139,22 @@ export default function Agents() {
                             </div>
 
                             <div className="space-y-4">
-                                <div className="flex items-center gap-4">
+                                {/* <div className="flex items-center gap-4">
                                     <button onClick={() => handleDownload(deployOS)} disabled={isDownloading} className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold text-sm ${isDownloading ? 'opacity-75 cursor-not-allowed' : ''}`}>
                                         <Download size={18} /> {isDownloading ? 'Downloading...' : 'Download Installer'}
                                     </button>
                                     <span className="text-gray-500 text-sm">Or use CLI (Recommended)</span>
-                                </div>
+                                </div> */}
 
 
                                 {deployOS === 'windows' && (
                                     <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">PowerShell Command (Run as Admin)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-12">
-                                            powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key={tenantApiKey || 'Loading...'}' | iex"
+                                            powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key=${tenantApiKey || 'Loading...'}' | iex"
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key=${tenantApiKey}' | iex"`).then(() => alert("Copied!"))}
+                                            onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key=${tenantApiKey}' | iex"`).then(() => toast.success("Copied to clipboard!"))}
                                             className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >
@@ -817,10 +1167,10 @@ export default function Agents() {
                                     <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">Terminal Command</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-12">
-                                            curl -sL "https://monitorix.co.in/api/downloads/public/agent?key={tenantApiKey || 'Loading...'}&os_type={deployOS}" | bash
+                                            curl -sL "https://monitorix.co.in/api/downloads/public/agent?key=${tenantApiKey || 'Loading...'}&os_type=${deployOS}" | bash
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "https://monitorix.co.in/api/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | bash`).then(() => alert("Copied!"))}
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "https://monitorix.co.in/api/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | bash`).then(() => toast.success("Copied to clipboard!"))}
                                             className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                                             title="Copy to Clipboard"
                                         >
@@ -834,9 +1184,11 @@ export default function Agents() {
                 </div>
             )}
 
+
+
             <AgentCapabilitiesModal isOpen={showCapabilities} onClose={() => setShowCapabilities(false)} />
 
-            {
+            {/* 
                 showOtpModal && (
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
                         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-8 max-w-sm w-full text-center transition-colors">
@@ -848,7 +1200,11 @@ export default function Agents() {
                         </div>
                     </div>
                 )
-            }
+             */}
+
+
+
+
 
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg transition-colors">
                 <table className="w-full text-left">
@@ -863,14 +1219,58 @@ export default function Agents() {
                                         <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                         {agent.agentId}
                                     </div>
-                                    <div className="mt-1 flex gap-1">
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20">
-                                            v{agent.version}
-                                        </span>
-                                        {agent.version !== agent.targetVersion && (
-                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 animate-pulse">
-                                                Update Pending
-                                            </span>
+                                    <div className="mt-1 flex flex-col gap-1">
+                                        {updateProgressMap[agent.agentId] !== undefined && updateProgressMap[agent.agentId] < 100 ? (
+                                            <div className="w-24 mt-1">
+                                                <div className="flex justify-between text-[10px] mb-0.5">
+                                                    <span className="text-blue-500 font-bold animate-pulse">Updating...</span>
+                                                    <span className="text-gray-500 font-mono">{updateProgressMap[agent.agentId]}%</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="bg-blue-500 h-full transition-all duration-300 ease-out"
+                                                        style={{ width: `${updateProgressMap[agent.agentId]}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="flex gap-1">
+                                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20" title="Current Version">
+                                                        {agent.version}
+                                                    </span>
+                                                    {agent.version !== agent.targetVersion ? (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 animate-pulse flex items-center gap-1" title="Target Version">
+                                                            <RefreshCw size={8} className="animate-spin" /> → {agent.targetVersion}
+                                                        </span>
+                                                    ) : (
+                                                        agent.version === latestVersion ? (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20 flex items-center gap-0.5" title="System Up-to-Date">
+                                                                <Check size={8} /> Up-to-Date
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50/50 dark:bg-amber-500/5 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 flex items-center gap-1" title="Update Available">
+                                                                <Zap size={8} /> Update to {latestVersion}
+                                                            </span>
+                                                        )
+                                                    )}
+                                                </div>
+                                                {agent.version !== agent.targetVersion && agent.updateStatus === 'pending' && (
+                                                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter animate-pulse">
+                                                        Update Starting...
+                                                    </span>
+                                                )}
+                                                {agent.updateStatus === 'failed' && (
+                                                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-tighter flex items-center gap-1 cursor-help" title={`Last Error: ${agent.updateFailureReason || 'Unknown error'}`}>
+                                                        <AlertTriangle size={10} /> Update Failed
+                                                    </span>
+                                                )}
+                                                {agent.version !== agent.targetVersion && agent.updateStatus !== 'pending' && agent.updateStatus !== 'failed' && (
+                                                    <span className="text-[10px] font-bold text-amber-500 uppercase tracking-tighter">
+                                                        Update Pending
+                                                    </span>
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </td>
@@ -907,39 +1307,39 @@ export default function Agents() {
                                     <div className="flex gap-3 items-center">
                                         <button
                                             onClick={() => handleToggleUsb(agent.agentId, agent.usbBlockingEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.usbBlockingEnabled ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={agent.usbBlockingEnabled ? "USB Blocking ACTIVE (Write Protected)" : "USB Access ALLOWED"}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('usb') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.usbBlockingEnabled ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                            title={isFeatureLocked('usb') ? "USB Blocking (Upgrade Plan)" : agent.usbBlockingEnabled ? "USB Blocking ACTIVE (Write Protected)" : "USB Access ALLOWED"}
                                         >
-                                            <Usb className="w-4 h-4" />
+                                            {isFeatureLocked('usb') ? <Lock className="w-4 h-4" /> : <Usb className="w-4 h-4" />}
                                             {/* <span className="hidden md:inline">{agent.usbBlockingEnabled ? 'Block' : 'Allow'}</span> */}
                                         </button>
 
                                         <button
                                             onClick={() => handleToggleNetwork(agent.agentId, agent.networkMonitoringEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.networkMonitoringEnabled ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={agent.networkMonitoringEnabled ? "Network Analysis ON" : "Network Analysis OFF"}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('network') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.networkMonitoringEnabled ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                            title={isFeatureLocked('network') ? "Network Monitor (Upgrade Plan)" : agent.networkMonitoringEnabled ? "Network Analysis ON" : "Network Analysis OFF"}
                                         >
-                                            {agent.networkMonitoringEnabled ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
+                                            {isFeatureLocked('network') ? <Lock className="w-4 h-4" /> : agent.networkMonitoringEnabled ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
                                         </button>
 
                                         <button
                                             onClick={() => handleToggleFile(agent.agentId, agent.fileDlpEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.fileDlpEnabled ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={agent.fileDlpEnabled ? "File System DLP ON (Confidential Folder)" : "File System DLP OFF"}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('file_dlp') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.fileDlpEnabled ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                            title={isFeatureLocked('file_dlp') ? "File DLP (Upgrade Plan)" : agent.fileDlpEnabled ? "File System DLP ON (Confidential Folder)" : "File System DLP OFF"}
                                         >
-                                            {agent.fileDlpEnabled ? <FileText className="w-4 h-4" /> : <FileText className="w-4 h-4 opacity-50" />}
+                                            {isFeatureLocked('file_dlp') ? <Lock className="w-4 h-4" /> : agent.fileDlpEnabled ? <FileText className="w-4 h-4" /> : <FileText className="w-4 h-4 opacity-50" />}
                                         </button>
 
                                         <button
                                             onClick={() => handleToggleLocation(agent.agentId, agent.locationTrackingEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${agent.locationTrackingEnabled ? 'text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={agent.locationTrackingEnabled ? "Location Tracking ON" : "Location Tracking OFF"}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('location') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.locationTrackingEnabled ? 'text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                            title={isFeatureLocked('location') ? "Location Tracking (Upgrade Plan)" : agent.locationTrackingEnabled ? "Location Tracking ON" : "Location Tracking OFF"}
                                         >
-                                            {agent.locationTrackingEnabled ? <MapPin className="w-4 h-4" /> : <MapPinOff className="w-4 h-4" />}
+                                            {isFeatureLocked('location') ? <Lock className="w-4 h-4" /> : agent.locationTrackingEnabled ? <MapPin className="w-4 h-4" /> : <MapPinOff className="w-4 h-4" />}
                                             {/* <span className="hidden md:inline">{agent.locationTrackingEnabled ? 'Loc On' : 'Loc Off'}</span> */}
                                         </button>
 
-                                        <button onClick={() => handleViewLogs(agent.agentId)} className="text-gray-400 hover:text-white text-sm font-medium hover:underline flex items-center gap-1"> <List className="w-4 h-4" /> Logs </button>
+                                        <button onClick={() => handleViewLogs(agent.agentId)} className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-sm font-medium hover:underline flex items-center gap-1"> <List className="w-4 h-4" /> Logs </button>
                                         <button onClick={() => handleMonitor(agent.agentId)} className="text-blue-400 hover:text-blue-300 text-sm font-medium hover:underline flex items-center gap-1"> <Monitor className="w-4 h-4" /> Monitor </button>
                                         <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="text-purple-400 hover:text-purple-300 text-sm font-medium hover:underline flex items-center gap-1"> <MousePointer className="w-4 h-4" /> Remote </button>
                                         <button onClick={() => handleDelete(agent.id || agent.agentId)} className="text-gray-400 hover:text-red-500 transition-colors ml-2" title="Delete Agent"> <Trash2 className="w-4 h-4" /> </button>
@@ -959,9 +1359,29 @@ export default function Agents() {
                                 <div>
                                     <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Agent: <span className="text-blue-400 font-mono">{selectedAgentId}</span> </h2>
                                     <div className="flex gap-4 mt-2">
-                                        {['logs', 'monitor', 'remote', 'screenshots', 'activity', 'mail', 'specs'].map(m => (
-                                            <button key={m} onClick={() => setViewMode(m as any)} className={`text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors ${viewMode === m ? 'text-white border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-300'}`}> {m} </button>
-                                        ))}
+                                        <div className="flex gap-4 mt-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-700">
+                                            {TAB_TABS.map(t => {
+                                                const locked = t.feat ? isFeatureLocked(t.feat) : false;
+                                                const restricted = t.role && user?.role !== t.role;
+                                                const disabled = locked || restricted;
+
+                                                return (
+                                                    <button
+                                                        key={t.id}
+                                                        onClick={() => !restricted && setViewMode(t.id as any)}
+                                                        className={`
+                                                        text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors whitespace-nowrap flex items-center gap-1
+                                                        ${viewMode === t.id ? 'text-white border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-300'}
+                                                        ${disabled ? 'opacity-50 cursor-not-allowed group' : ''}
+                                                    `}
+                                                        title={locked ? `Upgrade Plan for ${t.label}` : restricted ? `Restricted to ${t.role}` : ''}
+                                                    >
+                                                        {t.label}
+                                                        {(locked || restricted) && <Lock size={10} />}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 items-center">
@@ -970,17 +1390,35 @@ export default function Agents() {
                                     )}
                                     {(() => {
                                         const agent = agents.find(a => a.agentId === selectedAgentId);
-                                        if (agent && agent.version !== agent.targetVersion) {
+                                        if (!agent) return null;
+
+                                        // Case 1: Update in progress
+                                        if (agent.version !== agent.targetVersion) {
                                             return (
-                                                <button
-                                                    onClick={() => handleUpdateAgent(agent.agentId)}
-                                                    className="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20"
-                                                >
-                                                    <Download size={12} /> Update Software
-                                                </button>
+                                                <div className="px-3 py-1 bg-amber-600/20 text-amber-400 rounded border border-amber-600/50 text-xs font-bold flex items-center gap-1 animate-pulse">
+                                                    <RefreshCw size={12} className="animate-spin" /> Updating to {agent.targetVersion}...
+                                                </div>
                                             );
                                         }
-                                        return null;
+
+                                        // Case 2: Up-to-Date (Latest)
+                                        if (agent.version === latestVersion) {
+                                            return (
+                                                <div className="px-3 py-1 bg-green-600/20 text-green-400 rounded border border-green-600/50 text-xs font-bold flex items-center gap-1">
+                                                    <Check size={12} /> Software Up-to-Date
+                                                </div>
+                                            );
+                                        }
+
+                                        // Case 3: Update Available (But not yet triggered)
+                                        return (
+                                            <button
+                                                onClick={() => handleUpdateAgent(agent.agentId)}
+                                                className="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20"
+                                            >
+                                                <Download size={12} /> Update Software
+                                            </button>
+                                        );
                                     })()}
                                     {viewMode === 'logs' && (
                                         <button onClick={handleSimulateEvent} className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold border border-red-600/50"> Simulate Event </button>
@@ -993,6 +1431,30 @@ export default function Agents() {
                                 <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 flex flex-col">
                                     <div className="flex justify-between items-center mb-4">
                                         <div className="flex items-center gap-3">
+                                            {/* [NEW] Type Dropdown */}
+                                            <div className="relative">
+                                                <select
+                                                    value={eventTypeFilter}
+                                                    onChange={(e) => setEventTypeFilter(e.target.value)}
+                                                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none appearance-none pr-6 cursor-pointer"
+                                                >
+                                                    {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                                                </select>
+                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
+                                            </div>
+
+                                            {/* Search Input */}
+                                            <div className="relative">
+                                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Filter logs..."
+                                                    className="bg-gray-800 border border-gray-700 rounded pl-7 pr-2 py-1 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none w-48"
+                                                    value={logFilter}
+                                                    onChange={(e) => setLogFilter(e.target.value)}
+                                                />
+                                            </div>
+
                                             {modalStartDate && (
                                                 <span className="text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider shadow-sm">
                                                     Showing: {modalStartDate.split('-').reverse().join('-')} to {modalEndDate.split('-').reverse().join('-')}
@@ -1061,7 +1523,7 @@ export default function Agents() {
                                                     <tr><th className="p-4 w-48">Timestamp</th><th className="p-4 w-48">Event Type</th><th className="p-4">Details</th></tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-700 text-gray-300 font-mono">
-                                                    {events.length === 0 ? <tr><td colSpan={3} className="p-8 text-center text-gray-500 italic">No logs recorded.</td></tr> : events.map((evt, i) => (
+                                                    {filteredEvents.length === 0 ? <tr><td colSpan={3} className="p-8 text-center text-gray-500 italic">No logs recorded (or no match).</td></tr> : filteredEvents.map((evt, i) => (
                                                         <tr key={i} className="hover:bg-gray-700/30">
                                                             <td className="p-4 text-gray-500">{new Date(evt.timestamp).toLocaleString()}</td>
                                                             <td className="p-4 font-bold"> <span className="text-blue-400">{evt.type}</span> </td>
@@ -1098,7 +1560,24 @@ export default function Agents() {
                                             </div>
                                         </div>
                                     )}
-                                    <div ref={monitorContainerRef} className={`flex flex-col bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0`}>
+                                    <div ref={monitorContainerRef} className={`flex flex-col bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0 relative`}>
+                                        {isFeatureLocked('live_stream') && (
+                                            <div className="absolute inset-0 z-[60] bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                                <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                                    <Lock className="w-12 h-12 text-purple-500" />
+                                                </div>
+                                                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
+                                                <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
+                                                    Real-time High-FPS screen monitoring and remote control is an <b>Enterprise-only</b> capability.
+                                                </p>
+                                                <button
+                                                    onClick={() => setShowCapabilities(true)}
+                                                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2 group"
+                                                >
+                                                    <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade to Enterprise
+                                                </button>
+                                            </div>
+                                        )}
                                         <div className={`p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
                                             <Image className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-300 uppercase">Live Screen Feed</span>
                                             <div className="ml-auto flex items-center gap-3">
@@ -1142,20 +1621,195 @@ export default function Agents() {
 
                             {viewMode === 'activity' && (
                                 <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                    <ActivityLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                                    <ActivityLogViewer
+                                        agentId={selectedAgentId}
+                                        apiUrl={API_URL}
+                                        token={token}
+                                        isEnabled={agents.find(a => a.agentId === selectedAgentId)?.activityMonitorEnabled}
+                                        onEnable={async () => toggleAgentSetting(selectedAgentId!, 'ActivityMonitorEnabled', true)}
+                                        planLevel={planLevel}
+                                        requiredTier={FEATURE_TIERS['activity']}
+                                    />
                                 </div>
                             )}
 
                             {viewMode === 'remote' && (
-                                <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 font-sans">
-                                    <RemoteDesktop agentId={selectedAgentId!} token={token} />
+                                <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 font-sans relative">
+                                    {isFeatureLocked('remote_shell') && (
+                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                                <Lock className="w-12 h-12 text-purple-500" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
+                                            <p className="text-gray-400 max-w-xs mb-8 text-sm">
+                                                Remote Desktop and Shell access are exclusive to the <b>Enterprise Plan</b>.
+                                            </p>
+                                            <button
+                                                onClick={() => setShowCapabilities(true)}
+                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
+                                            >
+                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                                            </button>
+                                        </div>
+                                    )}
+                                    <RemoteDesktop agentId={selectedAgentId!} token={token!} />
                                 </div>
                             )}
 
                             {viewMode === 'mail' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                    <MailLogViewer agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans relative">
+                                    {isFeatureLocked('mail') && (
+                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                                <Lock className="w-12 h-12 text-purple-500" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
+                                            <p className="text-gray-400 max-w-xs mb-8 text-sm">
+                                                Advanced Email Monitoring and Data Loss Prevention requires <b>Enterprise Plan</b>.
+                                            </p>
+                                            <button
+                                                onClick={() => setShowCapabilities(true)}
+                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
+                                            >
+                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                                            </button>
+                                        </div>
+                                    )}
+                                    <MailLogViewer agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
                                 </div>
+                            )}
+
+                            {viewMode === 'speech' && (
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans relative">
+                                    {isFeatureLocked('speech') && (
+                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                                <Lock className="w-12 h-12 text-purple-500" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
+                                            <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
+                                                Real-time **Speech Monitoring** and Audio Transcription is an **Enterprise-only** capability.
+                                            </p>
+                                            <button
+                                                onClick={() => setShowCapabilities(true)}
+                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
+                                            >
+                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                                            </button>
+                                        </div>
+                                    )}
+                                    <SpeechLogViewer agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
+                                </div>
+                            )}
+
+                            {viewMode === 'speech' && (
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                    <SpeechLogViewer
+                                        agentId={selectedAgentId!}
+                                        apiUrl={API_URL}
+                                        token={token!}
+                                    />
+                                </div>
+                            )}
+
+                            {viewMode === 'vuln' && (
+                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans relative">
+                                    {isFeatureLocked('vuln') && (
+                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                                <Lock className="w-12 h-12 text-purple-500" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
+                                            <p className="text-gray-400 max-w-xs mb-8 text-sm">
+                                                Vulnerability Intelligence and CVE matching is an <b>Enterprise-only</b> capability.
+                                            </p>
+                                            <button
+                                                onClick={() => setShowCapabilities(true)}
+                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
+                                            >
+                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                                                Agent Vulnerability Ledger
+                                            </h3>
+                                        </div>
+                                        <AgentSecurityLedger
+                                            agentId={selectedAgentId!}
+                                            apiUrl={API_URL}
+                                            token={token!}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {viewMode === 'vault' && (
+                                <div className="flex-1 overflow-hidden relative">
+                                    {isFeatureLocked('shadow') && (
+                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                                <Lock className="w-12 h-12 text-purple-500" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
+                                            <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
+                                                Secure Shadow Vault and File Integrity Monitoring are <b>Enterprise-only</b> capabilities.
+                                            </p>
+                                            <button
+                                                onClick={() => setShowCapabilities(true)}
+                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2 group"
+                                            >
+                                                <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade to Enterprise
+                                            </button>
+                                        </div>
+                                    )}
+                                    <ShadowVault
+                                        agentId={selectedAgentId!}
+                                        token={token!}
+                                        apiUrl={API_URL}
+                                    />
+                                </div>
+                            )}
+
+                            {viewMode === 'apps' && (
+                                <div className="flex-1 overflow-hidden relative">
+                                    {isFeatureLocked('app_blocker') && (
+                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                            <div className="p-4 bg-blue-500/10 rounded-full mb-4 ring-4 ring-blue-500/20">
+                                                <Lock className="w-12 h-12 text-blue-500" />
+                                            </div>
+                                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Professional Feature</h2>
+                                            <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
+                                                Application Blocking and Process Enforcement are <b>Professional Plan</b> capabilities.
+                                            </p>
+                                            <button
+                                                onClick={() => setShowCapabilities(true)}
+                                                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl shadow-xl shadow-blue-500/20 transition-all flex items-center gap-2 group"
+                                            >
+                                                <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade to Professional
+                                            </button>
+                                        </div>
+                                    )}
+                                    {/* Placeholder for Apps Component if it existed, or text */}
+                                    <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                        <div className="text-center text-gray-400 mt-20">
+                                            <p>This module allows you to block specific applications from running on the agent.</p>
+                                            <p className="text-xs mt-2 opacity-50">Please upgrade to configure blocked apps.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {viewMode === 'policy' && (
+                                <FeaturePolicyManager
+                                    agent={agents.find(a => a.agentId === selectedAgentId)}
+                                    token={token!}
+                                    apiUrl={API_URL}
+                                    onUpdate={fetchAgents}
+                                />
                             )}
 
                             {viewMode === 'specs' && (
@@ -1170,6 +1824,11 @@ export default function Agents() {
                                             try {
                                                 if (currentAgent?.hardwareJson) hw = JSON.parse(currentAgent.hardwareJson);
                                             } catch (e) { console.error("JSON Parse Error", e); }
+
+                                            // Handle case where parsing fails or null
+                                            if (!hw && currentAgent?.hardwareJson?.includes('{')) {
+                                                // Fallback or retry?
+                                            }
 
                                             if (!hw) return <div className="text-gray-500 italic text-center py-8">No hardware data available for this agent. Ensure agent version is up to date (Monitorix v2.1+).</div>;
 

@@ -26,6 +26,11 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token }: Props) {
     const [showSettings, setShowSettings] = useState(false);
     const [settings, setSettings] = useState({ quality: 80, resolution: 'Original', maxSize: 0 });
 
+    // OCR Search State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [ocrResults, setOcrResults] = useState<any[]>([]);
+
     useEffect(() => {
         if (!agentId) return;
         setLoadingSettings(true);
@@ -63,6 +68,29 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token }: Props) {
         return () => { newSocket.disconnect(); };
     }, [agentId, apiUrl, token]);
 
+    const handleSearch = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!searchQuery.trim()) {
+            setOcrResults([]);
+            return;
+        }
+
+        setIsSearching(true);
+        try {
+            const res = await fetch(`${apiUrl}/api/ocr?agent_id=${agentId}&q=${encodeURIComponent(searchQuery)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setOcrResults(data);
+            }
+        } catch (e) {
+            console.error("Search failed", e);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
     const toggleScreenshots = async () => {
         const newVal = !isEnabled;
         setIsEnabled(newVal);
@@ -89,8 +117,20 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token }: Props) {
             <div className="flex justify-between items-center bg-gray-800 p-4 rounded-lg border border-gray-700">
                 <h3 className="text-lg font-bold text-white flex gap-2"><Image className="w-5 h-5 text-blue-500" /> Captured Evidence</h3>
                 <div className="flex items-center gap-3">
+                    <form onSubmit={handleSearch} className="relative group">
+                        <input
+                            type="text"
+                            placeholder="Search text in images..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-gray-900 border border-gray-700 rounded-full px-4 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500 w-64 transition-all"
+                        />
+                        <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400">
+                            {isSearching ? <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <Image size={14} />}
+                        </button>
+                    </form>
                     <button onClick={async () => { await fetch(`${apiUrl}/api/agents/${agentId}/take-screenshot`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }} className="px-3 py-1 bg-blue-600 rounded text-white font-bold text-sm">Capture Now</button>
-                    <button onClick={() => setShowSettings(true)} className="p-1.5 text-gray-400 hover:text-white" title="Settings"><SettingsIcon className="w-5 h-5" /></button>
+                    <button onClick={() => setShowSettings(true)} className="p-1.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white" title="Settings"><SettingsIcon className="w-5 h-5" /></button>
                     <span className={`text-sm font-bold ${isEnabled ? 'text-green-400' : 'text-gray-500'}`}>{isEnabled ? 'Active' : 'Paused'}</span>
                     <button onClick={toggleScreenshots} disabled={loadingSettings} className={`w-12 h-6 rounded-full p-1 relative ${isEnabled ? 'bg-green-600' : 'bg-gray-700'}`}>
                         <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
@@ -113,18 +153,35 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token }: Props) {
                 </div>
             )}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {images.map((img, i) => (
-                    <div key={i} className="group relative bg-gray-800 rounded-lg overflow-hidden border border-gray-700">
-                        <div className="aspect-video bg-black relative">
-                            <img src={img.dataUri || `${apiUrl}${img.Url}?token=${token}`} alt={img.Filename} className="w-full h-full object-cover opacity-75 group-hover:opacity-100" />
+                {images.map((img, i) => {
+                    const ocrHit = ocrResults.find(r => r.screenshotId === img.Filename);
+                    const isMatched = searchQuery && ocrHit;
+
+                    return (
+                        <div key={i} className={`group relative bg-gray-800 rounded-lg overflow-hidden border transition-all ${isMatched ? 'border-blue-500 ring-1 ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'border-gray-700'}`}>
+                            <div className="aspect-video bg-black relative">
+                                <img src={img.dataUri || `${apiUrl}${img.Url}?token=${token}`} alt={img.Filename} className={`w-full h-full object-cover transition-opacity ${isMatched ? 'opacity-100' : 'opacity-75 group-hover:opacity-100'}`} />
+                                {isMatched && (
+                                    <div className="absolute top-2 left-2 bg-blue-600 text-[8px] font-bold text-white px-1.5 py-0.5 rounded shadow-lg uppercase z-10">
+                                        OCR Match
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-2">
+                                <p className="text-xs text-gray-300 font-mono truncate">{img.Filename}</p>
+                                <p className="text-[10px] text-gray-500">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleString()}</p>
+                                {isMatched && ocrHit.extractedText && (
+                                    <div className="mt-1 text-[9px] text-blue-400 font-mono italic truncate bg-blue-900/20 p-1 rounded">
+                                        "...{ocrHit.extractedText.toLowerCase().includes(searchQuery.toLowerCase()) ?
+                                            ocrHit.extractedText.substr(Math.max(0, ocrHit.extractedText.toLowerCase().indexOf(searchQuery.toLowerCase()) - 10), 30) :
+                                            ocrHit.extractedText.substr(0, 30)}..."
+                                    </div>
+                                )}
+                            </div>
+                            <a href={`${apiUrl}${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50 transition-opacity"><span className="text-white border px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm">View Fullscreen</span></a>
                         </div>
-                        <div className="p-2">
-                            <p className="text-xs text-gray-300 font-mono truncate">{img.Filename}</p>
-                            <p className="text-[10px] text-gray-500">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleString()}</p>
-                        </div>
-                        <a href={`${apiUrl}${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/50"><span className="text-white border px-2 py-1 rounded-full text-xs">View</span></a>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

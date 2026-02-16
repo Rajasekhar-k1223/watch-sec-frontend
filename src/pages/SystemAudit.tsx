@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ShieldCheck, Clock, Search, User as UserIcon, Monitor, Calendar } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import BandwidthStatus from '../components/BandwidthStatus'; // [NEW]
 
 interface AuditLog {
     Id: number;
@@ -16,7 +17,7 @@ interface AuditLog {
 export default function SystemAudit() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [includeAgents, setIncludeAgents] = useState(true);
+    const [filterSource, setFilterSource] = useState<'All' | 'Agent' | 'User'>('Agent'); // Default to Agent as requested
     const [startDate, setStartDate] = useState<string>(() => {
         const d = new Date();
         d.setDate(d.getDate() - 1);
@@ -27,7 +28,7 @@ export default function SystemAudit() {
 
     useEffect(() => {
         const fetchLogs = async () => {
-            let url = `${API_URL}/audit?tenantId=${user?.tenantId || ''}&include_agents=${includeAgents}`;
+            let url = `${API_URL}/audit?tenantId=${user?.tenantId || ''}&include_agents=true`; // Always fetch both, filter client side for responsiveness
             if (startDate) url += `&start_date=${startDate}T00:00:00`;
             if (endDate) url += `&end_date=${endDate}T23:59:59`;
 
@@ -39,7 +40,7 @@ export default function SystemAudit() {
             }
         };
         if (token) fetchLogs();
-    }, [user, token, includeAgents, startDate, endDate]);
+    }, [user, token, startDate, endDate]); // Remove includeAgents from dependency as we fetch all
 
     const setQuickFilter = (days: number) => {
         const end = new Date();
@@ -50,11 +51,17 @@ export default function SystemAudit() {
         setEndDate(formatDate(end));
     };
 
-    const filteredLogs = logs.filter(log =>
-        (log.Actor || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (log.Action || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (log.Details || '').toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredLogs = logs.filter(log => {
+        const matchesSearch = (log.Actor || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (log.Action || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (log.Details || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesSource = filterSource === 'All' ? true :
+            filterSource === 'Agent' ? log.ActorType === 'Agent' :
+                log.ActorType !== 'Agent'; // User/System
+
+        return matchesSearch && matchesSource;
+    });
 
     return (
         <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
@@ -66,17 +73,21 @@ export default function SystemAudit() {
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Timeline of Administrative actions and Agent security events.</p>
                 </div>
-                <div className="flex items-center gap-4 w-full justify-between items-end">
+                {/* Bandwidth Monitor [NEW] */}
+                <div className="mb-2">
+                    <BandwidthStatus agentId={filterSource === 'Agent' ? 'Global' : 'Global'} socket={null} />
+                </div>
+                <div className="flex items-center gap-4 w-full justify-end items-end">
                     <div className="flex items-center gap-4 items-end">
-                        <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-gray-800 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 shadow-sm transition-all hover:border-teal-500 self-end">
-                            <input
-                                type="checkbox"
-                                checked={includeAgents}
-                                onChange={(e) => setIncludeAgents(e.target.checked)}
-                                className="w-4 h-4 accent-teal-500"
-                            />
-                            <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Include Agent Events</span>
-                        </label>
+                        <select
+                            value={filterSource}
+                            onChange={(e) => setFilterSource(e.target.value as any)}
+                            className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-lg px-2 py-2 shadow-sm focus:ring-teal-500 outline-none self-end"
+                        >
+                            <option value="All">All Sources</option>
+                            <option value="Agent">Agent Events Only</option>
+                            <option value="User">Portal Events Only</option>
+                        </select>
                         {(startDate || endDate) && (
                             <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded uppercase inline-block self-end mb-1">
                                 Showing: {startDate.split('-').reverse().join('-')} - {(endDate || '').split('-').reverse().join('-')}

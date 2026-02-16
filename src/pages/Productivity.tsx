@@ -151,7 +151,7 @@ export default function Productivity() {
                         {(startDate || endDate) && (
                             <button
                                 onClick={() => { setStartDate(''); setEndDate(''); }}
-                                className="mr-2 text-xs text-blue-400 hover:text-white font-bold px-2 py-1 hover:bg-white/10 rounded"
+                                className="mr-2 text-xs text-blue-600 dark:text-blue-400 hover:text-gray-900 dark:hover:text-white font-bold px-2 py-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded"
                             >
                                 CLEAR
                             </button>
