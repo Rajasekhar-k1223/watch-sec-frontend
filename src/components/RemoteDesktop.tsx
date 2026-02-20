@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Lock, Wifi, WifiOff, Video, StopCircle, Maximize2, Minimize2, Play, Square, EyeOff, Eye } from 'lucide-react';
-import { API_URL } from '../config';
+import { SOCKET_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import toast from 'react-hot-toast';
 
@@ -29,7 +29,8 @@ export default function RemoteDesktop({ agentId, token }: Props) {
         if (socketRef.current?.connected) return;
 
         console.log("[RemoteDesktop] Connecting...");
-        const socket = io(API_URL, {
+        const socket = io(SOCKET_URL, {
+            path: "/socket.io",
             transports: ['websocket'],
             reconnection: true,
             auth: { token: token }, // Pass token

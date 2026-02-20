@@ -20,9 +20,11 @@ import Login from './pages/Login';
 import Policies from './pages/Policies';
 import Reports from './pages/Reports';
 import Productivity from './pages/Productivity';
+import EmployeePulse from './pages/EmployeePulse';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
 import BandwidthSettings from './pages/BandwidthSettings';
+import Architecture from './pages/Architecture';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -96,7 +98,9 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/my-dashboard" element={<EmployeeDashboard />} />
                 <Route path="/productivity" element={<Productivity />} />
+                <Route path="/employee-pulse" element={<EmployeePulse />} />
                 <Route path="/bandwidth" element={<BandwidthSettings />} />
+                <Route path="/architecture" element={<Architecture />} />
               </Route>
             </Route>
           </Routes>

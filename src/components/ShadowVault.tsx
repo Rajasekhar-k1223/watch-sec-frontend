@@ -30,7 +30,7 @@ export default function ShadowVault({ agentId, token, apiUrl }: ShadowVaultProps
     const fetchFiles = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${apiUrl}/api/agents/${agentId}/shadow-vault`, {
+            const response = await fetch(`${apiUrl}/agents/${agentId}/shadow-vault`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
@@ -48,13 +48,13 @@ export default function ShadowVault({ agentId, token, apiUrl }: ShadowVaultProps
 
     const handleDownload = async (fileId: number) => {
         try {
-            const response = await fetch(`${apiUrl}/api/agents/${agentId}/shadow-vault/${fileId}/download`, {
+            const response = await fetch(`${apiUrl}/agents/${agentId}/shadow-vault/${fileId}/download`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
                 // Backend returns a temporary download URL or the blob.
                 // For now, let's assume it's a redirect to a download link.
-                window.open(`${apiUrl}/api/agents/${agentId}/shadow-vault/${fileId}/download?token=${token}`, '_blank');
+                window.open(`${apiUrl}/agents/${agentId}/shadow-vault/${fileId}/download?token=${token}`, '_blank');
             }
         } catch (err) {
             console.error('Download failed', err);

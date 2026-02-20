@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Package, Search, RefreshCw, Server, AlertCircle, ShieldCheck, ExternalLink } from 'lucide-react';
+import { Package, Search, RefreshCw, Server, AlertCircle, ShieldCheck } from 'lucide-react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Activity, Key, Clipboard, ShieldAlert, Globe, Printer,
-    Ghost, Video, Terminal, Mail, Camera, MapPin, Usb, Wifi, FileText, CheckCircle, Info, Mic, AlertCircle, Clock, Rocket, Lock
+    Ghost, Video, Terminal, Mail, Camera, MapPin, Usb, Wifi, FileText, CheckCircle, Info, Mic, AlertCircle, Clock, Rocket, Lock, Shield
 } from 'lucide-react';
 
 interface Feature {
@@ -21,6 +21,7 @@ interface FeaturePolicyManagerProps {
     token: string;
     apiUrl: string;
     onUpdate: () => void;
+    policies?: any[]; // [NEW]
 }
 
 // Trial-related interfaces
@@ -36,7 +37,7 @@ interface TrialStatus {
     used_trials: string[];
 }
 
-export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate }: FeaturePolicyManagerProps) {
+export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, policies = [] }: FeaturePolicyManagerProps) {
     const [toggling, setToggling] = useState<string | null>(null);
     const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
     const [trialCountdowns, setTrialCountdowns] = useState<Record<string, number>>({});
@@ -299,6 +300,22 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate }:
         }
     };
 
+    const handleAssignPolicy = async (policyId: number | null) => {
+        try {
+            const res = await fetch(`${apiUrl}/agents/${agent.agentId}/policy`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ policyId })
+            });
+            if (res.ok) {
+                onUpdate();
+            }
+        } catch (e) { console.error(e); }
+    };
+
     const OSSupportBadge = ({ support }: { support: { win: boolean, linux: boolean, mac: boolean } }) => (
         <div className="flex gap-1 justify-center">
             <span className={`text-[10px] px-1 rounded ${support.win ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-gray-800 text-gray-600 border border-gray-700'}`}>W</span>
@@ -319,6 +336,39 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate }:
                         <p className="text-gray-400 text-xs mt-1 leading-relaxed">
                             Use these controls to activate or deactivate agent capabilities in real-time. Toggling a feature will send a command to the remote device, which will reconfigure and sync immediately.
                         </p>
+                    </div>
+                </div>
+
+                {/* [NEW] Policy Assignment Section */}
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-purple-500/10 rounded-full border border-purple-500/20">
+                            <Shield className="w-6 h-6 text-purple-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-white font-bold text-lg">Active DLP Policy</h3>
+                            <p className="text-gray-400 text-xs">Assign a centralized policy to override local agent settings.</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <select
+                            className="bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white text-sm outline-none focus:border-purple-500 min-w-[200px]"
+                            value={agent.policyId || ""}
+                            onChange={(e) => handleAssignPolicy(e.target.value ? Number(e.target.value) : null)}
+                        >
+                            <option value="">No Policy (Use Tenant Defaults)</option>
+                            {policies?.map((p: any) => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                        {agent.policyId && (
+                            <button
+                                onClick={() => handleAssignPolicy(null)}
+                                className="text-red-400 hover:text-red-300 text-xs font-bold underline"
+                            >
+                                Unassign
+                            </button>
+                        )}
                     </div>
                 </div>
 

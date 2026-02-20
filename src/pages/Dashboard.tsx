@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { Activity, Server, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, ArrowRight, Globe, Zap, Lock } from 'lucide-react';
 import { io } from 'socket.io-client';
-import { API_URL } from '../config';
+import { API_URL, SOCKET_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import WorldMap from '../components/WorldMap';
 import { NetworkTopology } from '../components/NetworkGraph';
@@ -122,7 +122,7 @@ export default function Dashboard() {
         const interval = setInterval(fetchStats, 10000);
 
         // Socket.IO Connection
-        const socket = io(API_URL, {
+        const socket = io(SOCKET_URL, {
             path: "/socket.io",
             transports: ["websocket"],
             reconnectionAttempts: 5,
@@ -330,7 +330,7 @@ export default function Dashboard() {
                         </div>
                     </div>
                     <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <AreaChart data={stats?.resources.trend || []}>
                                 <defs>
                                     <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
@@ -363,7 +363,7 @@ export default function Dashboard() {
                         Threat Distribution
                     </h2>
                     <div className="h-[250px] relative">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                             <PieChart>
                                 <Pie
                                     data={pieData}

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert, Lock, Activity, Wifi } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert, Lock, Activity, Wifi, Mail } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -29,13 +29,15 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { name: 'Users and Privileges', path: '/users', icon: Users, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
         { name: 'Tenants', path: '/tenants', icon: Share2, roles: ['SuperAdmin'], minTier: 1 },
         { name: 'Agents', path: '/agents', icon: Monitor, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Mail Processing', path: '/mail', icon: Mail, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Event Log', path: '/events', icon: List, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'System Audit', path: '/audit', icon: ShieldCheck, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
-        { name: 'Employee Pulse', path: '/productivity', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Employee Pulse', path: '/employee-pulse', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Productivity', path: '/productivity', icon: Activity, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Bandwidth', path: '/bandwidth', icon: Wifi, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Reports', path: '/reports', icon: FileText, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Bandwidth', path: '/bandwidth', icon: Share2, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 }, // [NEW] Use Share2 or Wifi if imported
+        { name: 'Architecture', path: '/architecture', icon: Share2, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
+
         { name: 'Billing', path: '/billing', icon: CreditCard, roles: ['TenantAdmin'], minTier: 1 },
         { name: 'Settings', path: '/settings', icon: Settings, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'DLP Policies', path: '/policies', icon: Shield, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 2 }, // Pro

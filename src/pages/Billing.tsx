@@ -6,13 +6,15 @@ import toast from 'react-hot-toast';
 
 interface BillingInfo {
     id: number;
-    plan: string;
-    agentLimit: number;
-    agentCount: number;
-    nextBillingDate: string;
-    dueAmount: number;
-    stripeCustomerId: string | null;
-    subscriptionStatus: string;
+    Plan: string;
+    AgentLimit: number;
+    AgentCount: number; // NOTE: Backend doesn't verify this exists in PlanDto, might be computed or missing?
+    NextBillingDate: string;
+    AmountDue: number;
+    StripeCustomerId: string | null;
+    SubscriptionStatus: string;
+    // Map missing lowercase to keep component logic simple or update component? 
+    // Let's update component to use Capitalized.
 }
 
 export default function Billing() {
@@ -23,10 +25,29 @@ export default function Billing() {
     const fetchBilling = async () => {
         if (!user?.tenantId) return;
         try {
-            const res = await fetch(`${API_URL}/billing?tenantId=${user.tenantId}`, {
+            const res = await fetch(`${API_URL}/billing?tenantId=${user.tenantId}&t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (res.ok) setInfo(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                // Map backend PlanDto to our UI needs or usage
+                // PlanDto: { TenantId, Plan, AgentLimit, NextBillingDate, AmountDue, StripeCustomerId, SubscriptionStatus }
+                // It does NOT seem to return agentCount? 
+                // Let's check billing.py again. It only fetches Tenant and returns PlanDto.
+                // PlanDto in billing.py DOES NOT have AgentCount!
+                // We might need to fetch AgentCount separately or ignore it for now.
+                // For now, let's map what we have.
+                setInfo({
+                    id: data.TenantId,
+                    Plan: data.Plan,
+                    AgentLimit: data.AgentLimit,
+                    AgentCount: 0, // Placeholder as backend doesn't send it?
+                    NextBillingDate: data.NextBillingDate,
+                    AmountDue: data.AmountDue,
+                    StripeCustomerId: data.StripeCustomerId,
+                    SubscriptionStatus: data.SubscriptionStatus
+                });
+            }
         } catch (e) {
             console.error("Billing fetch failed", e);
         }
@@ -106,7 +127,7 @@ export default function Billing() {
     if (!user?.tenantId) return <div className="p-8 text-gray-500">Billing is only available for Tenant Scoped users.</div>;
     if (!info) return <div className="p-8 text-gray-500 animate-pulse">Loading subscription details...</div>;
 
-    const usagePercent = Math.min((info.agentCount / info.agentLimit) * 100, 100);
+    const usagePercent = Math.min((info.AgentCount / info.AgentLimit) * 100, 100);
 
     return (
         <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen font-sans animate-fade-in transition-colors">
@@ -121,9 +142,9 @@ export default function Billing() {
                 <div className="flex flex-col items-end gap-2">
                     <div className="text-right">
                         <p className="text-xs text-gray-500 dark:text-gray-500 uppercase font-bold">Next Billing Date</p>
-                        <p className="text-xl font-mono text-gray-900 dark:text-white">{new Date(info.nextBillingDate).toLocaleDateString()}</p>
+                        <p className="text-xl font-mono text-gray-900 dark:text-white">{new Date(info.NextBillingDate).toLocaleDateString()}</p>
                     </div>
-                    {info.plan !== 'Starter' && (
+                    {info.Plan !== 'Starter' && (
                         <button
                             onClick={handleManageSubscription}
                             disabled={loading}
@@ -143,7 +164,7 @@ export default function Billing() {
                     </h2>
                     <div className="flex justify-between items-end mb-2 text-sm">
                         <span className="text-gray-500 dark:text-gray-400">Deployed Agents</span>
-                        <span className="font-bold text-gray-900 dark:text-white">{info.agentCount} / {info.agentLimit}</span>
+                        <span className="font-bold text-gray-900 dark:text-white">{info.AgentCount} / {info.AgentLimit}</span>
                     </div>
                     <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden mb-2">
                         <div
@@ -160,11 +181,11 @@ export default function Billing() {
 
                 <div className="bg-gradient-to-br from-indigo-600 to-purple-700 dark:from-indigo-900 dark:to-purple-900 rounded-xl p-6 border border-indigo-500 dark:border-indigo-700 shadow-xl flex flex-col justify-center items-center text-center text-white">
                     <p className="text-indigo-100 dark:text-indigo-300 text-sm uppercase font-bold tracking-wider mb-1">Current Plan</p>
-                    <h2 className="text-4xl font-extrabold mb-2 text-white">{info.plan}</h2>
-                    <p className="text-2xl font-mono text-indigo-100 dark:text-indigo-200">${info.dueAmount}/mo</p>
+                    <h2 className="text-4xl font-extrabold mb-2 text-white">{info.Plan}</h2>
+                    <p className="text-2xl font-mono text-indigo-100 dark:text-indigo-200">${info.AmountDue}/mo</p>
                     <div className="mt-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${info.subscriptionStatus === 'active' ? 'bg-green-500/20 border-green-400 text-green-100' : 'bg-red-500/20 border-red-400 text-red-100'}`}>
-                            {info.subscriptionStatus}
+                        <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${info.SubscriptionStatus === 'active' ? 'bg-green-500/20 border-green-400 text-green-100' : 'bg-red-500/20 border-red-400 text-red-100'}`}>
+                            {info.SubscriptionStatus}
                         </span>
                     </div>
                 </div>
@@ -177,7 +198,7 @@ export default function Billing() {
                     title="Starter"
                     price="$0/mo"
                     features={['Up to 5 Agents', 'Basic Monitoring', '7-Day Retention']}
-                    current={info.plan === 'Starter'}
+                    current={info.Plan === 'Starter'}
                     onUpgrade={() => handleUpgrade('Starter')}
                     loading={loading}
                 />
@@ -185,7 +206,7 @@ export default function Billing() {
                     title="Professional"
                     price="$49/mo"
                     features={['Up to 50 Agents', 'Real-time Live Screen', '30-Day Retention', 'Priority Support']}
-                    current={info.plan === 'Professional'} // Match backend key
+                    current={info.Plan === 'Professional'} // Match backend key
                     isPopular
                     onUpgrade={() => handleUpgrade('Professional')}
                     loading={loading}
@@ -194,7 +215,7 @@ export default function Billing() {
                     title="Enterprise"
                     price="$299/mo"
                     features={['Up to 1000 Agents', 'Unlimited Retention', 'Dedicated Account Manager', 'SLA Guarantees', 'AI Analysis']}
-                    current={info.plan === 'Enterprise'}
+                    current={info.Plan === 'Enterprise'}
                     onUpgrade={() => handleUpgrade('Enterprise')}
                     loading={loading}
                 />

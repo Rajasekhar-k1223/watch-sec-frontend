@@ -88,6 +88,7 @@ export default function ActivityLogViewer({
     });
     const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [summaryMode, setSummaryMode] = useState(false);
     const { user, logout } = useAuth();
 
     const fetchLogs = useCallback(() => {
@@ -206,6 +207,89 @@ export default function ActivityLogViewer({
         );
     }, [logs, searchTerm]);
 
+    const groupedLogs = useMemo(() => {
+        if (!filteredLogs.length) return [];
+
+        if (summaryMode) {
+            // mode: Non-contiguous aggregation (Total time per App/Site)
+            const summaryMap = new Map<string, any>();
+
+            filteredLogs.forEach(log => {
+                const proc = log.processName || log.ProcessName || 'Unknown';
+                const title = log.windowTitle || log.WindowTitle || '';
+                const type = log.activityType || log.ActivityType || 'Other';
+                const key = `${proc}-${title}-${type}`;
+
+                if (summaryMap.has(key)) {
+                    const existing = summaryMap.get(key);
+                    existing.DurationSeconds += (Number(log.durationSeconds || log.DurationSeconds) || 0);
+                    existing.IdleSeconds += (Number(log.idleSeconds || log.IdleSeconds) || 0);
+                    // Update bounds
+                    const logTs = new Date(normalizeTimestamp(log.timestamp || log.Timestamp)).getTime();
+                    if (logTs < existing.MinTs) existing.MinTs = logTs;
+                    if (logTs > existing.MaxTs) existing.MaxTs = logTs;
+                } else {
+                    const logTs = new Date(normalizeTimestamp(log.timestamp || log.Timestamp)).getTime();
+                    summaryMap.set(key, {
+                        ...log,
+                        ProcessName: proc,
+                        WindowTitle: title,
+                        ActivityType: type,
+                        DurationSeconds: Number(log.durationSeconds || log.DurationSeconds) || 0,
+                        IdleSeconds: Number(log.idleSeconds || log.IdleSeconds) || 0,
+                        MinTs: logTs,
+                        MaxTs: logTs
+                    });
+                }
+            });
+
+            return Array.from(summaryMap.values())
+                .map(s => ({
+                    ...s,
+                    StartTime: new Date(s.MinTs).toISOString(),
+                    EndTime: new Date(s.MaxTs).toISOString()
+                }))
+                .sort((a, b) => b.DurationSeconds - a.DurationSeconds); // Sort by most used
+        }
+
+        const groups: any[] = [];
+        let currentGroup: any = null;
+
+        // Expecting newest first from backend/socket
+        filteredLogs.forEach((log) => {
+            const proc = log.processName || log.ProcessName || 'Unknown';
+            const title = log.windowTitle || log.WindowTitle || '';
+            const type = log.activityType || log.ActivityType || 'Other';
+
+            if (currentGroup &&
+                currentGroup.ProcessName === proc &&
+                currentGroup.WindowTitle === title &&
+                currentGroup.ActivityType === type
+            ) {
+                // Contiguous Match: Merge
+                currentGroup.DurationSeconds = (currentGroup.DurationSeconds || 0) + (Number(log.durationSeconds || log.DurationSeconds) || 0);
+                currentGroup.IdleSeconds = (currentGroup.IdleSeconds || 0) + (Number(log.idleSeconds || log.IdleSeconds) || 0);
+                // Since logs are newest first, this log's timestamp is EARLIER than currentGroup.StartTime
+                currentGroup.StartTime = log.timestamp || log.Timestamp;
+            } else {
+                // New Session Break
+                if (currentGroup) groups.push(currentGroup);
+                currentGroup = {
+                    ...log,
+                    ProcessName: proc,
+                    WindowTitle: title,
+                    ActivityType: type,
+                    DurationSeconds: Number(log.durationSeconds || log.DurationSeconds) || 0,
+                    IdleSeconds: Number(log.idleSeconds || log.IdleSeconds) || 0,
+                    EndTime: log.timestamp || log.Timestamp,
+                    StartTime: log.timestamp || log.Timestamp
+                };
+            }
+        });
+
+        if (currentGroup) groups.push(currentGroup);
+        return groups;
+    }, [filteredLogs, summaryMode]);
 
     const APP_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'];
 
@@ -270,7 +354,7 @@ export default function ActivityLogViewer({
 
     const handleDownloadReport = async () => {
         try {
-            const res = await fetch(`${apiUrl}/api/export/activity/${agentId}`, {
+            const res = await fetch(`${apiUrl}/export/activity/${agentId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (!res.ok) throw new Error("Export failed");
@@ -322,6 +406,20 @@ export default function ActivityLogViewer({
                     )}
                 </div>
                 <div className="flex gap-2 items-center">
+                    <div className="flex bg-gray-200 dark:bg-gray-700/50 p-0.5 rounded-lg mr-2">
+                        <button
+                            onClick={() => setSummaryMode(false)}
+                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${!summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        >
+                            Timeline
+                        </button>
+                        <button
+                            onClick={() => setSummaryMode(true)}
+                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        >
+                            Summary
+                        </button>
+                    </div>
                     <div className="flex items-center gap-2 mr-4">
                         <button
                             onClick={fetchLogs}
@@ -540,33 +638,46 @@ export default function ActivityLogViewer({
 
             <table className="w-full text-left text-sm">
                 <thead className="bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs sticky top-0">
-                    <tr><th className="p-4">Timestamp</th><th className="p-4">Type</th><th className="p-4">Details</th><th className="p-4">Risk</th><th className="p-4">Duration</th></tr>
+                    <tr><th className="p-4">Time Range</th><th className="p-4">Type</th><th className="p-4">Details</th><th className="p-4">Risk</th><th className="p-4">Duration</th></tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300 font-mono">
-                    {filteredLogs.length === 0 ? (
+                    {groupedLogs.length === 0 ? (
                         <tr><td colSpan={5} className="p-8 text-center text-gray-500 italic">No activity matching your search.</td></tr>
                     ) : (
-                        filteredLogs.map((log, i) => (
-                            <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                                <td className="p-4 text-gray-500">{new Date(normalizeTimestamp(log.timestamp || log.Timestamp)).toLocaleString()}</td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-1 rounded text-xs ${(log.activityType || log.ActivityType) === 'Web' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
-                                        {log.activityType || log.ActivityType}
-                                    </span>
-                                </td>
-                                <td className="p-4 break-all">
-                                    {(log.activityType || log.ActivityType) === 'Web' ? (
-                                        <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{log.url || log.Url}</a>
-                                    ) : (<span>{log.processName || log.ProcessName} - {log.windowTitle || log.WindowTitle}</span>)}
-                                </td>
-                                <td className="p-4">
-                                    <span className={`px-2 py-1 rounded text-xs font-bold ${(log.riskLevel === 'High' || log.RiskLevel === 'High') ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
-                                        {log.riskLevel || log.RiskLevel || 'Normal'}
-                                    </span>
-                                </td>
-                                <td className="p-4">{formatDuration(log.durationSeconds || log.DurationSeconds)}</td>
-                            </tr>
-                        ))
+                        groupedLogs.map((log, i) => {
+                            const startTime = new Date(normalizeTimestamp(log.StartTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            const endTime = new Date(normalizeTimestamp(log.EndTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            const date = new Date(normalizeTimestamp(log.StartTime)).toLocaleDateString();
+
+                            return (
+                                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors border-l-4 border-l-transparent hover:border-l-blue-500">
+                                    <td className="p-4 text-gray-500">
+                                        <div className="text-[10px] text-gray-400 mb-1">{date}</div>
+                                        {summaryMode ? (
+                                            <div className="text-xs text-blue-400 font-bold">Aggregate</div>
+                                        ) : (
+                                            <div className="text-xs whitespace-nowrap">{startTime} - {endTime}</div>
+                                        )}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded text-xs ${(log.activityType || log.ActivityType) === 'Web' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                                            {log.activityType || log.ActivityType}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 break-all">
+                                        {(log.activityType || log.ActivityType) === 'Web' ? (
+                                            <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{log.url || log.Url}</a>
+                                        ) : (<span>{log.processName || log.ProcessName} - {log.windowTitle || log.WindowTitle}</span>)}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded text-xs font-bold ${(log.riskLevel === 'High' || log.RiskLevel === 'High') ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
+                                            {log.riskLevel || log.RiskLevel || 'Normal'}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 font-bold text-cyan-500">{formatDuration(log.DurationSeconds)}</td>
+                                </tr>
+                            );
+                        })
                     )}
                 </tbody>
             </table>

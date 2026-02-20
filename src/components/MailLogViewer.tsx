@@ -31,7 +31,7 @@ export default function MailLogViewer({ agentId, apiUrl, token }: Props) {
     const fetchLogs = useCallback(() => {
         if (!agentId || !token) return;
         setLoading(true);
-        let url = `${apiUrl}/api/mail/${agentId}`;
+        let url = `${apiUrl}/mail/${agentId}`;
         const params = new URLSearchParams();
         if (startDate) params.append('start_date', `${startDate}T00:00:00`);
         if (endDate) params.append('end_date', `${endDate}T23:59:59`);

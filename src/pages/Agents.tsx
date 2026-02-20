@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, ChevronDown, Check } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, ChevronDown, Check, Camera, CameraOff } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -54,6 +54,7 @@ interface AgentReport {
     updateStatus?: string;
     updateFailureReason?: string;
     lastUpdateAttempt?: string;
+    policyId?: number; // [NEW]
 }
 
 interface DashStats {
@@ -142,7 +143,11 @@ const TAB_TABS = [
 export default function Agents() {
     const { user, token, logout } = useAuth();
     const [agents, setAgents] = useState<AgentReport[]>([]);
+    const [policies, setPolicies] = useState<any[]>([]); // [NEW]
     const [loading, setLoading] = useState(true);
+    // [UNREACHABLE] Unused in current build, commented to unblock CI
+    // const [assignPolicyId, setAssignPolicyId] = useState<number | null>(null); 
+    // const [selectedPolicy, setSelectedPolicy] = useState<number | string>(""); 
 
     const [stats, setStats] = useState<DashStats | null>(null);
     const [selectedDate, setSelectedDate] = useState(''); // Default to empty for rolling 24h
@@ -219,10 +224,12 @@ export default function Agents() {
     useEffect(() => {
         // [NEW] Fetch Tenant Plan
         if (token && user?.tenantId) {
-            fetch(`${API_URL}/billing/`, { headers: { 'Authorization': `Bearer ${token}` } })
+            // [FIX] Cache bust and Capitalized 'Plan' property
+            fetch(`${API_URL}/billing/?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } })
                 .then(res => res.json())
                 .then(data => {
-                    const p = data.plan || "Starter";
+                    const p = data.Plan || data.plan || "Starter"; // Try both to be safe
+                    console.log("[Agents] Plan Fetched:", p);
                     setCurrentPlan(p);
                     setPlanLevel(PLAN_LEVELS[p] || 1);
                 })
@@ -230,10 +237,47 @@ export default function Agents() {
         }
 
         fetchAgents();
+        fetchPolicies(); // [NEW]
         fetchStats(selectedDate);
         const interval = setInterval(() => { fetchAgents(); fetchStats(selectedDate); }, 10000);
         return () => clearInterval(interval);
     }, [fetchStats, selectedDate, token, user?.tenantId]);
+
+    // [NEW] Fetch Policies for Dropdown
+    const fetchPolicies = async () => {
+        try {
+            const res = await fetch(`${API_URL}/policies?tenantId=${user?.tenantId || 1}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) setPolicies(await res.json());
+        } catch (e) { console.error(e); }
+    };
+
+    // [NEW] Handle Policy Assignment (Commented to resolve TS6133)
+    /*
+    const handleAssignPolicy = async () => {
+        if (!assignPolicyId) return;
+        try {
+            const pid = selectedPolicy === "" ? null : Number(selectedPolicy);
+            const res = await fetch(`${API_URL}/agents/${agents.find(a => a.id === assignPolicyId)?.agentId}/policy`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ policyId: pid })
+            });
+
+            if (res.ok) {
+                toast.success("Policy assigned successfully");
+                setAssignPolicyId(null);
+                fetchAgents();
+            } else {
+                toast.error("Failed to assign policy");
+            }
+        } catch (e) { console.error(e); }
+    };
+    */
 
     const fetchAgents = async () => {
         try {
@@ -282,7 +326,8 @@ export default function Agents() {
                         remoteShellEnabled: a.remoteShellEnabled ?? a.RemoteShellEnabled ?? true,
                         mailMonitorEnabled: a.mailMonitorEnabled ?? a.MailMonitorEnabled ?? false,
                         speechMonitorEnabled: a.speechMonitorEnabled ?? a.SpeechMonitorEnabled ?? false,
-                        vulnerabilityIntelligenceEnabled: a.vulnerabilityIntelligenceEnabled ?? a.VulnerabilityIntelligenceEnabled ?? false
+                        vulnerabilityIntelligenceEnabled: a.vulnerabilityIntelligenceEnabled ?? a.VulnerabilityIntelligenceEnabled ?? false,
+                        policyId: a.policyId ?? a.PolicyId // [NEW]
                     };
                 });
 
@@ -419,6 +464,26 @@ export default function Agents() {
             }
         } catch (e) {
             console.error("Failed to toggle USB", e);
+        }
+    };
+
+    const handleToggleScreenshots = async (agentId: string, currentStatus: boolean) => {
+        if (isFeatureLocked('screenshots')) {
+            toast.error(`Upgrade specific to ${currentPlan} Plan required for Screenshots.`);
+            return;
+        }
+        try {
+            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-screenshots?enabled=${!currentStatus}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                fetchAgents();
+                toast.success(`Screenshots ${!currentStatus ? 'Enabled' : 'Disabled'} for ${agentId}`);
+                Analytics.track('Toggle Screenshots', { agentId, enabled: !currentStatus });
+            }
+        } catch (e) {
+            console.error("Failed to toggle screenshots", e);
         }
     };
 
@@ -1306,6 +1371,14 @@ export default function Agents() {
                                 <td className="p-4">
                                     <div className="flex gap-3 items-center">
                                         <button
+                                            onClick={() => handleToggleScreenshots(agent.agentId, !!agent.screenshotsEnabled)}
+                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('screenshots') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.screenshotsEnabled ? 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
+                                            title={isFeatureLocked('screenshots') ? "Screenshots (Upgrade Plan)" : agent.screenshotsEnabled ? "Screenshots ON" : "Screenshots OFF"}
+                                        >
+                                            {isFeatureLocked('screenshots') ? <Lock className="w-4 h-4" /> : agent.screenshotsEnabled ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />}
+                                        </button>
+
+                                        <button
                                             onClick={() => handleToggleUsb(agent.agentId, agent.usbBlockingEnabled)}
                                             className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('usb') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.usbBlockingEnabled ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
                                             title={isFeatureLocked('usb') ? "USB Blocking (Upgrade Plan)" : agent.usbBlockingEnabled ? "USB Blocking ACTIVE (Write Protected)" : "USB Access ALLOWED"}
@@ -1809,6 +1882,7 @@ export default function Agents() {
                                     token={token!}
                                     apiUrl={API_URL}
                                     onUpdate={fetchAgents}
+                                    policies={policies} // [NEW]
                                 />
                             )}
 

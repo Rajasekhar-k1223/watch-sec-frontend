@@ -5,7 +5,7 @@ import {
     PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend
 } from 'recharts';
 import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, Calendar } from 'lucide-react';
-import { API_URL } from '../config';
+import { API_URL, SOCKET_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -104,7 +104,8 @@ export default function LiveMonitor() {
 
         // 2. Connect Socket
         console.log("[LiveMonitor] Connecting Socket for:", selectedAgentId);
-        const socket = io(API_URL, {
+        const socket = io(SOCKET_URL, {
+            path: "/socket.io",
             transports: ['websocket'],
             auth: { token }
         });
@@ -263,7 +264,7 @@ export default function LiveMonitor() {
                                 <div className="glass-panel rounded-xl p-6 shadow-sm">
                                     <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><Cpu size={18} className="text-purple-400" /> Live Performance Data</h3>
                                     <div className="h-64 w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
+                                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                                             <LineChart data={history}>
                                                 <XAxis dataKey="time" stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} minTickGap={30} />
                                                 <YAxis stroke="#6B7280" fontSize={10} tickLine={false} axisLine={false} />
@@ -359,7 +360,7 @@ export default function LiveMonitor() {
                                     try {
                                         // Use a default agent ID for simulation if none selected, or the selected one
                                         const targetId = selectedAgentId || 'vmi3011362-root-F39F2ABC';
-                                        const res = await fetch(`${API_URL}/api/events/simulate/${targetId}`, {
+                                        const res = await fetch(`${API_URL}/events/simulate/${targetId}`, {
                                             method: 'POST',
                                             headers: { 'Authorization': `Bearer ${token}` }
                                         });
