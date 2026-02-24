@@ -7,6 +7,7 @@ interface Props {
     agentId: string | null;
     apiUrl: string;
     token: string | null;
+    onUpdate?: () => void;
 }
 
 const normalizeTimestamp = (ts: any) => {
@@ -18,7 +19,7 @@ const normalizeTimestamp = (ts: any) => {
     return str;
 };
 
-export default function ScreenshotsGallery({ agentId, apiUrl, token }: Props) {
+export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }: Props) {
     const [images, setImages] = useState<any[]>([]);
     const [isEnabled, setIsEnabled] = useState(false);
     const [loadingSettings, setLoadingSettings] = useState(true);
@@ -111,7 +112,10 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token }: Props) {
         const newVal = !isEnabled;
         setIsEnabled(newVal);
         try {
-            await fetch(`${apiUrl}/agents/${agentId}/toggle-screenshots?enabled=${newVal}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            const res = await fetch(`${apiUrl}/agents/${agentId}/toggle-screenshots?enabled=${newVal}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok && onUpdate) {
+                onUpdate();
+            }
         } catch (e: any) { setIsEnabled(!newVal); setError(e.message); }
     };
 

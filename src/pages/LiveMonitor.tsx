@@ -50,7 +50,7 @@ export default function LiveMonitor() {
 
     // Refs
     const socketRef = useRef<Socket | null>(null);
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const imgRef = useRef<HTMLImageElement>(null);
 
     // Fetch Agents Loop (Grid View)
     useEffect(() => {
@@ -116,6 +116,13 @@ export default function LiveMonitor() {
             socket.emit('join', { room: selectedAgentId });
         });
 
+        // Live Stream Frames
+        socket.on('stream_frame', (data) => {
+            if (imgRef.current && data.image) {
+                imgRef.current.src = "data:image/jpeg;base64," + data.image;
+            }
+        });
+
         // Event Stream
         socket.on('new_event', (evt) => {
             setEvents(prev => ({
@@ -147,8 +154,8 @@ export default function LiveMonitor() {
             console.log(`[LiveMonitor] Manual Stop Stream: ${selectedAgentId}`);
             socketRef.current.emit('stop_stream', { agentId: selectedAgentId });
             setIsStreamActive(false);
-            if (videoRef.current) {
-                videoRef.current.srcObject = null;
+            if (imgRef.current) {
+                imgRef.current.src = "";
             }
         }
     };
@@ -228,12 +235,10 @@ export default function LiveMonitor() {
                             <div className="lg:col-span-2 flex flex-col gap-6">
                                 {/* Live Screen */}
                                 <div className="bg-black border border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video group">
-                                    <video
-                                        ref={videoRef}
-                                        className="w-full h-full object-contain"
-                                        autoPlay
-                                        playsInline
-                                        muted
+                                    <img
+                                        ref={imgRef}
+                                        className="w-full h-full object-contain bg-black"
+                                        alt="Live Stream"
                                     />
                                     {/* Controls Overlay */}
                                     <div className="absolute top-4 right-4 flex gap-2 z-10">

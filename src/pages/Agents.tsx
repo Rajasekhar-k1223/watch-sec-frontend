@@ -1690,7 +1690,7 @@ export default function Agents() {
 
                             {viewMode === 'screenshots' && (
                                 <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                    <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} token={token} />
+                                    <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} token={token} onUpdate={fetchAgents} />
                                 </div>
                             )}
 
