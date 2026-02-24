@@ -5,7 +5,7 @@ import {
     ShieldCheck,
     Wifi, RefreshCcw, Info, XCircle, FileText,
     CircleDashed, Radio, Server, Cpu,
-    Monitor, Keyboard, MousePointer2, Globe, Mail, Printer, Clipboard, Files
+    Monitor, Keyboard, MousePointer2, Globe, Mail, Printer, Clipboard, Files, MapPin
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
@@ -180,6 +180,9 @@ const Architecture = () => {
         'SHA': 'Enterprise',
         'VUL': 'Enterprise',
         'HBT': 'Starter',
+        'LIV': 'Professional',
+        'RSS': 'Enterprise',
+        'LOC': 'Professional',
     };
 
     // State for Dynamic Activity Visualization
@@ -188,7 +191,9 @@ const Architecture = () => {
     const [availableModules, setAvailableModules] = useState<string[]>([]);
     const [tenantPlan, setTenantPlan] = useState<string>('Starter');
     const [recentEvents, setRecentEvents] = useState<any[]>([]);
+    const [recentCheckins, setRecentCheckins] = useState<any[]>([]);
     const [telemetryCount, setTelemetryCount] = useState<number>(0);
+    const [handshakePulse, setHandshakePulse] = useState<boolean>(false);
 
     // Module Config with Descriptions for Tooltips
     const modules = [
@@ -205,6 +210,9 @@ const Architecture = () => {
         { id: 'PRT', name: 'Print Spooler', desc: 'Audits physical document printing and content.', icon: Printer, color: 'text-teal-500', border: 'border-teal-500/30' },
         { id: 'CLP', name: 'Clipboard Monitor', desc: 'Prevents sensitive data copy/paste operations.', icon: Clipboard, color: 'text-lime-500', border: 'border-lime-500/30' },
         { id: 'SHA', name: 'Shadow Copy', desc: 'Maintains backup snapshots for ransomware recovery.', icon: Files, color: 'text-gray-400', border: 'border-gray-500/30' },
+        { id: 'LIV', name: 'Live Desktop', desc: 'Sub-second real-time screen broadcast for active monitoring.', icon: Monitor, color: 'text-cyan-400', border: 'border-cyan-400/30' },
+        { id: 'RSS', name: 'Remote Shell', desc: 'Direct encrypted CLI access to the endpoint system.', icon: Server, color: 'text-indigo-400', border: 'border-indigo-400/30' },
+        { id: 'LOC', name: 'Geo-Location', desc: 'Real-time GPS and IP-based physical asset tracking.', icon: MapPin, color: 'text-violet-500', border: 'border-violet-500/30' },
         { id: 'HBT', name: 'Agent Heartbeat', desc: 'Vital sign signal indicating agent health and connectivity.', icon: Heart, color: 'text-rose-500', border: 'border-rose-500/30' },
     ];
 
@@ -212,38 +220,25 @@ const Architecture = () => {
     useEffect(() => {
         const fetchTenantPlan = async () => {
             if (!token || !user?.tenantId) {
-                console.log("Missing token/tenantId, using user plan:", user?.plan);
                 setTenantPlan(user?.plan || 'Starter');
                 return;
             }
-
             try {
-                // Force fresh fetch
                 const response = await fetch(`${API_URL}/tenants/${user.tenantId}?t=${Date.now()}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
-
                 if (response.ok) {
                     const tenant = await response.json();
-                    console.log("Fetched Tenant Plan:", tenant.Plan);
                     setTenantPlan(tenant.Plan || 'Starter');
                 } else {
-                    console.warn(`Failed to fetch plan (Status: ${response.status}). User Plan:`, user?.plan);
-                    // If 403, we might be hitting role limits. But we must try to assume best case if we know backend is updated.
-                    // If user.plan is stale (Starter) but real is Enterprise, we are stuck.
-                    // However, we just verified API works for this user.
                     setTenantPlan(user?.plan || 'Starter');
                 }
             } catch (error) {
-                console.error('Error fetching tenant plan:', error);
                 setTenantPlan(user?.plan || 'Starter');
             }
         };
-
         fetchTenantPlan();
-    }, [token, user?.tenantId]); // Removed user.plan dependency to prevent revert loops
+    }, [token, user?.tenantId]);
 
     // Filter Modules Based on Tenant Plan (from Backend)
     useEffect(() => {
@@ -296,6 +291,9 @@ const Architecture = () => {
             if (type.includes('clip')) targetIds.push('CLP');
             if (type.includes('screen') || type.includes('capture')) targetIds.push('SCR');
             if (type.includes('key') || type.includes('type')) targetIds.push('KEY'); // Fixed Mapping
+            if (type.includes('shell') || data.ProcessName?.toLowerCase().includes('cmd') || data.ProcessName?.toLowerCase().includes('powershell')) targetIds.push('RSS');
+            if (type.includes('live') || type.includes('stream')) targetIds.push('LIV');
+            if (type.includes('location') || type.includes('gps')) targetIds.push('LOC');
             triggerModule(targetIds);
 
             // Add to Recent Events list (max 5)
@@ -363,14 +361,26 @@ const Architecture = () => {
         socketRef.current.on('agent_bandwidth_update', handleBandwidth);
 
         // Also listen for heartbeat updates to trigger HBT
-        socketRef.current.on('agent_list_update', () => {
+        socketRef.current.on('agent_list_update', (data: any) => {
             setActiveModules(prev => new Set(prev).add('HBT').add('NET'));
-            setTimeout(() => setActiveModules(prev => {
-                const next = new Set(prev);
-                next.delete('HBT');
-                // Keep NET active if connected
-                return next;
-            }), 2000);
+            setHandshakePulse(true);
+
+            if (data.hostname || data.agentId) {
+                setRecentCheckins(prev => {
+                    const id = data.hostname || data.agentId;
+                    const filtered = prev.filter(c => c.id !== id);
+                    return [{ id, time: new Date().toLocaleTimeString(), status: data.status || 'Online' }, ...filtered].slice(0, 3);
+                });
+            }
+
+            setTimeout(() => {
+                setActiveModules(prev => {
+                    const next = new Set(prev);
+                    next.delete('HBT');
+                    return next;
+                });
+                setHandshakePulse(false);
+            }, 2000);
         });
 
         return () => {
@@ -385,28 +395,27 @@ const Architecture = () => {
 
     // Layout Calculations
     // Layout Calculations
-    const GRID_LEFT_X = 30; // Shifted Left (was 50)
-    const GRID_TOP_Y = 190; // Shifted down 90px
-    const GRID_W = 60; // Compacted (was 70)
-    const GRID_H = 60; // Compacted (was 70)
-    const GRID_GAP = 15; // Tighter Gap (was 20)
+    const GRID_LEFT_X = 30;
+    const GRID_TOP_Y = 190;
+    const GRID_W = 60;
+    const GRID_H = 60;
+    const GRID_GAP = 15; // Increased gap for 3-column layout
 
     // Node Positions (Center/Edge Calculations)
-    const AGENT_RIGHT_X = 300 + 320; // 620 (Shifted +50)
-    const AGENT_CENTER_Y = 210 + (360 / 2); // 390 (Top 210, H 360) -> Matches Nexus Center
+    const AGENT_LEFT_X = 300;
+    const AGENT_RIGHT_X = AGENT_LEFT_X + 320; // 620
+    const AGENT_CENTER_Y = 210 + (360 / 2); // 390
 
-    const NEXUS_LEFT_X = 660; // Shifted +50
+    const NEXUS_LEFT_X = 660;
     const NEXUS_RIGHT_X = 660 + 350; // 1010
     const NEXUS_CENTER_X = 660 + (350 / 2); // 835
-    const NEXUS_CENTER_Y = 190 + (400 / 2); // 390 (Top 190, H 400)
+    const NEXUS_CENTER_Y = 190 + (400 / 2); // 390
     const NEXUS_BOTTOM_Y = 190 + 400; // 590
 
-    const DB_TOP_Y = 620; // Compressed gap (Nexus Bot 590 + 30)
-    const DB_CENTER_X = 685 + (300 / 2); // 835 (Shifted center to align with Nexus)
+    const DB_TOP_Y = 620;
+    const DB_CENTER_X = 685 + (300 / 2); // 835 (Aligned with Nexus Center)
 
     // SOC Command Position
-    // Vertically Aligned: CenterY = 390 (Matches Nexus)
-    // Left = 1100 (90px Gap from Nexus Right@1010)
     const SOC_LEFT_X = 1100;
     const SOC_CENTER_Y = 390;
 
@@ -421,7 +430,7 @@ const Architecture = () => {
                 <div className="absolute top-0 left-0 w-full p-10 z-50 flex justify-between items-start pointer-events-auto">
                     <div>
                         <h1 className="text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 uppercase">
-                            Isometric Intelligence v8.3.49
+                            Isometric Intelligence v8.3.51
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium flex items-center gap-4 text-sm uppercase tracking-[0.3em]">
                             <Activity className="w-5 h-5 text-cyan-500" />
@@ -446,7 +455,7 @@ const Architecture = () => {
                 </div>
 
                 {/* 3D Container Transform - Flattened to Straight Angle */}
-                <div className="relative w-[1450px] h-[750px] transition-transform duration-1000 ease-out" style={{
+                <div className="relative w-[1600px] h-[750px] transition-transform duration-1000 ease-out" style={{
                     transform: 'none',
                     transformStyle: 'preserve-3d'
                 }}>
@@ -466,29 +475,31 @@ const Architecture = () => {
                         </defs>
 
                         {/* FLOW: SUB-NODES -> AGENT */}
-                        {modules.map((_, i) => {
-                            const col = i % 3;
+                        {modules.map((mod, i) => {
+                            const col = i % 3; // Use 3 columns for 6 rows
                             const row = Math.floor(i / 3);
-                            // Dynamic X: Start (30) + Col * (W+Gap) + HalfWidth
                             const startX = GRID_LEFT_X + (col * (GRID_W + GRID_GAP)) + (GRID_W / 2);
                             const startY = GRID_TOP_Y + (row * (GRID_H + GRID_GAP)) + (GRID_H / 2);
-                            const targetX = 300; // Shifted Agent Left
-                            const targetY = 390; // Agent Center Y (Aligned)
+                            const targetX = 300;
+                            const targetY = 390;
 
                             const cp1x = startX + 50;
                             const cp1y = startY;
                             const cp2x = targetX - 50;
                             const cp2y = targetY;
 
+                            const isActive = activeModules.has(mod.id);
+
                             return (
-                                <g key={i}>
+                                <g key={mod.id}>
                                     <path
                                         d={`M ${startX} ${startY} C ${cp1x} ${cp1y} ${cp2x} ${cp2y} ${targetX} ${targetY}`}
-                                        stroke={`rgba(255,255,255,0.2)`}
-                                        strokeWidth="2"
+                                        stroke={isActive ? "rgba(34,211,238,0.5)" : "rgba(255,255,255,0.05)"}
+                                        strokeWidth={isActive ? "2" : "1"}
                                         fill="none"
+                                        className="transition-all duration-1000"
                                     />
-                                    <circle cx={targetX} cy={targetY} r="2" fill="rgba(255,255,255,0.3)" />
+                                    {isActive && <circle cx={targetX} cy={targetY} r="2" fill="rgba(34,211,238,0.8)" filter="url(#glow-v8)" />}
                                 </g>
                             );
                         })}
@@ -528,12 +539,12 @@ const Architecture = () => {
 
                         {/* FLOW 1: Agent -> Nexus */}
                         {/* Connects Agent Right Edge to Nexus Left Edge */}
-                        <path id="path1" d={`M ${AGENT_RIGHT_X} ${AGENT_CENTER_Y} L ${NEXUS_LEFT_X} ${AGENT_CENTER_Y}`} stroke="rgba(34,211,238,0.3)" strokeWidth="3" fill="none" />
-                        {connState === 'stable' && (
+                        <path id="path1" d={`M ${AGENT_RIGHT_X} ${AGENT_CENTER_Y} L ${NEXUS_LEFT_X} ${AGENT_CENTER_Y}`} stroke={handshakePulse ? "rgba(34,211,238,0.8)" : "rgba(34,211,238,0.3)"} strokeWidth={handshakePulse ? "5" : "3"} fill="none" className="transition-all duration-300" />
+                        {(connState === 'stable' || handshakePulse) && (
                             <>
                                 {/* Primary Telemetry Stream */}
-                                <circle r="6" fill="#22d3ee" filter="url(#glow-v8)">
-                                    <animateMotion dur="2s" repeatCount="indefinite" path={`M ${AGENT_RIGHT_X} ${AGENT_CENTER_Y} L ${NEXUS_LEFT_X} ${AGENT_CENTER_Y}`} />
+                                <circle r={handshakePulse ? "8" : "6"} fill={handshakePulse ? "#fff" : "#22d3ee"} filter="url(#glow-v8)">
+                                    <animateMotion dur={handshakePulse ? "0.5s" : "2s"} repeatCount={handshakePulse ? "3" : "indefinite"} path={`M ${AGENT_RIGHT_X} ${AGENT_CENTER_Y} L ${NEXUS_LEFT_X} ${AGENT_CENTER_Y}`} />
                                 </circle>
                             </>
                         )}
@@ -570,14 +581,16 @@ const Architecture = () => {
                                     key={mod.id}
                                     onMouseEnter={() => !availableModules.includes(mod.id) ? null : setHoveredModule(mod.id)}
                                     onMouseLeave={() => setHoveredModule(null)}
-                                    className={`absolute w-[60px] h-[60px] bg-black/40 border ${mod.border} rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg transform transition-transform cursor-pointer pointer-events-auto group isolate ${(!activeModules.has(mod.id) && connState === 'stable' && hoveredModule !== mod.id) ? 'animate-pulse' : ''} ${hoveredModule === mod.id ? 'z-[999]' : 'z-10'} ${!availableModules.includes(mod.id) ? 'opacity-30 cursor-not-allowed hover:scale-100' : 'hover:scale-110'}`}
+                                    className={`absolute w-[60px] h-[60px] bg-black/40 border ${mod.border} rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg transform transition-transform cursor-pointer pointer-events-auto group isolate 
+                                    ${hoveredModule === mod.id ? 'z-[999]' : 'z-10'} 
+                                    ${!availableModules.includes(mod.id) ? 'opacity-40 grayscale-[0.8] cursor-not-allowed hover:scale-100' : 'hover:scale-110 active:scale-95'}`}
                                     style={{
                                         left: `${left}px`,
                                         top: `${top}px`,
                                         transform: 'translateZ(20px)'
                                     }}
                                 >
-                                    <mod.icon className={`w-6 h-6 ${mod.color} ${!activeModules.has(mod.id) && connState === 'stable' ? 'text-red-500 opacity-50' : ''}`} />
+                                    <mod.icon className={`w-6 h-6 transition-all duration-300 ${activeModules.has(mod.id) ? mod.color : 'text-gray-400 opacity-60 blur-[1px]'}`} />
                                     <span className="text-[9px] font-bold text-gray-300 tracking-wider">{mod.id}</span>
 
                                     {/* Lock Icon for Disabled Modules */}
@@ -593,7 +606,7 @@ const Architecture = () => {
 
 
                     {/* --- NODE 1: 3D ENDPOINT AGENT (FRONT LEFT) --- */}
-                    {/* FLATTENED TO Z=50px, SHIFTED TO TOP 210, H 360, LEFT 300 */}
+                    {/* FLATTENED TO Z=50px, SHIFTED TO TOP 210, H 360, LEFT 450 */}
                     <div className="absolute top-[210px] left-[300px] w-[320px] h-[360px] transition-all duration-1000" style={{ transform: 'translateZ(50px)' }}>
                         <div className={`w-full h-full bg-white/[0.03] border-2 backdrop-blur-sm rounded-[40px] p-8 flex flex-col gap-6 shadow-[0_30px_60px_rgba(0,0,0,0.5)] ${connState === 'stable' ? 'border-cyan-500/30' : 'border-red-500/30'}`}>
                             <div className="flex items-center gap-4">
@@ -617,10 +630,21 @@ const Architecture = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-6 gap-2 mt-2">
-                                {[...Array(12)].map((_, i) => (
-                                    <div key={i} className={`h-1 rounded-full animate-pulse ${i < 8 ? 'bg-emerald-500/50' : 'bg-blue-500/50'}`}></div>
-                                ))}
+                            <div className="space-y-2 mt-2">
+                                <div className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Recent Check-ins</div>
+                                {recentCheckins.length === 0 ? (
+                                    <div className="text-[10px] text-gray-600 italic">Listening for handshake...</div>
+                                ) : (
+                                    recentCheckins.map((c: any, idx: number) => (
+                                        <div key={idx} className="flex items-center justify-between bg-black/20 p-2 rounded-xl border border-white/5 animate-in fade-in slide-in-from-left-2 transition-all">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_#22d3ee]"></div>
+                                                <span className="text-[10px] font-bold text-white truncate max-w-[120px]">{c.id}</span>
+                                            </div>
+                                            <span className="text-[9px] text-cyan-400/50 font-mono tracking-tighter">{c.time}</span>
+                                        </div>
+                                    ))
+                                )}
                             </div>
 
                             <div className="mt-auto p-5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-[30px] flex items-center justify-between">
@@ -634,7 +658,7 @@ const Architecture = () => {
                     </div>
 
                     {/* --- NODE 2: 3D NEXUS CORE (CENTER) --- */}
-                    {/* FLATTENED TO Z=50px, SHIFTED TO TOP 190, H 400, LEFT 660 */}
+                    {/* FLATTENED TO Z=50px, SHIFTED TO TOP 190, H 400, LEFT 810 */}
                     <div className="absolute top-[190px] left-[660px] w-[350px] h-[400px] transition-all duration-1000" style={{ transform: 'translateZ(50px)' }}>
                         <div className="absolute inset-0 bg-indigo-600/20 blur-[100px] opacity-20"></div>
                         <div className="w-full h-full bg-indigo-500/[0.05] border-2 border-indigo-500/30 backdrop-blur-sm rounded-[50px] p-8 flex flex-col items-center gap-6 shadow-2xl relative overflow-hidden">
@@ -677,7 +701,7 @@ const Architecture = () => {
                     </div>
 
                     {/* --- NODE 3: 3D APP DATABASE (BOTTOM CENTER) --- */}
-                    {/* FLATTENED TO Z=50px, SHIFTED TO LEFT 685 (Center 835) */}
+                    {/* FLATTENED TO Z=50px, SHIFTED TO LEFT 835 (Center 985) */}
                     <div className="absolute top-[620px] left-[685px] w-[300px] h-[120px] transition-all duration-1000" style={{ transform: 'translateZ(50px)' }}>
                         <div className="w-full h-full bg-gradient-to-br from-gray-900 to-black border-2 border-white/5 rounded-[30px] p-6 flex flex-col justify-center gap-2 shadow-2xl">
                             <div className="flex items-center gap-4">
@@ -696,7 +720,7 @@ const Architecture = () => {
                     </div>
 
                     {/* --- NODE 4: 3D SOC COMMAND (BACK RIGHT) --- */}
-                    {/* FLATTENED TO Z=50px, SHIFTED TO X=1100 */}
+                    {/* FLATTENED TO Z=50px, SHIFTED TO X=1250 */}
                     <div className="absolute top-[65px] left-[1100px] w-[350px] h-[520px] transition-all duration-1000" style={{ transform: 'translateZ(50px)' }}>
                         <div className="w-full h-full bg-[#0d1117] border-4 border-white/10 rounded-[50px] p-8 flex flex-col gap-6 shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative group overflow-hidden">
                             <div className="absolute top-0 right-0 p-8">

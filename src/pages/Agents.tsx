@@ -83,7 +83,7 @@ interface AgentEvent {
 
 // Helper for consistent date parsing (SQL -> ISO UTC -> Local)
 const normalizeTimestamp = (ts: any) => {
-    if (!ts) return new Date().toISOString();
+    if (!ts) return "";
     let str = String(ts).trim();
     // Fix SQL format "YYYY-MM-DD HH:mm:ss" -> "YYYY-MM-DDTHH:mm:ss"
     if (str.includes(' ') && !str.includes('T')) str = str.replace(' ', 'T');
@@ -300,7 +300,7 @@ export default function Agents() {
                         status: a.status || a.Status || 'Unknown',
                         cpuUsage: a.cpuUsage ?? a.CpuUsage ?? 0,
                         memoryUsage: a.memoryUsage ?? a.MemoryUsage ?? 0,
-                        timestamp: normalizeTimestamp(a.timestamp || a.Timestamp || a.LastSeen),
+                        timestamp: normalizeTimestamp(a.timestamp || a.Timestamp || a.lastSeen || a.LastSeen),
                         tenantId: a.tenantId ?? a.TenantId ?? 0,
                         agentId: a.agentId || a.AgentId || 'Unknown',
                         hostname: a.hostname || a.Hostname || 'Unknown',
@@ -870,10 +870,12 @@ export default function Agents() {
                 next[index] = {
                     ...next[index],
                     status: updatedAgent.status || next[index].status,
+                    hostname: updatedAgent.hostname || next[index].hostname,
                     version: updatedAgent.version || next[index].version,
                     targetVersion: updatedAgent.targetVersion || next[index].targetVersion,
                     cpuUsage: updatedAgent.cpuUsage ?? next[index].cpuUsage,
                     memoryUsage: updatedAgent.memoryUsage ?? next[index].memoryUsage,
+                    powerStatusJson: updatedAgent.powerStatusJson ?? next[index].powerStatusJson,
                     timestamp: normalizeTimestamp(updatedAgent.timestamp || next[index].timestamp)
                 };
                 return next;
@@ -1367,7 +1369,7 @@ export default function Agents() {
                                         )}
                                     </div>
                                 </td>
-                                <td className="p-4 text-gray-500 dark:text-gray-400 text-sm hidden md:table-cell"> {new Date(agent.timestamp).toLocaleString()} </td>
+                                <td className="p-4 text-gray-500 dark:text-gray-400 text-sm hidden md:table-cell"> {agent.timestamp ? new Date(agent.timestamp).toLocaleString() : 'Never'} </td>
                                 <td className="p-4">
                                     <div className="flex gap-3 items-center">
                                         <button
