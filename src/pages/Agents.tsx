@@ -467,25 +467,7 @@ export default function Agents() {
         }
     };
 
-    const handleToggleScreenshots = async (agentId: string, currentStatus: boolean) => {
-        if (isFeatureLocked('screenshots')) {
-            toast.error(`Upgrade specific to ${currentPlan} Plan required for Screenshots.`);
-            return;
-        }
-        try {
-            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-screenshots?enabled=${!currentStatus}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                fetchAgents();
-                toast.success(`Screenshots ${!currentStatus ? 'Enabled' : 'Disabled'} for ${agentId}`);
-                Analytics.track('Toggle Screenshots', { agentId, enabled: !currentStatus });
-            }
-        } catch (e) {
-            console.error("Failed to toggle screenshots", e);
-        }
-    };
+
 
 
     const [showDeployModal, setShowDeployModal] = useState(false);
@@ -1373,9 +1355,14 @@ export default function Agents() {
                                 <td className="p-4">
                                     <div className="flex gap-3 items-center">
                                         <button
-                                            onClick={() => handleToggleScreenshots(agent.agentId, !!agent.screenshotsEnabled)}
+                                            onClick={() => {
+                                                if (!isFeatureLocked('screenshots')) {
+                                                    setSelectedAgentId(agent.agentId);
+                                                    setViewMode('screenshots');
+                                                }
+                                            }}
                                             className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('screenshots') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.screenshotsEnabled ? 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={isFeatureLocked('screenshots') ? "Screenshots (Upgrade Plan)" : agent.screenshotsEnabled ? "Screenshots ON" : "Screenshots OFF"}
+                                            title={isFeatureLocked('screenshots') ? "Screenshots (Upgrade Plan)" : "Open Screenshot Gallery"}
                                         >
                                             {isFeatureLocked('screenshots') ? <Lock className="w-4 h-4" /> : agent.screenshotsEnabled ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />}
                                         </button>
