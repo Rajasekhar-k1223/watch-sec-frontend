@@ -5,11 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { Lock, Zap } from 'lucide-react';
 
 const PLAN_LEVELS: Record<string, number> = {
-    "Starter": 1,
-    "Professional": 2,
-    "Pro": 2,
-    "Enterprise": 3,
-    "Unlimited": 100
+    "starter": 1,
+    "professional": 2,
+    "pro": 2,
+    "enterprise": 3,
+    "unlimited": 100
 };
 
 const FEATURE_TIERS: Record<string, number> = {
@@ -65,8 +65,8 @@ export default function SpeechRecognition() {
             })
                 .then(res => res.json())
                 .then(data => {
-                    const p = data.Plan || "Starter";
-                    setPlanLevel(PLAN_LEVELS[p] || 1);
+                    const p = data.Plan || data.plan || "Starter";
+                    setPlanLevel(PLAN_LEVELS[p.toLowerCase()] || 1);
                 })
                 .catch(e => console.error("Plan error", e));
         }

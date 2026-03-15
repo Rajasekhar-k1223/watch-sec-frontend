@@ -12,11 +12,11 @@ import { NetworkTopology } from '../components/NetworkGraph';
 
 // [NEW] Feature Matrix for UI Enforcement
 const PLAN_LEVELS: Record<string, number> = {
-    "Starter": 1,
-    "Professional": 2,
-    "Pro": 2,
-    "Enterprise": 3,
-    "Unlimited": 100
+    "starter": 1,
+    "professional": 2,
+    "pro": 2,
+    "enterprise": 3,
+    "unlimited": 100
 };
 
 const FEATURE_TIERS: Record<string, number> = {
@@ -111,8 +111,8 @@ export default function Dashboard() {
                     });
                     if (resTenant.ok) {
                         const tData = await resTenant.json();
-                        const pName = tData.Plan || "Starter";
-                        setPlanLevel(PLAN_LEVELS[pName] || 1);
+                        const pName = tData.Plan || tData.plan || "Starter";
+                        setPlanLevel(PLAN_LEVELS[pName.toLowerCase()] || 1);
                     }
                 }
             } catch { }

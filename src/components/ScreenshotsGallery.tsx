@@ -1,6 +1,6 @@
 
-import { useState, useEffect, useMemo } from 'react';
-import { Image, Settings as SettingsIcon, LayoutGrid, List, Grid2X2, Database, HardDrive, Layers, Clock, Shield, Search } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Image, Settings as SettingsIcon, LayoutGrid, List, Grid2X2, Database, HardDrive, Layers, Clock, Shield, Search, Loader2 } from 'lucide-react';
 import { io } from 'socket.io-client';
 
 interface Props {
@@ -28,10 +28,16 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
     const [settings, setSettings] = useState({ quality: 80, resolution: 'Original', maxSize: 0 });
     const [viewMode, setViewMode] = useState<'grid' | 'table' | 'small'>('grid');
 
-    // OCR Search State
+    const [ocrResults, setOcrResults] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
-    const [ocrResults, setOcrResults] = useState<any[]>([]);
+    const [offset, setOffset] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    
+    const observerTarget = useRef<HTMLDivElement>(null);
+    const LIMIT = 50;
 
     const stats = useMemo(() => {
         const totalSize = images.reduce((acc, img) => acc + (img.Size || 0), 0);
@@ -52,10 +58,9 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
         if (!agentId) return;
         setLoadingSettings(true);
         setError(null);
-        fetch(`${apiUrl}/screenshots/list/${agentId}`, { headers: { 'Authorization': `Bearer ${token}` } })
-            .then(res => res.json())
-            .then(data => setImages(Array.isArray(data) ? data : []))
-            .catch(e => setError(e.message));
+        setOffset(0);
+        setImages([]);
+        fetchImages(0, true);
 
         fetch(`${apiUrl}/agents`, { headers: { 'Authorization': `Bearer ${token}` } })
             .then(res => res.json())
@@ -79,11 +84,63 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
         newSocket.on('connect', () => newSocket.emit('join_room', { room: agentId }));
         newSocket.on('ReceiveScreen', (id: string, dataUri: string) => {
             if (id === agentId) {
-                setImages(prev => [{ Filename: `Live Capture`, Date: new Date().toISOString(), Timestamp: new Date().toISOString(), IsAlert: false, Url: '', dataUri: dataUri }, ...prev]);
+                setImages(prev => [{
+                    Filename: `Live Capture`,
+                    Date: new Date().toISOString(),
+                    Timestamp: new Date().toISOString(),
+                    IsAlert: false,
+                    Url: '',
+                    ThumbnailUrl: '',
+                    dataUri: dataUri
+                }, ...prev]);
             }
         });
         return () => { newSocket.disconnect(); };
     }, [agentId, apiUrl, token]);
+
+    const fetchImages = async (newOffset: number, reset: boolean = false) => {
+        try {
+            if (reset) {
+                setIsInitialLoading(true);
+            } else {
+                setIsLoadingMore(true);
+            }
+            
+            const res = await fetch(`${apiUrl}/screenshots/list/${agentId}?limit=${LIMIT}&offset=${newOffset}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setImages(prev => reset ? data : [...prev, ...data]);
+                setHasMore(data.length === LIMIT);
+                setOffset(newOffset);
+            }
+        } catch (e: any) {
+            setError(e.message);
+        } finally {
+            setIsInitialLoading(false);
+            setIsLoadingMore(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!hasMore || isLoadingMore || isInitialLoading) return;
+
+        const observer = new IntersectionObserver(
+            entries => {
+                if (entries[0].isIntersecting) {
+                    fetchImages(offset + LIMIT);
+                }
+            },
+            { threshold: 0.1 }
+        );
+
+        if (observerTarget.current) {
+            observer.observe(observerTarget.current);
+        }
+
+        return () => observer.disconnect();
+    }, [hasMore, isLoadingMore, isInitialLoading, offset]);
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -182,7 +239,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                             type="text"
                             placeholder="OCR Forensic Search..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e: any) => setSearchQuery(e.target.value)}
                             className="bg-black/50 border border-white/10 rounded-2xl px-5 py-2 text-[11px] text-gray-200 focus:outline-none focus:border-blue-500 w-64 transition-all focus:ring-1 focus:ring-blue-500/30"
                         />
                         <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400">
@@ -223,7 +280,11 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                         return (
                             <div key={i} className={`group relative bg-white/5 backdrop-blur-md rounded-3xl overflow-hidden border transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl ${isMatched ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'border-white/10'}`}>
                                 <div className="aspect-video bg-black relative">
-                                    <img src={img.dataUri || `${img.Url}?token=${token}`} alt={img.Filename} className={`w-full h-full object-cover transition-all duration-700 ${isMatched ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:scale-110'}`} />
+                                    <img 
+                                        src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                        alt={img.Filename} 
+                                        className={`w-full h-full object-cover transition-all duration-700 ${isMatched ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:scale-110'}`} 
+                                    />
                                     <div className="absolute top-3 left-3 flex gap-2">
                                         {isMatched && (
                                             <div className="bg-blue-600 text-[8px] font-black text-white px-2 py-1 rounded-lg shadow-lg uppercase tracking-widest flex items-center gap-1.5 backdrop-blur-md border border-white/20">
@@ -267,7 +328,11 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                 <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-12 gap-2">
                     {images.map((img, i) => (
                         <a key={i} href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="group relative aspect-square bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-blue-500 transition-all hover:scale-110 active:scale-95 z-0 hover:z-10">
-                            <img src={img.dataUri || `${img.Url}?token=${token}`} alt={img.Filename} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                            <img 
+                                src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                alt={img.Filename} 
+                                className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" 
+                            />
                             {img.IsAlert && <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_5px_red] animate-pulse" />}
                             <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-[6px] text-white p-0.5 text-center font-mono opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap overflow-hidden">
                                 {img.Filename.split('_').pop()}
@@ -294,7 +359,10 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                 <tr key={i} className="group hover:bg-white/[0.03] transition-colors">
                                     <td className="px-6 py-3">
                                         <div className="w-16 h-10 bg-black rounded-lg overflow-hidden border border-white/10 relative">
-                                            <img src={img.dataUri || `${img.Url}?token=${token}`} className="w-full h-full object-cover opacity-80 group-hover:opacity-100" />
+                                            <img 
+                                                src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                                className="w-full h-full object-cover opacity-80 group-hover:opacity-100" 
+                                            />
                                             {img.IsAlert && <div className="absolute inset-0 border-2 border-red-500/50 pointer-events-none" />}
                                         </div>
                                     </td>
@@ -317,6 +385,58 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                     </table>
                 </div>
             )}
+
+            {/* Infinite Scroll Sentinel & Skeleton Feed */}
+            <div ref={observerTarget} className="min-h-[100px] flex flex-col items-center justify-center py-10">
+                {(isInitialLoading || isLoadingMore) && (
+                    <div className="w-full">
+                        {viewMode === 'grid' && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                {[...Array(LIMIT)].map((_, i) => (
+                                    <div key={i} className="aspect-video bg-white/5 rounded-3xl animate-pulse border border-white/5 flex items-center justify-center">
+                                        <Loader2 className="w-6 h-6 text-white/10 animate-spin" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {viewMode === 'small' && (
+                            <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-12 gap-2">
+                                {[...Array(LIMIT)].map((_, i) => (
+                                    <div key={i} className="aspect-square bg-white/5 rounded-xl animate-pulse border border-white/5" />
+                                ))}
+                            </div>
+                        )}
+                        {viewMode === 'table' && (
+                            <div className="space-y-2">
+                                {[...Array(10)].map((_, i) => (
+                                    <div key={i} className="h-16 bg-white/5 rounded-2xl animate-pulse border border-white/5" />
+                                ))}
+                            </div>
+                        )}
+                        
+                        <div className="flex flex-col items-center mt-12 space-y-4">
+                            <div className="relative">
+                                <div className="w-12 h-12 rounded-full border-4 border-blue-500/20 border-t-blue-500 animate-spin" />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                                </div>
+                            </div>
+                            <div className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] animate-pulse">
+                                Retrieving Forensic Evidence
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
+                {!hasMore && images.length > 0 && (
+                    <div className="flex flex-col items-center py-10 opacity-40">
+                        <div className="h-[1px] w-32 bg-gradient-to-r from-transparent via-white/20 to-transparent mb-6" />
+                        <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                            <Shield className="w-4 h-4" /> End of Evidence Pipeline
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

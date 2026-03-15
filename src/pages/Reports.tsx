@@ -56,6 +56,9 @@ export default function Reports() {
     const [saving, setSaving] = useState(false);
     const [sending, setSending] = useState(false);
     const [manualFreq, setManualFreq] = useState('weekly');
+    const [offset, setOffset] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const LIMIT = 20;
     const [newEmail, setNewEmail] = useState('');
     const emailInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,15 +66,33 @@ export default function Reports() {
 
     useEffect(() => {
         if (!token) return;
-        Promise.all([
-            fetch(`${API_URL}/reports/settings`, { headers }).then(r => r.json()),
-            fetch(`${API_URL}/reports/history`, { headers }).then(r => r.json()),
-        ]).then(([s, h]) => {
-            setSettings(s);
-            setHistory(Array.isArray(h) ? h : []);
-        }).catch(() => toast.error('Failed to load report data'))
+        setLoading(true);
+        fetch(`${API_URL}/reports/settings`, { headers })
+            .then(r => r.json())
+            .then(setSettings)
             .finally(() => setLoading(false));
+
+        fetchHistory(0, true);
     }, [token]);
+
+    const fetchHistory = async (newOffset: number, reset: boolean = false) => {
+        try {
+            const res = await fetch(`${API_URL}/reports/history?limit=${LIMIT}&offset=${newOffset}`, { headers });
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                setHistory(prev => reset ? data : [...prev, ...data]);
+                setHasMore(data.length === LIMIT);
+                setOffset(newOffset);
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error('Failed to load history');
+        }
+    };
+
+    const loadMore = () => {
+        fetchHistory(offset + LIMIT);
+    };
 
     const handleSaveSettings = async () => {
         setSaving(true);
@@ -420,6 +441,17 @@ export default function Reports() {
                                 </div>
                             );
                         })}
+                    </div>
+                )}
+
+                {hasMore && history.length > 0 && (
+                    <div className="p-4 flex justify-center border-t border-gray-100 dark:divide-gray-700">
+                        <button
+                            onClick={loadMore}
+                            className="flex items-center gap-2 px-6 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-semibold hover:bg-indigo-100 transition-all"
+                        >
+                            <RefreshCw size={14} /> Load Older Reports
+                        </button>
                     </div>
                 )}
             </div>

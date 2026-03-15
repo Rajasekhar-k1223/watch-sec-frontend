@@ -98,11 +98,11 @@ const normalizeTimestamp = (ts: any) => {
 
 // [NEW] Feature Matrix for UI Enforcement
 const PLAN_LEVELS: Record<string, number> = {
-    "Starter": 1,
-    "Professional": 2,
-    "Pro": 2, // Alias
-    "Enterprise": 3,
-    "Unlimited": 100
+    "starter": 1,
+    "professional": 2,
+    "pro": 2, // Alias
+    "enterprise": 3,
+    "unlimited": 100
 };
 
 const FEATURE_TIERS: Record<string, number> = {
@@ -231,7 +231,7 @@ export default function Agents() {
                     const p = data.Plan || data.plan || "Starter"; // Try both to be safe
                     console.log("[Agents] Plan Fetched:", p);
                     setCurrentPlan(p);
-                    setPlanLevel(PLAN_LEVELS[p] || 1);
+                    setPlanLevel(PLAN_LEVELS[p.toLowerCase()] || 1);
                 })
                 .catch(e => console.error("Failed to fetch plan", e));
         }
@@ -322,8 +322,8 @@ export default function Agents() {
                         browserEnforcerEnabled: a.browserEnforcerEnabled ?? a.BrowserEnforcerEnabled ?? false,
                         printerMonitorEnabled: a.printerMonitorEnabled ?? a.PrinterMonitorEnabled ?? false,
                         shadowMonitorEnabled: a.shadowMonitorEnabled ?? a.ShadowMonitorEnabled ?? false,
-                        liveStreamEnabled: a.liveStreamEnabled ?? a.LiveStreamEnabled ?? true,
-                        remoteShellEnabled: a.remoteShellEnabled ?? a.RemoteShellEnabled ?? true,
+                        liveStreamEnabled: a.liveStreamEnabled ?? a.LiveStreamEnabled ?? false,
+                        remoteShellEnabled: a.remoteShellEnabled ?? a.RemoteShellEnabled ?? false,
                         mailMonitorEnabled: a.mailMonitorEnabled ?? a.MailMonitorEnabled ?? false,
                         speechMonitorEnabled: a.speechMonitorEnabled ?? a.SpeechMonitorEnabled ?? false,
                         vulnerabilityIntelligenceEnabled: a.vulnerabilityIntelligenceEnabled ?? a.VulnerabilityIntelligenceEnabled ?? false,
@@ -620,6 +620,61 @@ export default function Agents() {
     const [showGraphs, setShowGraphs] = useState(false);
     const [logFilter, setLogFilter] = useState(''); // [NEW] Filter State: Text
     const [eventTypeFilter, setEventTypeFilter] = useState('All'); // [NEW] Filter State: Dropdown
+    const [logOffset, setLogOffset] = useState(0);
+    const [hasMoreLogs, setHasMoreLogs] = useState(true);
+    const LOG_LIMIT = 50;
+    
+    // Function to fetch logs - moved out of useEffect for scoping
+    const fetchData = async (newOffset: number, reset: boolean = false) => {
+        if (!selectedAgentId || !token) return;
+        try {
+            const params = new URLSearchParams();
+            params.append('limit', String(LOG_LIMIT));
+            params.append('offset', String(newOffset));
+            if (modalStartDate) params.append('start_date', modalStartDate + "T00:00:00");
+            if (modalEndDate) params.append('end_date', modalEndDate + "T23:59:59");
+
+            const requests = [
+                fetch(`${API_URL}/events/${selectedAgentId}?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/history/${selectedAgentId}?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/events/activity/${selectedAgentId}?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } })
+            ];
+
+            const [eventsRes, historyRes, activityRes] = await Promise.all(requests);
+            const eventsData = await eventsRes.json();
+            let historyData = await historyRes.json();
+            if (!Array.isArray(historyData)) historyData = [];
+            let activityData = [];
+            if (activityRes.ok) activityData = await activityRes.json();
+
+            const normalizedEvents = eventsData.map((e: any) => ({ ...e, timestamp: normalizeTimestamp(e.timestamp || e.Timestamp) }));
+            const historyAsEvents: AgentEvent[] = historyData.map((h: any) => ({
+                type: "System Heartbeat",
+                details: `Status: ${h.status || h.Status || 'Unknown'} | CPU: ${Number(h.cpuUsage ?? h.CpuUsage ?? 0).toFixed(1)}% | MEM: ${Number(h.memoryUsage ?? h.MemoryUsage ?? 0).toFixed(1)}MB`,
+                timestamp: normalizeTimestamp(h.timestamp || h.Timestamp),
+                isMetric: true,
+                cpu: Number(h.cpuUsage ?? h.CpuUsage ?? 0),
+                mem: Number(h.memoryUsage ?? h.MemoryUsage ?? 0)
+            }));
+            const activityAsEvents: AgentEvent[] = (Array.isArray(activityData) ? activityData : []).map((a: any) => ({
+                type: a.ActivityType || 'Activity',
+                details: `${a.ProcessName || ''} - ${a.WindowTitle || a.Url || ''}`.trim(),
+                timestamp: normalizeTimestamp(a.Timestamp),
+                RiskLevel: a.RiskLevel,
+                Category: a.Category
+            }));
+
+            let combined = [...normalizedEvents, ...historyAsEvents, ...activityAsEvents];
+            combined = combined.filter(c => c.type && c.details && c.details.length > 1);
+            combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+            setEvents(prev => reset ? combined : [...prev, ...combined]);
+            setLogOffset(newOffset);
+            setHasMoreLogs(eventsData.length === LOG_LIMIT || historyData.length === LOG_LIMIT || activityData.length === LOG_LIMIT);
+        } catch (err) { console.error("Failed to fetch logs", err); }
+    };
+
+    const loadMoreLogs = () => fetchData(logOffset + LOG_LIMIT);
 
     // Get Unique Event Types (Memoized)
     const eventTypes = useMemo(() => {
@@ -713,84 +768,7 @@ export default function Agents() {
     useEffect(() => {
         if (!selectedAgentId) return;
 
-        const fetchData = async () => {
-            try {
-                const params = new URLSearchParams();
-                if (modalStartDate) params.append('start_date', modalStartDate + "T00:00:00");
-                if (modalEndDate) params.append('end_date', modalEndDate + "T23:59:59");
-
-                // 1. Fetch Security Events
-                const eventsRes = await fetch(`${API_URL}/events/${selectedAgentId}?${params.toString()}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                let eventsData = await eventsRes.json();
-
-                // Normalize Events
-                const normalizedEvents = eventsData.map((e: any) => ({
-                    ...e,
-                    timestamp: normalizeTimestamp(e.timestamp || e.Timestamp)
-                }));
-
-                // 2. Fetch Metrics History
-                const historyRes = await fetch(`${API_URL}/history/${selectedAgentId}?${params.toString()}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                let historyData: AgentReport[] = await historyRes.json();
-                if (!Array.isArray(historyData)) historyData = [];
-
-                // 3. Fetch Activity Logs (Merged View) [NEW]
-                const activityRes = await fetch(`${API_URL}/events/activity/${selectedAgentId}?${params.toString()}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                let activityData = [];
-                if (activityRes.ok) {
-                    activityData = await activityRes.json();
-                }
-
-                // 4. Merge and Sort
-                const historyAsEvents: AgentEvent[] = historyData.map((h: any) => {
-                    const status = h.status || h.Status || 'Unknown';
-                    let cpu = h.cpuUsage ?? h.CpuUsage ?? 0;
-                    let mem = h.memoryUsage ?? h.MemoryUsage ?? 0;
-
-                    return {
-                        type: "System Heartbeat",
-                        details: `Status: ${status} | CPU: ${Number(cpu).toFixed(1)}% | MEM: ${Number(mem).toFixed(1)}MB`,
-                        timestamp: normalizeTimestamp(h.timestamp || h.Timestamp),
-                        isMetric: true,
-                        cpu: Number(cpu),
-                        mem: Number(mem)
-                    };
-                });
-
-                const activityAsEvents: AgentEvent[] = (Array.isArray(activityData) ? activityData : []).map((a: any) => ({
-                    type: a.ActivityType || 'Activity',
-                    details: `${a.ProcessName || ''} - ${a.WindowTitle || a.Url || ''}`.trim(),
-                    timestamp: normalizeTimestamp(a.Timestamp),
-                    RiskLevel: a.RiskLevel,
-                    Category: a.Category
-                }));
-
-                let combined = [...normalizedEvents, ...historyAsEvents, ...activityAsEvents];
-
-                // [FIX] Remove Gaps (Empty Type/Details) and duplicates (optional)
-                combined = combined.filter(c => c.type && c.details && c.details.length > 1);
-
-                combined.sort((a, b) => {
-                    const timeA = new Date(a.timestamp).getTime();
-                    const timeB = new Date(b.timestamp).getTime();
-                    if (timeB !== timeA) return timeB - timeA;
-                    // Tie-breaker: Type then Details
-                    return (a.type || '').localeCompare(b.type || '') || (a.details || '').localeCompare(b.details || '');
-                });
-
-                setEvents(combined);
-            } catch (err) {
-                console.error("Failed to fetch logs/history", err);
-            }
-        };
-
-        fetchData();
+        fetchData(0, true);
 
         const socket = io(SOCKET_URL, {
             auth: { token: token }, // Pass token in auth object for better compatibility
@@ -1593,7 +1571,17 @@ export default function Agents() {
                                                         </tr>
                                                     ))}
                                                 </tbody>
-                                            </table>
+                                             </table>
+                                            {hasMoreLogs && (
+                                                <div className="p-4 flex justify-center border-t border-gray-700 bg-gray-900/50">
+                                                    <button
+                                                        onClick={loadMoreLogs}
+                                                        className="px-6 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                                                    >
+                                                        Load Older Entries
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -1653,6 +1641,13 @@ export default function Agents() {
                                                         {isRecording ? <StopCircle className="w-3 h-3 animate-pulse" /> : <Video className="w-3 h-3" />} {isRecording ? 'Rec ON' : 'Record'}
                                                     </button>
                                                 )}
+                                                <button
+                                                    onClick={() => setViewMode('remote')}
+                                                    className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+                                                    title="Switch to Interactive Remote Desktop"
+                                                >
+                                                    <MousePointer className="w-3 h-3" /> Remote Control
+                                                </button>
                                                 <button onClick={handleToggleFullscreen} className="text-gray-400 hover:text-white transition-colors"> {isScreenMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} </button>
                                             </div>
                                         </div>
@@ -1764,15 +1759,7 @@ export default function Agents() {
                                 </div>
                             )}
 
-                            {viewMode === 'speech' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                    <SpeechLogViewer
-                                        agentId={selectedAgentId!}
-                                        apiUrl={API_URL}
-                                        token={token!}
-                                    />
-                                </div>
-                            )}
+
 
                             {viewMode === 'vuln' && (
                                 <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans relative">

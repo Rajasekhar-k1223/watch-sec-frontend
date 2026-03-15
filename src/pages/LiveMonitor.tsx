@@ -4,11 +4,14 @@ import {
     LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend
 } from 'recharts';
-import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, Calendar } from 'lucide-react';
+import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, Calendar, Folder } from 'lucide-react';
 import { API_URL, SOCKET_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { Terminal } from 'xterm';
+import { FitAddon } from 'xterm-addon-fit';
+import 'xterm/css/xterm.css';
 
 // ... (Rest of imports or interfaces if needed, keeping AgentReport)
 
@@ -32,7 +35,18 @@ export default function LiveMonitor() {
     const [history] = useState<any[]>([]);
     const [screens] = useState<Record<string, boolean>>({});
     const [isStreamActive, setIsStreamActive] = useState(false);
-    const [activeTab, setActiveTab] = useState<'stream' | 'analytics'>('stream');
+    const [activeTab, setActiveTab] = useState<'stream' | 'analytics' | 'terminal' | 'files'>('stream');
+    const terminalRef = useRef<HTMLDivElement>(null);
+    const xtermRef = useRef<Terminal | null>(null);
+
+    const [fileList, setFileList] = useState<any[]>([]);
+    const [currentPath, setCurrentPath] = useState('');
+    const [isFilesLoading, setIsFilesLoading] = useState(false);
+
+    const pcRef = useRef<RTCPeerConnection | null>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [streamMode, setStreamMode] = useState<'jpeg' | 'webrtc'>('jpeg');
+
     const [startDate, setStartDate] = useState(() => {
         const d = new Date();
         d.setHours(d.getHours() - 24);
@@ -47,6 +61,42 @@ export default function LiveMonitor() {
         setStartDate(start.toISOString().split('T')[0]);
         setEndDate(end.toISOString().split('T')[0]);
     };
+
+    // xterm.js Initialization
+    useEffect(() => {
+        if (activeTab === 'terminal' && terminalRef.current && !xtermRef.current) {
+            const term = new Terminal({
+                cursorBlink: true,
+                theme: {
+                    background: '#000000',
+                    foreground: '#00ff00',
+                },
+                fontSize: 14,
+                fontFamily: 'Menlo, Monaco, "Courier New", monospace'
+            });
+            const fitAddon = new FitAddon();
+            term.loadAddon(fitAddon);
+            term.open(terminalRef.current);
+            fitAddon.fit();
+            xtermRef.current = term;
+
+            term.onData(data => {
+                if (socketRef.current) {
+                    socketRef.current.emit('ShellInput', { agentId: selectedAgentId, input: data });
+                }
+            });
+
+            window.addEventListener('resize', () => fitAddon.fit());
+            
+            // Initial resize emit
+            socketRef.current?.emit('ShellResize', {
+                agentId: selectedAgentId,
+                cols: term.cols,
+                rows: term.rows
+            });
+        }
+    }, [activeTab, selectedAgentId]);
+
 
     // Refs
     const socketRef = useRef<Socket | null>(null);
@@ -131,6 +181,81 @@ export default function LiveMonitor() {
             }));
         });
 
+        // Shell Output
+        socket.on('ShellOutput', (data) => {
+            if (xtermRef.current) {
+                xtermRef.current.write(data.Output);
+            }
+        });
+
+        // File Manager
+        socket.on('FileList', (data) => {
+            setFileList(data.items || []);
+            setCurrentPath(data.path);
+            setIsFilesLoading(false);
+        });
+
+        socket.on('FileContent', (data) => {
+            if (data.error) {
+                toast.error(data.error);
+                return;
+            }
+            // Trigger browser download
+            const blob = new Blob([Uint8Array.from(atob(data.content), c => c.charCodeAt(0))], { type: 'application/octet-stream' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = data.name;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            toast.success("File downloaded!");
+        });
+
+        // WebRTC Signaling
+        socket.on('webrtc_offer', async (data) => {
+            console.log("Received WebRTC Offer from Agent");
+            const pc = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            });
+            pcRef.current = pc;
+
+            pc.onicecandidate = (event) => {
+                if (event.candidate) {
+                    socket.emit('webrtc_ice_candidate', {
+                        target: selectedAgentId,
+                        candidate: event.candidate
+                    });
+                }
+            };
+
+            pc.ontrack = (event) => {
+                console.log("Received WebRTC Track");
+                if (videoRef.current) {
+                    videoRef.current.srcObject = event.streams[0];
+                    setStreamMode('webrtc');
+                }
+            };
+
+            await pc.setRemoteDescription(new RTCSessionDescription(data));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            socket.emit('webrtc_answer', {
+                target: selectedAgentId,
+                sdp: answer.sdp,
+                type: answer.type
+            });
+        });
+
+        socket.on('webrtc_ice_candidate', async (data) => {
+            if (pcRef.current && data.candidate) {
+                try {
+                    await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } catch (e) { console.error("Error adding ICE candidate", e); }
+            }
+        });
+
         return () => {
             if (socketRef.current) {
                 socketRef.current.disconnect();
@@ -141,6 +266,50 @@ export default function LiveMonitor() {
 
 
     // Stream Handlers
+    const lastEmitTime = useRef(0);
+
+    const handleRemoteInput = (type: string, data: any) => {
+        if (socketRef.current && selectedAgentId && isStreamActive) {
+            // Throttle mousemove
+            if (type === 'mousemove') {
+                const now = Date.now();
+                if (now - lastEmitTime.current < 50) return; // 20fps cap for move
+                lastEmitTime.current = now;
+            }
+            socketRef.current.emit('RemoteInput', {
+                agentId: selectedAgentId,
+                type,
+                ...data
+            });
+        }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLImageElement>) => {
+        if (!isStreamActive) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        handleRemoteInput('mousemove', { x, y });
+    };
+
+    const handleClick = (e: React.MouseEvent<HTMLImageElement>) => {
+        if (!isStreamActive) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        const button = e.button === 2 ? 'right' : 'left';
+        handleRemoteInput('click', { x, y, button });
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (!isStreamActive) return;
+        // Prevent default browser shortcuts when focused on stream
+        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Backspace', 'Tab'].includes(e.key)) {
+            e.preventDefault();
+        }
+        handleRemoteInput('keypress', { key: e.key });
+    };
+
     const handleStartStream = () => {
         if (socketRef.current && selectedAgentId) {
             console.log(`[LiveMonitor] Manual Start Stream: ${selectedAgentId}`);
@@ -157,6 +326,28 @@ export default function LiveMonitor() {
             if (imgRef.current) {
                 imgRef.current.src = "";
             }
+        }
+    };
+
+
+    const handleListFiles = (path?: string) => {
+        if (socketRef.current && selectedAgentId) {
+            setIsFilesLoading(true);
+            socketRef.current.emit('ListFiles', { agentId: selectedAgentId, path });
+        }
+    };
+
+    const handleDownloadFile = (path: string) => {
+        if (socketRef.current && selectedAgentId) {
+            toast.loading("Preparing download...", { duration: 3000 });
+            socketRef.current.emit('DownloadFile', { agentId: selectedAgentId, path });
+        }
+    };
+
+    const handleDeleteFile = (path: string) => {
+        if (!confirm("Are you sure you want to delete this file/folder?")) return;
+        if (socketRef.current && selectedAgentId) {
+            socketRef.current.emit('DeleteFile', { agentId: selectedAgentId, path });
         }
     };
 
@@ -219,6 +410,18 @@ export default function LiveMonitor() {
                             <Video size={16} /> Live Stream
                         </button>
                         <button
+                            onClick={() => setActiveTab('terminal')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'terminal' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            <ShieldAlert size={16} /> Remote Shell
+                        </button>
+                        <button
+                            onClick={() => { setActiveTab('files'); handleListFiles(); }}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'files' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            <Folder size={16} /> Files
+                        </button>
+                        <button
                             onClick={() => setActiveTab('analytics')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                         >
@@ -229,17 +432,94 @@ export default function LiveMonitor() {
 
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
 
-                    {activeTab === 'stream' ? (
+                    {activeTab === 'files' ? (
+                        <div className="lg:col-span-2 flex flex-col gap-4">
+                            <div className="bg-gray-100 dark:bg-black/40 border border-gray-700 rounded-xl p-4 flex-1 flex flex-col min-h-0 min-w-0">
+                                <div className="flex items-center gap-2 mb-4 font-mono text-sm overflow-hidden whitespace-nowrap">
+                                    <span className="text-gray-500">Path:</span>
+                                    <span className="text-blue-400 truncate">{currentPath || '/'}</span>
+                                    <button onClick={() => {
+                                        const parent = currentPath.split(/[\\\/]/).slice(0, -1).join('/');
+                                        handleListFiles(parent || '/');
+                                    }} className="ml-auto px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 text-xs">Up</button>
+                                </div>
+                                
+                                <div className="flex-1 overflow-y-auto min-w-0">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="text-gray-500 border-b border-gray-800">
+                                            <tr>
+                                                <th className="pb-2">Name</th>
+                                                <th className="pb-2">Size</th>
+                                                <th className="pb-2 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-800">
+                                            {isFilesLoading ? (
+                                                <tr><td colSpan={3} className="py-10 text-center animate-pulse">Scanning Agent...</td></tr>
+                                            ) : fileList.map((file, i) => (
+                                                <tr key={i} className="hover:bg-white/5 group">
+                                                    <td className="py-2 flex items-center gap-2 truncate max-w-[200px]">
+                                                        {file.type === 'directory' ? '📁' : '📄'} 
+                                                        <span 
+                                                            className={file.type === 'directory' ? 'text-blue-400 cursor-pointer font-bold' : ''}
+                                                            onClick={() => file.type === 'directory' && handleListFiles(`${currentPath}/${file.name}`)}
+                                                        >
+                                                            {file.name}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-2 text-gray-500">
+                                                        {file.type === 'directory' ? '-' : (file.size / 1024).toFixed(1) + ' KB'}
+                                                    </td>
+                                                    <td className="py-2 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {file.type === 'file' && (
+                                                            <button onClick={() => handleDownloadFile(`${currentPath}/${file.name}`)} className="text-blue-500 hover:text-blue-400 mr-3">Download</button>
+                                                        )}
+                                                        <button onClick={() => handleDeleteFile(`${currentPath}/${file.name}`)} className="text-red-500 hover:text-red-400">Delete</button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {!isFilesLoading && fileList.length === 0 && (
+                                                <tr><td colSpan={3} className="py-10 text-center text-gray-600">Empty directory.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    ) : activeTab === 'terminal' ? (
+                        <div className="lg:col-span-2 flex flex-col gap-4">
+                            <div 
+                                ref={terminalRef}
+                                className="flex-1 bg-black border border-gray-700 rounded-xl p-4 shadow-2xl min-h-0 overflow-hidden"
+                            />
+                        </div>
+                    ) : activeTab === 'stream' ? (
                         <>
                             {/* LEFT COL: Stream & Stats */}
                             <div className="lg:col-span-2 flex flex-col gap-6">
                                 {/* Live Screen */}
-                                <div className="bg-black border border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video group">
-                                    <img
-                                        ref={imgRef}
-                                        className="w-full h-full object-contain bg-black"
-                                        alt="Live Stream"
-                                    />
+                                <div 
+                                    className="bg-black border border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video group outline-none"
+                                    tabIndex={0}
+                                    onKeyDown={handleKeyDown}
+                                >
+                                    {streamMode === 'webrtc' ? (
+                                        <video 
+                                            ref={videoRef}
+                                            autoPlay 
+                                            playsInline 
+                                            className="w-full h-full object-contain"
+                                        />
+                                    ) : (
+                                        <img
+                                            ref={imgRef}
+                                            className={`w-full h-full object-contain bg-black ${isStreamActive ? 'cursor-none' : ''}`}
+                                            alt="Live Stream"
+                                            onMouseMove={handleMouseMove}
+                                            onMouseDown={handleClick}
+                                            onContextMenu={(e) => e.preventDefault()}
+                                        />
+                                    )}
                                     {/* Controls Overlay */}
                                     <div className="absolute top-4 right-4 flex gap-2 z-10">
                                         <div className={`text-xs px-2 py-1 rounded shadow text-white flex items-center gap-2 ${screens[selectedAgentId] ? 'bg-red-600 animate-pulse' : 'bg-gray-600'}`}>

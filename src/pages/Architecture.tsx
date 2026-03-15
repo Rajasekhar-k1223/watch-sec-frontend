@@ -160,9 +160,9 @@ const Architecture = () => {
 
     // Plan-Based Module Configuration
     const PLAN_LEVELS: Record<string, number> = {
-        'Starter': 1,
-        'Professional': 2,
-        'Enterprise': 3
+        'starter': 1,
+        'professional': 2,
+        'enterprise': 3
     };
 
     const MODULE_PLAN_REQUIREMENTS: Record<string, string> = {
@@ -229,7 +229,7 @@ const Architecture = () => {
                 });
                 if (response.ok) {
                     const tenant = await response.json();
-                    setTenantPlan(tenant.Plan || 'Starter');
+                    setTenantPlan(tenant.Plan || tenant.plan || 'Starter');
                 } else {
                     setTenantPlan(user?.plan || 'Starter');
                 }
@@ -242,7 +242,7 @@ const Architecture = () => {
 
     // Filter Modules Based on Tenant Plan (from Backend)
     useEffect(() => {
-        const userPlanLevel = PLAN_LEVELS[tenantPlan] || 1;
+        const userPlanLevel = PLAN_LEVELS[tenantPlan.toLowerCase()] || 1;
 
         const enabled = modules
             .filter(mod => {

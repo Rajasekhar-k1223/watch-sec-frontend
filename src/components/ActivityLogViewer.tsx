@@ -89,24 +89,30 @@ export default function ActivityLogViewer({
     const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
     const [searchTerm, setSearchTerm] = useState('');
     const [summaryMode, setSummaryMode] = useState(false);
+    const [offset, setOffset] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const LIMIT = 50;
     const { user, logout } = useAuth();
 
-    const fetchLogs = useCallback(() => {
+    const fetchLogs = useCallback((newOffset: number = 0, reset: boolean = false) => {
         if (!agentId) return;
         setLoading(true);
-        console.log(`[ActivityViewer] Fetching logs for agent: ${agentId}`);
+        console.log(`[ActivityViewer] Fetching logs for agent: ${agentId}, offset: ${newOffset}`);
+        
         // [FIX] URL Encode AgentId to handle special characters like '$'
         let url = `${apiUrl}/events/activity/${encodeURIComponent(agentId)}`;
+        const params = new URLSearchParams();
+        params.append('limit', String(LIMIT));
+        params.append('offset', String(newOffset));
+
         if (startDate || endDate) {
             let start = startDate ? `${startDate}T00:00:00` : '';
             let end = endDate ? `${endDate}T23:59:59` : '';
-
-            const params = new URLSearchParams();
             if (start) params.append('start_date', start);
             if (end) params.append('end_date', end);
-
-            if (params.toString()) url += `?${params.toString()}`;
         }
+        
+        url += `?${params.toString()}`;
 
         console.log(`[ActivityViewer] Fetching: ${url}`);
         fetch(url, {
@@ -118,20 +124,30 @@ export default function ActivityLogViewer({
             })
             .then(data => {
                 console.log(`[ActivityViewer] Received ${Array.isArray(data) ? data.length : 'Invalid'} records`);
-                if (Array.isArray(data)) setLogs(data);
+                if (Array.isArray(data)) {
+                    setLogs(prev => reset ? data : [...prev, ...data]);
+                    setHasMore(data.length === LIMIT);
+                    setOffset(newOffset);
+                }
             })
             .catch(e => console.error(e))
             .finally(() => setLoading(false));
     }, [agentId, logout, apiUrl, token, startDate, endDate]);
 
     useEffect(() => {
-        fetchLogs();
+        setLogs([]);
+        setOffset(0);
+        fetchLogs(0, true);
         // Only auto-refresh if no date selected (Live Mode)
         if (!startDate && !endDate) {
-            const interval = setInterval(fetchLogs, 30000);
+            const interval = setInterval(() => fetchLogs(0, true), 30000);
             return () => clearInterval(interval);
         }
     }, [fetchLogs, startDate, endDate]);
+
+    const loadMore = () => {
+        fetchLogs(offset + LIMIT);
+    };
 
     // Data Processing for Charts
     const { volumeData, topApps, timeMetrics } = useMemo(() => {
@@ -422,7 +438,7 @@ export default function ActivityLogViewer({
                     </div>
                     <div className="flex items-center gap-2 mr-4">
                         <button
-                            onClick={fetchLogs}
+                            onClick={() => fetchLogs()}
                             disabled={loading}
                             className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded transition-colors"
                             title="Refresh Logs"
@@ -681,6 +697,19 @@ export default function ActivityLogViewer({
                     )}
                 </tbody>
             </table>
+
+            {hasMore && (
+                <div className="p-4 flex justify-center border-t border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-900/10">
+                    <button
+                        onClick={loadMore}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-6 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:border-cyan-500 transition-all shadow-sm"
+                    >
+                        {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        Load Older Activities
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
