@@ -2,7 +2,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 
 import { RefreshCw, Download, BarChart2, Clock, Zap, Monitor, LineChart, Calendar, Search } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config';
@@ -412,291 +412,276 @@ export default function ActivityLogViewer({
 
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-colors">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                <div className="flex items-center gap-3">
-                    <h4 className="text-sm font-bold text-gray-700 dark:text-gray-300">Activity History</h4>
+            <div className="p-3 md:p-4 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 dark:bg-gray-800/50">
+                <div className="flex flex-col gap-1">
+                    <h4 className="text-xs md:text-sm font-bold text-gray-700 dark:text-gray-300">Activity History</h4>
                     {startDate && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 uppercase">
-                            Showing: {startDate.split('-').reverse().join('-')} to {endDate.split('-').reverse().join('-')}
+                        <span className="inline-block w-fit px-2 py-0.5 rounded text-[9px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 uppercase">
+                            {startDate.split('-').reverse().join('-')} to {endDate.split('-').reverse().join('-')}
                         </span>
                     )}
                 </div>
-                <div className="flex gap-2 items-center">
-                    <div className="flex bg-gray-200 dark:bg-gray-700/50 p-0.5 rounded-lg mr-2">
+
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full md:w-auto">
+                    <div className="flex bg-gray-200 dark:bg-gray-700/50 p-0.5 rounded-lg">
                         <button
                             onClick={() => setSummaryMode(false)}
-                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${!summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                            className={`flex-1 px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${!summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                         >
                             Timeline
                         </button>
                         <button
                             onClick={() => setSummaryMode(true)}
-                            className={`px-3 py-1 text-[10px] font-bold rounded transition-all ${summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                            className={`flex-1 px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                         >
                             Summary
                         </button>
                     </div>
-                    <div className="flex items-center gap-2 mr-4">
+
+                    <div className="flex items-center gap-2">
                         <button
                             onClick={() => fetchLogs()}
                             disabled={loading}
-                            className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded transition-colors"
+                            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded transition-colors"
                             title="Refresh Logs"
                         >
                             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         </button>
                         <button
                             onClick={() => setShowInsights(!showInsights)}
-                            className={`p-1 rounded transition-colors ${showInsights ? 'text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-400/10' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}
+                            className={`p-1.5 rounded transition-colors ${showInsights ? 'text-cyan-600 dark:text-cyan-400 bg-cyan-100 dark:bg-cyan-400/10' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}
                             title={showInsights ? "Hide Insights" : "Show Insights"}
                         >
                             <LineChart className="w-4 h-4" />
                         </button>
                         <button
-                            onClick={async () => {
-                                try {
-                                    const res = await fetch(`${apiUrl}/events/simulate/${agentId}`, {
-                                        method: 'POST',
-                                        headers: { 'Authorization': `Bearer ${token}` }
-                                    });
-                                    if (res.ok) {
-                                        toast.success("Event Simulated! Check Events tab.");
-                                        fetchLogs(); // Refresh after simulation
-                                    }
-                                } catch (e) { console.error(e); }
-                            }}
-                            className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded"
-                        >
-                            Simulate Event
-                        </button>
-                        <button
                             onClick={handleDownloadReport}
-                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded flex items-center gap-2"
+                            className="flex-1 sm:flex-none justify-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-[10px] font-bold uppercase rounded flex items-center gap-2"
                         >
-                            <Download className="w-3 h-3" /> Export CSV
+                            <Download className="w-3 h-3" /> Export
                         </button>
                     </div>
 
-                    <div className="flex bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner">
-                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded p-0.5 mr-1">
-                            <button
-                                onClick={() => setQuickFilter(1)}
-                                className="px-2 py-0.5 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400"
-                            >
-                                24H
-                            </button>
-                            <button
-                                onClick={() => setQuickFilter(7)}
-                                className="px-2 py-0.5 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400 border-l border-gray-300 dark:border-gray-700"
-                            >
-                                7D
-                            </button>
-                            <button
-                                onClick={() => setQuickFilter(30)}
-                                className="px-2 py-0.5 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400 border-l border-gray-300 dark:border-gray-700"
-                            >
-                                30D
-                            </button>
+                    <div className="flex flex-col sm:flex-row bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-1 gap-1 shadow-inner">
+                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded p-0.5">
+                            <button onClick={() => setQuickFilter(1)} className="flex-1 px-2 py-1 text-[9px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400">24H</button>
+                            <button onClick={() => setQuickFilter(7)} className="flex-1 px-2 py-1 text-[9px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400 border-l border-gray-300 dark:border-gray-700">7D</button>
+                            <button onClick={() => setQuickFilter(30)} className="flex-1 px-2 py-1 text-[9px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400 border-l border-gray-300 dark:border-gray-700">30D</button>
                         </div>
-                        <Calendar className="w-3.5 h-3.5 text-gray-400 ml-1" />
-                        <input
-                            type="date"
-                            className="bg-transparent border-none text-gray-900 dark:text-gray-300 text-xs focus:ring-0 w-28 p-0"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                        />
-                        <span className="text-gray-400 text-[10px]">-</span>
-                        <input
-                            type="date"
-                            className="bg-transparent border-none text-gray-900 dark:text-gray-300 text-xs focus:ring-0 w-28 p-0"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            min={startDate}
-                        />
-                        {(startDate || endDate) && (
-                            <button
-                                onClick={() => { setStartDate(''); setEndDate(''); }}
-                                className="px-2 text-[10px] font-bold text-cyan-600 hover:text-cyan-500 uppercase"
-                            >
-                                Clear
-                            </button>
-                        )}
+                        <div className="flex items-center gap-1 px-2 py-1 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-gray-700">
+                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                            <input
+                                type="date"
+                                className="bg-transparent border-none text-gray-900 dark:text-gray-300 text-[10px] focus:ring-0 w-24 p-0"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                            />
+                            <span className="text-gray-400 text-[10px]">-</span>
+                            <input
+                                type="date"
+                                className="bg-transparent border-none text-gray-900 dark:text-gray-300 text-[10px] focus:ring-0 w-24 p-0"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                min={startDate}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Visualizations Section */}
             {logs.length > 0 && showInsights && (
-                <div className="p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 space-y-4">
+                <div className="p-3 md:p-4 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700 space-y-4">
                     <div className="flex items-center gap-2 mb-2">
                         <BarChart2 className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-                        <h3 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Session Insights</h3>
+                        <h3 className="text-[10px] md:text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Session Insights</h3>
                     </div>
 
                     {/* 1. Metric Cards */}
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col shadow-sm">
-                            <span className="text-xs text-gray-500 uppercase font-bold flex items-center gap-1"><Clock className="w-3 h-3" /> Total Logged</span>
-                            <span className="text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.total)}</span>
+                            <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1"><Clock className="w-3 h-3" /> Total Logged</span>
+                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.total)}</span>
                         </div>
                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col relative overflow-hidden shadow-sm">
                             <div className="absolute top-0 right-0 p-2 opacity-10"><Zap className="w-8 h-8 text-green-500" /></div>
-                            <span className="text-xs text-green-600 dark:text-green-500 uppercase font-bold flex items-center gap-1"><Zap className="w-3 h-3" /> Active Work</span>
-                            <span className="text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.active)}</span>
-                            <span className="text-[10px] text-gray-500">{(timeMetrics.active / (timeMetrics.total || 1) * 100).toFixed(1)}% Efficiency</span>
+                            <span className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold flex items-center gap-1"><Zap className="w-3 h-3" /> Active Work</span>
+                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.active)}</span>
+                            <span className="text-[9px] text-gray-500">{(timeMetrics.active / (timeMetrics.total || 1) * 100).toFixed(1)}% Efficiency</span>
                         </div>
                         <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col relative overflow-hidden shadow-sm">
                             <div className="absolute top-0 right-0 p-2 opacity-10"><Monitor className="w-8 h-8 text-gray-400" /></div>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 uppercase font-bold flex items-center gap-1"><Monitor className="w-3 h-3" /> Idle Time</span>
-                            <span className="text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.idle)}</span>
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold flex items-center gap-1"><Monitor className="w-3 h-3" /> Idle Time</span>
+                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.idle)}</span>
                         </div>
                     </div>
 
                     {/* 2. Charts Row */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
                         {/* Efficiency Donut */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700/50 col-span-1 shadow-sm">
-                            <h5 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2 flex items-center gap-2">Efficiency Breakdown</h5>
-                            <div className="h-32 w-full flex justify-center">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                            <h5 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Efficiency Breakdown</h5>
+                            <div className="h-28 w-full flex justify-center">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
-                                        <Pie
-                                            data={[
-                                                { name: 'Active', value: timeMetrics.active },
-                                                { name: 'Idle', value: timeMetrics.idle }
-                                            ]}
-                                            cx="50%" cy="50%"
-                                            innerRadius={35} outerRadius={50}
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                            stroke="none"
-                                        >
-                                            <Cell fill="#10b981" /> {/* Green for Active */}
-                                            <Cell fill="#4b5563" /> {/* Gray for Idle */}
+                                        <Pie data={[{ name: 'Active', value: timeMetrics.active }, { name: 'Idle', value: timeMetrics.idle }]} cx="50%" cy="50%" innerRadius={25} outerRadius={40} paddingAngle={5} dataKey="value" stroke="none">
+                                            <Cell fill="#10b981" />
+                                            <Cell fill="#4b5563" />
                                         </Pie>
-                                        <Tooltip
-                                            formatter={(value: any) => formatDuration(value)}
-                                            contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', fontSize: '10px' }}
-                                        />
-                                        <Legend verticalAlign="bottom" height={24} iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
+                                        <Tooltip formatter={(value: any) => formatDuration(value)} contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', fontSize: '9px' }} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
 
                         {/* Top Apps Bar */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700/50 col-span-1 shadow-sm">
-                            <h5 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Top Applications (Active)</h5>
-                            <div className="h-32 w-full">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                            <h5 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Top Apps</h5>
+                            <div className="h-28 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={topApps} layout="vertical" margin={{ left: 0 }}>
+                                    <BarChart data={topApps} layout="vertical">
                                         <XAxis type="number" hide />
-                                        <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 9, fill: '#9ca3af' }} />
-                                        <Tooltip
-                                            formatter={(value: any) => formatDuration(value)}
-                                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                            contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', fontSize: '10px' }}
-                                        />
-                                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={12}>
-                                            {topApps.map((_, index) => (
-                                                <Cell key={`cell-${index}`} fill={APP_COLORS[index % APP_COLORS.length]} />
-                                            ))}
+                                        <YAxis dataKey="name" type="category" width={60} tick={{ fontSize: 8, fill: '#9ca3af' }} />
+                                        <Tooltip formatter={(value: any) => formatDuration(value)} contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', fontSize: '9px' }} />
+                                        <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={8}>
+                                            {topApps.map((_, index) => <Cell key={`cell-${index}`} fill={APP_COLORS[index % APP_COLORS.length]} />)}
                                         </Bar>
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
 
-                        {/* Event Volume (Existing) */}
-                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700/50 col-span-1 shadow-sm">
-                            <h5 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Event Volume</h5>
-                            <div className="h-32 w-full">
+                        {/* Event Volume */}
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700/50 shadow-sm">
+                            <h5 className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Event Volume</h5>
+                            <div className="h-28 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={volumeData}>
-                                        <XAxis dataKey="time" tick={{ fontSize: 9, fill: '#6b7280' }} interval="preserveStartEnd" />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', fontSize: '10px' }}
-                                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                                        />
-                                        <Bar dataKey="count" fill="#3b82f6" radius={[2, 2, 0, 0]} barSize={12} />
+                                        <XAxis dataKey="time" tick={{ fontSize: 8, fill: '#6b7280' }} />
+                                        <Tooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151', fontSize: '9px' }} />
+                                        <Bar dataKey="count" fill="#3b82f6" radius={[2, 2, 0, 0]} barSize={8} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
                         </div>
-
                     </div>
-                    {startDate && (
-                        <div className="ml-2">
-                            <span className="px-3 py-1 rounded text-[10px] font-bold bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 uppercase shadow-sm">
-                                Showing: {startDate.split('-').reverse().join('-')} to {endDate.split('-').reverse().join('-')}
-                            </span>
-                        </div>
-                    )}
                 </div>
             )}
 
-            <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-4">
-                <div className="relative flex-1 max-w-md">
+            <div className="p-3 md:p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
                         type="text"
-                        placeholder="Search logs (Process, Title, Type)..."
-                        className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-cyan-500 outline-none transition-all dark:text-gray-200"
+                        placeholder="Search logs..."
+                        className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2 text-xs md:text-sm focus:ring-2 focus:ring-cyan-500 outline-none transition-all dark:text-gray-200"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider text-right">
                     Showing {filteredLogs.length} of {logs.length} entries
                 </div>
             </div>
 
-            <table className="w-full text-left text-sm">
-                <thead className="bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs sticky top-0">
-                    <tr><th className="p-4">Time Range</th><th className="p-4">Type</th><th className="p-4">Details</th><th className="p-4">Risk</th><th className="p-4">Duration</th></tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300 font-mono">
-                    {groupedLogs.length === 0 ? (
-                        <tr><td colSpan={5} className="p-8 text-center text-gray-500 italic">No activity matching your search.</td></tr>
-                    ) : (
-                        groupedLogs.map((log, i) => {
-                            const startTime = new Date(normalizeTimestamp(log.StartTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                            const endTime = new Date(normalizeTimestamp(log.EndTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                            const date = new Date(normalizeTimestamp(log.StartTime)).toLocaleDateString();
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs sticky top-0">
+                        <tr><th className="p-4">Time Range</th><th className="p-4">Type</th><th className="p-4">Details</th><th className="p-4">Risk</th><th className="p-4">Duration</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300 font-mono">
+                        {groupedLogs.length === 0 ? (
+                            <tr><td colSpan={5} className="p-8 text-center text-gray-500 italic">No activity matching your search.</td></tr>
+                        ) : (
+                            groupedLogs.map((log, i) => {
+                                const startTime = new Date(normalizeTimestamp(log.StartTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                                const endTime = new Date(normalizeTimestamp(log.EndTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                                const date = new Date(normalizeTimestamp(log.StartTime)).toLocaleDateString();
 
-                            return (
-                                <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors border-l-4 border-l-transparent hover:border-l-blue-500">
-                                    <td className="p-4 text-gray-500">
-                                        <div className="text-[10px] text-gray-400 mb-1">{date}</div>
-                                        {summaryMode ? (
-                                            <div className="text-xs text-blue-400 font-bold">Aggregate</div>
-                                        ) : (
-                                            <div className="text-xs whitespace-nowrap">{startTime} - {endTime}</div>
-                                        )}
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs ${(log.activityType || log.ActivityType) === 'Web' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
-                                            {log.activityType || log.ActivityType}
+                                return (
+                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors border-l-4 border-l-transparent hover:border-l-blue-500">
+                                        <td className="p-4 text-gray-500">
+                                            <div className="text-[10px] text-gray-400 mb-1">{date}</div>
+                                            {summaryMode ? (
+                                                <div className="text-xs text-blue-400 font-bold">Aggregate</div>
+                                            ) : (
+                                                <div className="text-xs whitespace-nowrap">{startTime} - {endTime}</div>
+                                            )}
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-xs ${(log.activityType || log.ActivityType) === 'Web' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                                                {log.activityType || log.ActivityType}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 break-all">
+                                            {(log.activityType || log.ActivityType) === 'Web' ? (
+                                                <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{log.url || log.Url}</a>
+                                            ) : (<span>{log.processName || log.ProcessName} - {log.windowTitle || log.WindowTitle}</span>)}
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${(log.riskLevel === 'High' || log.RiskLevel === 'High') ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
+                                                {log.riskLevel || log.RiskLevel || 'Normal'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 font-bold text-cyan-500">{formatDuration(log.DurationSeconds)}</td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Mobile Card List */}
+            <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                {groupedLogs.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500 italic text-xs">No activity matching your search.</div>
+                ) : (
+                    groupedLogs.map((log, i) => {
+                        const startTime = new Date(normalizeTimestamp(log.StartTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const endTime = new Date(normalizeTimestamp(log.EndTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const date = new Date(normalizeTimestamp(log.StartTime)).toLocaleDateString();
+                        const isWeb = (log.activityType || log.ActivityType) === 'Web';
+
+                        return (
+                            <div key={i} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors space-y-3">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] text-gray-400">{date}</span>
+                                        <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                            {summaryMode ? 'Aggregate' : `${startTime} - ${endTime}`}
                                         </span>
-                                    </td>
-                                    <td className="p-4 break-all">
-                                        {(log.activityType || log.ActivityType) === 'Web' ? (
-                                            <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{log.url || log.Url}</a>
-                                        ) : (<span>{log.processName || log.ProcessName} - {log.windowTitle || log.WindowTitle}</span>)}
-                                    </td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${(log.riskLevel === 'High' || log.RiskLevel === 'High') ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
-                                            {log.riskLevel || log.RiskLevel || 'Normal'}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${(log.riskLevel === 'High' || log.RiskLevel === 'High') ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
+                                            {log.riskLevel || log.RiskLevel || 'NORMAL'}
                                         </span>
-                                    </td>
-                                    <td className="p-4 font-bold text-cyan-500">{formatDuration(log.DurationSeconds)}</td>
-                                </tr>
-                            );
-                        })
-                    )}
-                </tbody>
-            </table>
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${isWeb ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
+                                            {(log.activityType || log.ActivityType)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="bg-gray-50 dark:bg-black/30 p-2.5 rounded border border-gray-100 dark:border-gray-700/50">
+                                    {isWeb ? (
+                                        <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 break-all hover:underline">{log.url || log.Url}</a>
+                                    ) : (
+                                        <div className="text-xs text-gray-600 dark:text-gray-300 break-all font-mono leading-relaxed">
+                                            <span className="font-bold text-blue-500">{log.processName || log.ProcessName}</span>
+                                            <span className="mx-1 opacity-50">•</span>
+                                            {log.windowTitle || log.WindowTitle}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-gray-500 uppercase font-black">Duration</span>
+                                    <span className="text-cyan-500 font-bold">{formatDuration(log.DurationSeconds)}</span>
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
 
             {hasMore && (
                 <div className="p-4 flex justify-center border-t border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-900/10">

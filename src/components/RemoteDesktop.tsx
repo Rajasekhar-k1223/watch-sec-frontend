@@ -188,49 +188,48 @@ export default function RemoteDesktop({ agentId, token }: Props) {
     return (
         <div ref={containerRef} className="flex flex-col h-full bg-black rounded-lg overflow-hidden border border-gray-800 outline-none" tabIndex={0} onKeyDown={handleKeyDown}>
             {/* Toolbar */}
-            <div className="bg-gray-900 border-b border-gray-800 p-2 flex justify-between items-center text-xs shrink-0 z-10">
-                <div className="flex items-center gap-4">
+            {/* Toolbar */}
+            <div className="bg-gray-900 border-b border-gray-800 p-2 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 text-xs shrink-0 z-10">
+                <div className="flex items-center justify-between sm:justify-start gap-4">
                     <span className={`flex items-center gap-1 font-bold ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
                         {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />} {status}
                     </span>
-                    <span className="text-gray-500 hidden md:inline">
-                        {canvasRef.current ? `${canvasRef.current.width}x${canvasRef.current.height}` : 'No Signal'}
+                    <span className="text-gray-500 font-mono text-[10px]">
+                        {canvasRef.current ? `${canvasRef.current.width}x${canvasRef.current.height}` : 'NO SIGNAL'}
                     </span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <div className="text-gray-500 italic hidden md:block mr-2">Click screen to focus</div>
-
-                    {/* Connect/Disconnect Buttons */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+                    {/* Connect/Disconnect */}
                     {!isConnected ? (
-                        <button onClick={connectSocket} className="bg-green-700 hover:bg-green-600 text-white px-2 py-1 rounded border border-green-600 flex items-center gap-1 transition-colors">
-                            <Play size={12} fill="currentColor" /> Connect
+                        <button onClick={connectSocket} className="bg-green-700 hover:bg-green-600 text-white px-2 py-1.5 rounded border border-green-600 flex items-center gap-1 transition-colors whitespace-nowrap">
+                            <Play size={12} fill="currentColor" /> <span className="hidden xs:inline">Connect</span>
                         </button>
                     ) : (
-                        <button onClick={disconnectSocket} className="bg-red-900/50 hover:bg-red-900 text-red-300 px-2 py-1 rounded border border-red-800 flex items-center gap-1 transition-colors">
-                            <Square size={12} fill="currentColor" /> Disconnect
+                        <button onClick={disconnectSocket} className="bg-red-900/50 hover:bg-red-900 text-red-300 px-2 py-1.5 rounded border border-red-800 flex items-center gap-1 transition-colors whitespace-nowrap">
+                            <Square size={12} fill="currentColor" /> <span className="hidden xs:inline">Disconnect</span>
                         </button>
                     )}
 
-                    <div className="w-px h-4 bg-gray-700 mx-1"></div>
+                    <div className="w-px h-4 bg-gray-800 mx-0.5" />
 
-                    <button onClick={handleToggleRecording} className={`px-2 py-1 rounded border flex items-center gap-1 transition-colors ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}>
+                    <button onClick={handleToggleRecording} className={`px-2 py-1.5 rounded border flex items-center gap-1 transition-colors whitespace-nowrap ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}>
                         {isRecording ? <StopCircle size={14} className="animate-pulse" /> : <Video size={14} />}
-                        {isRecording ? 'Stop Rec' : 'Record'}
+                        <span className="hidden xs:inline">{isRecording ? 'Stop' : 'Record'}</span>
                     </button>
 
-                    <button onClick={handleLock} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1 rounded border border-gray-700 flex items-center gap-1 transition-colors">
-                        <Lock size={12} /> Lock
+                    <button onClick={handleLock} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1.5 rounded border border-gray-700 flex items-center gap-1 transition-colors" title="Lock Workstation">
+                        <Lock size={12} /> <span className="hidden xs:inline">Lock</span>
                     </button>
 
                     <button
                         onClick={handleTogglePrivacy}
-                        className={`px-2 py-1 rounded border flex items-center gap-1 transition-colors ${isPrivacyMode ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}
-                        title="Privacy Mode: Block User Input & Blank Screen"
+                        className={`px-2 py-1.5 rounded border flex items-center gap-1 transition-colors whitespace-nowrap ${isPrivacyMode ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}
+                        title="Privacy Mode"
                     >
-                        {isPrivacyMode ? <EyeOff size={12} /> : <Eye size={12} />} {isPrivacyMode ? 'Unblock' : 'Block User'}
+                        {isPrivacyMode ? <EyeOff size={12} /> : <Eye size={12} />} <span className="hidden xs:inline">{isPrivacyMode ? 'Unblock' : 'Block'}</span>
                     </button>
 
-                    <button onClick={handleToggleFullscreen} className="bg-gray-800 hover:bg-gray-700 text-gray-300 p-1.5 rounded border border-gray-700 transition-colors" title="Toggle Fullscreen">
+                    <button onClick={handleToggleFullscreen} className="bg-gray-800 hover:bg-gray-700 text-gray-300 p-1.5 rounded border border-gray-700 transition-colors ml-auto" title="Fullscreen">
                         {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
                 </div>

@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, ChevronDown, Check, Camera, CameraOff } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera, CameraOff } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -40,6 +40,7 @@ interface AgentReport {
     targetVersion?: string;
     screenshotsEnabled?: boolean;
     screenshotsQuality?: number;
+    screenshotInterval?: number;
     screenshotsResolution?: string;
     activityMonitorEnabled?: boolean;
     keyloggerEnabled?: boolean;
@@ -153,7 +154,7 @@ export default function Agents() {
     const [selectedDate, setSelectedDate] = useState(''); // Default to empty for rolling 24h
     const [agentSearch, setAgentSearch] = useState('');
 
-    const [latestVersion, setLatestVersion] = useState("v1.8.1"); // Default fallback
+    const [latestVersion, setLatestVersion] = useState("v1.8.19"); // Default fallback
     const [updateProgressMap, setUpdateProgressMap] = useState<Record<string, number>>({});
     const updateTimeouts = useRef<Record<string, any>>({});
 
@@ -314,6 +315,7 @@ export default function Agents() {
                         targetVersion: a.targetVersion || a.TargetVersion || '1.0.0',
                         screenshotsEnabled: a.screenshotsEnabled ?? a.ScreenshotsEnabled ?? false,
                         screenshotsQuality: a.screenshotsQuality ?? a.ScreenshotQuality ?? 80,
+                        screenshotInterval: a.screenshotInterval ?? a.ScreenshotInterval ?? 60,
                         screenshotsResolution: a.screenshotsResolution ?? a.ScreenshotResolution ?? 'Original',
                         activityMonitorEnabled: a.activityMonitorEnabled ?? a.ActivityMonitorEnabled ?? true,
                         keyloggerEnabled: a.keyloggerEnabled ?? a.KeyloggerEnabled ?? false,
@@ -471,7 +473,7 @@ export default function Agents() {
 
 
     const [showDeployModal, setShowDeployModal] = useState(false);
-    const [deployOS, setDeployOS] = useState<'windows' | 'linux' | 'mac'>('windows');
+    const [deployOS, setDeployOS] = useState<'windows' | 'linux-x64' | 'linux-arm64' | 'mac'>('windows');
     // const [showOtpModal, setShowOtpModal] = useState(false);
     // const [otpToken, setOtpToken] = useState<string | null>(null);
     const [tenantApiKey, setTenantApiKey] = useState<string | null>(null);
@@ -990,51 +992,47 @@ export default function Agents() {
     }, []);
 
     return (
-        <div>
-            <div className="mb-6 space-y-6">
-                <div className="flex justify-between items-end">
+        <div className="p-3 md:p-8">
+            <div className="mb-6 space-y-4 md:space-y-6">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                            <Monitor className="w-8 h-8 text-blue-600 dark:text-blue-500" />
+                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                            <Monitor className="w-6 h-6 md:w-8 md:h-8 text-blue-600 dark:text-blue-500" />
                             Agent Management
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Monitor connected endpoints, track resources, and analyze fleet security.</p>
                     </div>
-                    <div className="flex gap-3 items-center">
+                    <div className="flex flex-wrap gap-2 items-center">
                         <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 items-center shadow-sm">
                             {/* Date Picker Simple Implementation */}
                             <input
                                 type="date"
                                 value={selectedDate}
-                                className="bg-transparent text-gray-900 dark:text-white text-xs px-2 py-1 outline-none"
+                                className="bg-transparent text-gray-900 dark:text-white text-[10px] md:text-xs px-2 py-1 outline-none w-28 md:w-auto"
                                 onChange={(e) => {
                                     if (e.target.value) {
                                         setSelectedDate(e.target.value);
                                     }
                                 }}
                             />
-                            <span className="text-gray-400 dark:text-gray-500 text-xs py-1 border-l border-gray-200 dark:border-gray-700 px-2 cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors" onClick={() => setSelectedDate('')}>24H (Default)</span>
+                            <span className="text-gray-400 dark:text-gray-500 text-[10px] md:text-xs py-1 border-l border-gray-200 dark:border-gray-700 px-2 cursor-pointer hover:text-gray-900 dark:hover:text-white transition-colors" onClick={() => setSelectedDate('')}>24H</span>
                         </div>
 
                         {user?.role === 'TenantAdmin' && (
-                            <>
-                                <button onClick={() => setShowDeployModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20">
-                                    <Download size={18} /> Deploy Agent
+                            <div className="flex gap-2 w-full md:w-auto">
+                                <button onClick={() => setShowDeployModal(true)} className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20 text-xs md:text-sm">
+                                    <Download size={16} /> Deploy
                                 </button>
-                                {/* <button onClick={handleGenerateToken} className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold border border-gray-600">
-                                    <AlertTriangle size={18} className="text-yellow-500" /> Generate OTP
-                                </button> */}
-
-                                <button onClick={() => setShowCapabilities(true)} className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-300 dark:border-gray-600" title="Feature Matrix">
-                                    <List size={18} /> Features
+                                <button onClick={() => setShowCapabilities(true)} className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors border border-gray-300 dark:border-gray-600 text-xs md:text-sm" title="Feature Matrix">
+                                    <List size={16} /> Features
                                 </button>
-                            </>
+                            </div>
                         )}
                     </div>
                 </div>
 
                 {/* Fleet Analytics Section */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                     {/* Card 1: Agent Status */}
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
                         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <Server className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Fleet Status</h3>
@@ -1124,23 +1122,23 @@ export default function Agents() {
 
 
 
-                <div className="flex bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm items-center justify-between gap-4 transition-colors">
-                    <div className="relative flex-1 max-w-md">
+                <div className="flex flex-col md:flex-row bg-white dark:bg-gray-800 p-3 md:p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm items-center justify-between gap-4 transition-colors">
+                    <div className="relative flex-1 w-full md:max-w-md">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
                         <input
                             type="text"
-                            placeholder="Find agent (Hostname, ID, Status)..."
-                            className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-gray-200"
+                            placeholder="Find agent..."
+                            className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-gray-200"
                             value={agentSearch}
                             onChange={(e) => setAgentSearch(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">
-                            {filteredAgents.length} Agents Found
+                    <div className="flex items-center justify-between w-full md:w-auto gap-4">
+                        <div className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">
+                            {filteredAgents.length} Agents
                         </div>
                         <button onClick={() => fetchAgents()} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Refresh Fleet">
-                            <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                         </button>
                     </div>
                 </div>
@@ -1149,66 +1147,105 @@ export default function Agents() {
 
 
 
-            {showDeployModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 z-50">
+            {showDeployModal && createPortal(
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
                     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden transition-colors">
                         <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-600 dark:text-blue-500" /> Deploy Enterprise Agent </h2>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Server className="w-5 h-5 text-blue-600 dark:text-blue-500" /> Deploy Agent v1.8.23
+                            </h2>
                             <button onClick={() => setShowDeployModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"><X className="w-6 h-6" /></button>
                         </div>
-                        <div className="p-6 space-y-6">
-                            <div className="flex gap-4 border-b border-gray-200 dark:border-gray-800 pb-6">
-                                {(['windows', 'linux', 'mac'] as const).map(os => (
-                                    <button key={os} onClick={() => setDeployOS(os)} className={`flex-1 py-3 rounded-lg border font-bold flex flex-col items-center gap-2 transition-all ${deployOS === os ? 'bg-blue-50 dark:bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400' : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
-                                        <span className="text-lg capitalize">{os}</span>
+                        <div className="p-6 space-y-5">
+                            {/* Platform Tabs */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {([
+                                    { id: 'windows', label: 'Windows', icon: '🪟' },
+                                    { id: 'linux-x64', label: 'Linux x64', icon: '🐧' },
+                                    { id: 'linux-arm64', label: 'Linux ARM64', icon: '🐧' },
+                                    { id: 'mac', label: 'macOS', icon: '🍎' },
+                                ] as const).map(({ id, label, icon }) => (
+                                    <button key={id} onClick={() => setDeployOS(id)}
+                                        className={`py-2 px-3 rounded-lg border font-bold flex items-center justify-center gap-1.5 text-sm transition-all ${
+                                            deployOS === id
+                                                ? 'bg-blue-50 dark:bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400'
+                                                : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                        }`}>
+                                        <span>{icon}</span> {label}
                                     </button>
                                 ))}
                             </div>
 
-                            <div className="space-y-4">
-                                {/* <div className="flex items-center gap-4">
-                                    <button onClick={() => handleDownload(deployOS)} disabled={isDownloading} className={`bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold text-sm ${isDownloading ? 'opacity-75 cursor-not-allowed' : ''}`}>
-                                        <Download size={18} /> {isDownloading ? 'Downloading...' : 'Download Installer'}
-                                    </button>
-                                    <span className="text-gray-500 text-sm">Or use CLI (Recommended)</span>
-                                </div> */}
-
-
+                            {/* Install Command Block */}
+                            <div className="bg-gray-100 dark:bg-black/60 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative">
                                 {deployOS === 'windows' && (
-                                    <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
-                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">PowerShell Command (Run as Admin)</p>
-                                        <div className="text-gray-900 dark:text-green-400 break-all pr-12">
-                                            powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key=${tenantApiKey || 'Loading...'}' | iex"
+                                    <>
+                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">PowerShell (Run as Administrator)</p>
+                                        <div className="text-gray-900 dark:text-green-400 break-all pr-10">
+                                            {`powershell -Ep Bypass -C "irm '${API_URL}/downloads/script?key=${tenantApiKey || 'YOUR_API_KEY'}' | iex"`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm 'https://monitorix.co.in/api/downloads/script?key=${tenantApiKey}' | iex"`).then(() => toast.success("Copied to clipboard!"))}
-                                            className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                                            title="Copy to Clipboard"
-                                        >
-                                            <FileText size={16} />
+                                            onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm '${API_URL}/downloads/script?key=${tenantApiKey}' | iex"`).then(() => toast.success('Copied!'))}
+                                            className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
+                                            <FileText size={14} />
                                         </button>
-                                    </div>
+                                    </>
                                 )}
-
-                                {(deployOS === 'linux' || deployOS === 'mac') && (
-                                    <div className="bg-gray-100 dark:bg-black/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 font-mono text-xs relative group">
-                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase">Terminal Command</p>
-                                        <div className="text-gray-900 dark:text-green-400 break-all pr-12">
-                                            curl -sL "https://monitorix.co.in/api/downloads/public/agent?key=${tenantApiKey || 'Loading...'}&os_type=${deployOS}" | bash
+                                {(deployOS === 'linux-x64' || deployOS === 'linux-arm64') && (
+                                    <>
+                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as root / sudo)</p>
+                                        <div className="text-gray-900 dark:text-green-400 break-all pr-10">
+                                            {`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=${deployOS}" | sudo bash`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "https://monitorix.co.in/api/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | bash`).then(() => toast.success("Copied to clipboard!"))}
-                                            className="absolute top-4 right-4 p-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
-                                            title="Copy to Clipboard"
-                                        >
-                                            <FileText size={16} />
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | sudo bash`).then(() => toast.success('Copied!'))}
+                                            className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
+                                            <FileText size={14} />
                                         </button>
-                                    </div>
+                                    </>
+                                )}
+                                {deployOS === 'mac' && (
+                                    <>
+                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as Administrator)</p>
+                                        <div className="text-gray-900 dark:text-green-400 break-all pr-10">
+                                            {`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=mac" | sudo bash`}
+                                        </div>
+                                        <button
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey}&os_type=mac" | sudo bash`).then(() => toast.success('Copied!'))}
+                                            className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
+                                            <FileText size={14} />
+                                        </button>
+                                    </>
                                 )}
                             </div>
+
+                            {/* Requirement notes */}
+                            <div className="flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3">
+                                <span className="text-blue-500 mt-0.5">ℹ️</span>
+                                <div className="text-xs text-blue-700 dark:text-blue-300">
+                                    {deployOS === 'windows' && <span>The command downloads and installs the agent as a <strong>Windows Service</strong> with auto-restart. Requires an elevated PowerShell prompt (Run as Administrator).</span>}
+                                    {(deployOS === 'linux-x64' || deployOS === 'linux-arm64') && <span>The command downloads and installs the agent as a <strong>systemd service</strong> that starts automatically on boot. Requires root or sudo access.</span>}
+                                    {deployOS === 'mac' && <span>The command downloads and installs the agent as a <strong>LaunchDaemon</strong> that starts automatically at login. Requires sudo access.</span>}
+                                </div>
+                            </div>
+
+                            {/* Download EXE button for Windows */}
+                            {deployOS === 'windows' && (
+                                <div className="flex items-center gap-3">
+                                    <a
+                                        href={`${API_URL}/downloads/exe/windows?key=${tenantApiKey}`}
+                                        download="monitorixagent.exe"
+                                        className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                                    >
+                                        <Download size={15} /> Download .exe (73 MB)
+                                    </a>
+                                    <span className="text-xs text-gray-400">for manual SCCM/GPO deployment</span>
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
 
@@ -1234,249 +1271,219 @@ export default function Agents() {
 
 
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg transition-colors">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
-                        <tr><th className="p-4">Agent ID</th><th className="p-4 hidden md:table-cell">Hostname</th><th className="p-4">Status</th><th className="p-4 hidden md:table-cell">Resources</th><th className="p-4 hidden md:table-cell">Last Seen</th><th className="p-4">Actions</th></tr>
-                    </thead>
-                    <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
-                        {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : filteredAgents.map((agent: AgentReport) => (
-                            <tr key={agent.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
-                                <td className="p-4 font-bold text-gray-900 dark:text-white">
-                                    <div className="flex items-center gap-2">
-                                        <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                                        {agent.agentId}
-                                    </div>
-                                    <div className="mt-1 flex flex-col gap-1">
-                                        {updateProgressMap[agent.agentId] !== undefined && updateProgressMap[agent.agentId] < 100 ? (
-                                            <div className="w-24 mt-1">
-                                                <div className="flex justify-between text-[10px] mb-0.5">
-                                                    <span className="text-blue-500 font-bold animate-pulse">Updating...</span>
-                                                    <span className="text-gray-500 font-mono">{updateProgressMap[agent.agentId]}%</span>
+                {/* Desktop View */}
+                <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
+                            <tr><th className="p-4">Agent ID</th><th className="p-4">Hostname</th><th className="p-4">Status</th><th className="p-4">Resources</th><th className="p-4">Last Seen</th><th className="p-4">Actions</th></tr>
+                        </thead>
+                        <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
+                            {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : filteredAgents.map((agent: AgentReport) => (
+                                <tr key={agent.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                                    <td className="p-4 font-bold text-gray-900 dark:text-white">
+                                        <div className="flex items-center gap-2">
+                                            <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                                            {agent.agentId}
+                                        </div>
+                                        <div className="mt-1 flex flex-col gap-1">
+                                            {updateProgressMap[agent.agentId] !== undefined && updateProgressMap[agent.agentId] < 100 ? (
+                                                <div className="w-24 mt-1">
+                                                    <div className="flex justify-between text-[10px] mb-0.5">
+                                                        <span className="text-blue-500 font-bold animate-pulse">Updating...</span>
+                                                        <span className="text-gray-500 font-mono">{updateProgressMap[agent.agentId]}%</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="bg-blue-500 h-full transition-all duration-300 ease-out"
+                                                            style={{ width: `${updateProgressMap[agent.agentId]}%` }}
+                                                        ></div>
+                                                    </div>
                                                 </div>
-                                                <div className="w-full bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="bg-blue-500 h-full transition-all duration-300 ease-out"
-                                                        style={{ width: `${updateProgressMap[agent.agentId]}%` }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <>
+                                            ) : (
                                                 <div className="flex gap-1">
                                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20" title="Current Version">
                                                         {agent.version}
                                                     </span>
                                                     {agent.version !== agent.targetVersion ? (
                                                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 animate-pulse flex items-center gap-1" title="Target Version">
-                                                            <RefreshCw size={8} className="animate-spin" /> → {agent.targetVersion}
+                                                            <RefreshCw size={8} className="animate-spin" /> {agent.targetVersion}
                                                         </span>
                                                     ) : (
-                                                        agent.version === latestVersion ? (
+                                                        agent.version === latestVersion && (
                                                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20 flex items-center gap-0.5" title="System Up-to-Date">
-                                                                <Check size={8} /> Up-to-Date
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50/50 dark:bg-amber-500/5 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 flex items-center gap-1" title="Update Available">
-                                                                <Zap size={8} /> Update to {latestVersion}
+                                                                <Check size={8} /> OK
                                                             </span>
                                                         )
                                                     )}
                                                 </div>
-                                                {agent.version !== agent.targetVersion && agent.updateStatus === 'pending' && (
-                                                    <span className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter animate-pulse">
-                                                        Update Starting...
-                                                    </span>
-                                                )}
-                                                {agent.updateStatus === 'failed' && (
-                                                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-tighter flex items-center gap-1 cursor-help" title={`Last Error: ${agent.updateFailureReason || 'Unknown error'}`}>
-                                                        <AlertTriangle size={10} /> Update Failed
-                                                    </span>
-                                                )}
-                                                {agent.version !== agent.targetVersion && agent.updateStatus !== 'pending' && agent.updateStatus !== 'failed' && (
-                                                    <span className="text-[10px] font-bold text-amber-500 uppercase tracking-tighter">
-                                                        Update Pending
-                                                    </span>
-                                                )}
-                                            </>
-                                        )}
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-400"> {agent.hostname || 'Unknown'} </td>
+                                    <td className="p-4">
+                                        <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
+                                            {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="text-xs space-y-1">
+                                            <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
+                                            <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">MEM:</span> <span className="text-gray-700 dark:text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-gray-500 dark:text-gray-400 text-[11px]"> {agent.timestamp ? new Date(agent.timestamp).toLocaleString() : 'Never'} </td>
+                                    <td className="p-4">
+                                        <div className="flex gap-2 items-center">
+                                            <button onClick={() => handleMonitor(agent.agentId)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-colors" title="Monitor"> <Monitor size={16} /> </button>
+                                            <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="p-2 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors" title="Remote Desktop"> <MousePointer size={16} /> </button>
+                                            <button onClick={() => handleViewLogs(agent.agentId)} className="p-2 bg-gray-500/10 text-gray-500 rounded-lg hover:bg-gray-500/20 transition-colors" title="Logs"> <List size={16} /> </button>
+                                            <button onClick={() => handleDelete(agent.id || agent.agentId)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Delete"> <Trash2 size={16} /> </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Mobile/Tablet Card View */}
+                <div className="lg:hidden divide-y divide-gray-200 dark:divide-gray-700">
+                    {loading ? (
+                        <div className="p-8 text-center text-gray-500 text-sm">Loading agents...</div>
+                    ) : (
+                        filteredAgents.map((agent: AgentReport) => (
+                            <div key={agent.agentId} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <Server className="w-4 h-4 text-blue-500" />
+                                            <span className="font-bold text-gray-900 dark:text-white text-sm">{agent.agentId}</span>
+                                        </div>
+                                        <div className="text-[10px] text-gray-500 font-mono mt-0.5">{agent.hostname || 'Unknown Host'}</div>
                                     </div>
-                                </td>
-                                <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-400 hidden md:table-cell"> {agent.hostname || 'Unknown'} </td>
-                                <td className="p-4">
-                                    <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
-                                        {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
+                                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${agent.status === 'Online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                        {agent.status.toUpperCase()}
                                     </div>
-                                </td>
-                                <td className="p-4 hidden md:table-cell">
-                                    <div className="text-xs space-y-1">
-                                        <div className="flex justify-between w-32"> <span className="text-gray-500">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
-                                        <div className="flex justify-between w-32"> <span className="text-gray-500">MEM:</span> <span className="text-gray-700 dark:text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
-                                        {agent.powerStatusJson && (
-                                            <div className="flex justify-between w-32 items-center">
-                                                <span className="text-gray-500">BAT:</span>
-                                                {(() => {
-                                                    try {
-                                                        const pwr = JSON.parse(agent.powerStatusJson);
-                                                        return (
-                                                            <span className={`flex items-center gap-1 ${pwr.battery_percent < 20 && !pwr.power_plugged ? 'text-red-500 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
-                                                                {pwr.power_plugged ? <Zap size={10} className="text-yellow-500" /> : <Monitor size={10} />}
-                                                                {pwr.battery_percent}%
-                                                            </span>
-                                                        );
-                                                    } catch (e) { return null; }
-                                                })()}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 mb-4 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-lg border border-gray-100 dark:border-gray-800">
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">CPU Usage</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-gray-200 dark:bg-gray-700 h-1 rounded-full overflow-hidden">
+                                                <div className={`h-full ${agent.cpuUsage > 80 ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${agent.cpuUsage}%` }}></div>
                                             </div>
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="p-4 text-gray-500 dark:text-gray-400 text-sm hidden md:table-cell"> {agent.timestamp ? new Date(agent.timestamp).toLocaleString() : 'Never'} </td>
-                                <td className="p-4">
-                                    <div className="flex gap-3 items-center">
-                                        <button
-                                            onClick={() => {
-                                                if (!isFeatureLocked('screenshots')) {
-                                                    setSelectedAgentId(agent.agentId);
-                                                    setViewMode('screenshots');
-                                                }
-                                            }}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('screenshots') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.screenshotsEnabled ? 'text-amber-500 dark:text-amber-400 hover:text-amber-600 dark:hover:text-amber-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={isFeatureLocked('screenshots') ? "Screenshots (Upgrade Plan)" : "Open Screenshot Gallery"}
-                                        >
-                                            {isFeatureLocked('screenshots') ? <Lock className="w-4 h-4" /> : agent.screenshotsEnabled ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />}
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleToggleUsb(agent.agentId, agent.usbBlockingEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('usb') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.usbBlockingEnabled ? 'text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={isFeatureLocked('usb') ? "USB Blocking (Upgrade Plan)" : agent.usbBlockingEnabled ? "USB Blocking ACTIVE (Write Protected)" : "USB Access ALLOWED"}
-                                        >
-                                            {isFeatureLocked('usb') ? <Lock className="w-4 h-4" /> : <Usb className="w-4 h-4" />}
-                                            {/* <span className="hidden md:inline">{agent.usbBlockingEnabled ? 'Block' : 'Allow'}</span> */}
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleToggleNetwork(agent.agentId, agent.networkMonitoringEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('network') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.networkMonitoringEnabled ? 'text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={isFeatureLocked('network') ? "Network Monitor (Upgrade Plan)" : agent.networkMonitoringEnabled ? "Network Analysis ON" : "Network Analysis OFF"}
-                                        >
-                                            {isFeatureLocked('network') ? <Lock className="w-4 h-4" /> : agent.networkMonitoringEnabled ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleToggleFile(agent.agentId, agent.fileDlpEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('file_dlp') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.fileDlpEnabled ? 'text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={isFeatureLocked('file_dlp') ? "File DLP (Upgrade Plan)" : agent.fileDlpEnabled ? "File System DLP ON (Confidential Folder)" : "File System DLP OFF"}
-                                        >
-                                            {isFeatureLocked('file_dlp') ? <Lock className="w-4 h-4" /> : agent.fileDlpEnabled ? <FileText className="w-4 h-4" /> : <FileText className="w-4 h-4 opacity-50" />}
-                                        </button>
-
-                                        <button
-                                            onClick={() => handleToggleLocation(agent.agentId, agent.locationTrackingEnabled)}
-                                            className={`text-sm font-medium flex items-center gap-1 transition-colors ${isFeatureLocked('location') ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed' : agent.locationTrackingEnabled ? 'text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
-                                            title={isFeatureLocked('location') ? "Location Tracking (Upgrade Plan)" : agent.locationTrackingEnabled ? "Location Tracking ON" : "Location Tracking OFF"}
-                                        >
-                                            {isFeatureLocked('location') ? <Lock className="w-4 h-4" /> : agent.locationTrackingEnabled ? <MapPin className="w-4 h-4" /> : <MapPinOff className="w-4 h-4" />}
-                                            {/* <span className="hidden md:inline">{agent.locationTrackingEnabled ? 'Loc On' : 'Loc Off'}</span> */}
-                                        </button>
-
-                                        <button onClick={() => handleViewLogs(agent.agentId)} className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white text-sm font-medium hover:underline flex items-center gap-1"> <List className="w-4 h-4" /> Logs </button>
-                                        <button onClick={() => handleMonitor(agent.agentId)} className="text-blue-400 hover:text-blue-300 text-sm font-medium hover:underline flex items-center gap-1"> <Monitor className="w-4 h-4" /> Monitor </button>
-                                        <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="text-purple-400 hover:text-purple-300 text-sm font-medium hover:underline flex items-center gap-1"> <MousePointer className="w-4 h-4" /> Remote </button>
-                                        <button onClick={() => handleDelete(agent.id || agent.agentId)} className="text-gray-400 hover:text-red-500 transition-colors ml-2" title="Delete Agent"> <Trash2 className="w-4 h-4" /> </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {
-                selectedAgentId && createPortal(
-                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                        <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-[95vw] h-[95vh] flex flex-col">
-                            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
-                                <div>
-                                    <h2 className="text-xl font-bold text-white flex items-center gap-2"> <Server className="w-5 h-5 text-blue-500" /> Agent: <span className="text-blue-400 font-mono">{selectedAgentId}</span> </h2>
-                                    <div className="flex gap-4 mt-2">
-                                        <div className="flex gap-4 mt-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-700">
-                                            {TAB_TABS.map(t => {
-                                                const locked = t.feat ? isFeatureLocked(t.feat) : false;
-                                                const restricted = t.role && user?.role !== t.role;
-                                                const disabled = locked || restricted;
-
-                                                return (
-                                                    <button
-                                                        key={t.id}
-                                                        onClick={() => !restricted && setViewMode(t.id as any)}
-                                                        className={`
-                                                        text-xs font-bold uppercase tracking-wider pb-1 border-b-2 transition-colors whitespace-nowrap flex items-center gap-1
-                                                        ${viewMode === t.id ? 'text-white border-blue-500' : 'text-gray-500 border-transparent hover:text-gray-300'}
-                                                        ${disabled ? 'opacity-50 cursor-not-allowed group' : ''}
-                                                    `}
-                                                        title={locked ? `Upgrade Plan for ${t.label}` : restricted ? `Restricted to ${t.role}` : ''}
-                                                    >
-                                                        {t.label}
-                                                        {(locked || restricted) && <Lock size={10} />}
-                                                    </button>
-                                                )
-                                            })}
+                                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{agent.cpuUsage.toFixed(1)}%</span>
                                         </div>
                                     </div>
+                                    <div className="space-y-1">
+                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">Memory</span>
+                                        <div className="text-xs font-mono text-gray-700 dark:text-gray-300">{agent.memoryUsage.toFixed(0)} MB</div>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2 items-center">
-                                    {viewMode === 'logs' && (
-                                        <button onClick={() => setShowGraphs(!showGraphs)} className={`p-2 rounded-full transition-colors ${showGraphs ? 'bg-purple-900/50 text-purple-400' : 'hover:bg-gray-700 text-gray-400'}`} title="Toggle Graphs"> <Activity className="w-5 h-5" /> </button>
-                                    )}
-                                    {(() => {
-                                        const agent = agents.find(a => a.agentId === selectedAgentId);
-                                        if (!agent) return null;
 
-                                        // Case 1: Update in progress
-                                        if (agent.version !== agent.targetVersion) {
-                                            return (
-                                                <div className="px-3 py-1 bg-amber-600/20 text-amber-400 rounded border border-amber-600/50 text-xs font-bold flex items-center gap-1 animate-pulse">
-                                                    <RefreshCw size={12} className="animate-spin" /> Updating to {agent.targetVersion}...
-                                                </div>
-                                            );
-                                        }
-
-                                        // Case 2: Up-to-Date (Latest)
-                                        if (agent.version === latestVersion) {
-                                            return (
-                                                <div className="px-3 py-1 bg-green-600/20 text-green-400 rounded border border-green-600/50 text-xs font-bold flex items-center gap-1">
-                                                    <Check size={12} /> Software Up-to-Date
-                                                </div>
-                                            );
-                                        }
-
-                                        // Case 3: Update Available (But not yet triggered)
-                                        return (
-                                            <button
-                                                onClick={() => handleUpdateAgent(agent.agentId)}
-                                                className="px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20"
-                                            >
-                                                <Download size={12} /> Update Software
-                                            </button>
-                                        );
-                                    })()}
-                                    {viewMode === 'logs' && (
-                                        <button onClick={handleSimulateEvent} className="px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-xs font-bold border border-red-600/50"> Simulate Event </button>
-                                    )}
-                                    <button onClick={closeModal} className="p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white transition-colors"> <X className="w-6 h-6" /> </button>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleMonitor(agent.agentId)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-blue-500/20">Monitor</button>
+                                        <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-purple-500/20">Remote</button>
+                                        <button onClick={() => handleViewLogs(agent.agentId)} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold">Logs</button>
+                                    </div>
+                                    <button onClick={() => handleDelete(agent.id || agent.agentId)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 size={16} /></button>
                                 </div>
                             </div>
+                        ))
+                    )}
+                </div>
+            </div>
 
-                            {viewMode === 'logs' && (
-                                <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 flex flex-col">
-                                    <div className="flex justify-between items-center mb-4">
-                                        <div className="flex items-center gap-3">
+            {selectedAgentId && createPortal(
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 z-50">
+                    <div className="bg-gray-900 sm:border border-gray-800 sm:rounded-3xl shadow-2xl w-full sm:max-w-[95vw] h-full sm:h-[95vh] flex flex-col overflow-hidden">
+                        <div className="p-3 md:p-6 border-b border-gray-800 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-gray-900/80 backdrop-blur-md sticky top-0 z-20">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-600/20 rounded-lg">
+                                    {viewMode === 'logs' && <List className="w-5 h-5 text-blue-400" />}
+                                    {viewMode === 'monitor' && <Monitor className="w-5 h-5 text-blue-400" />}
+                                    {viewMode === 'remote' && <MousePointer className="w-5 h-5 text-blue-400" />}
+                                    {viewMode === 'screenshots' && <Camera className="w-5 h-5 text-blue-400" />}
+                                    {viewMode === 'vault' && <Shield className="w-5 h-5 text-blue-400" />}
+                                    {viewMode === 'vuln' && <ShieldCheck className="w-5 h-5 text-blue-400" />}
+                                </div>
+                                <div>
+                                    <h2 className="text-sm md:text-xl font-bold text-white flex items-center gap-2">
+                                        {selectedAgentId}
+                                        <span className="text-[10px] md:text-xs font-normal text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-gray-800 rounded">{viewMode}</span>
+                                    </h2>
+                                    <p className="text-[10px] md:text-xs text-gray-400 font-mono">
+                                        {agents.find(a => a.agentId === selectedAgentId)?.hostname || 'Unknown'} • {agents.find(a => a.agentId === selectedAgentId)?.status}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 self-end md:self-auto">
+                                {viewMode === 'logs' && (
+                                    <button onClick={() => setShowGraphs(!showGraphs)} className={`p-2 rounded-full transition-colors ${showGraphs ? 'bg-purple-900/50 text-purple-400' : 'hover:bg-gray-700 text-gray-400'}`} title="Toggle Graphs"> <Activity className="w-5 h-5" /> </button>
+                                )}
+                                {(() => {
+                                    const agent = agents.find(a => a.agentId === selectedAgentId);
+                                    if (!agent) return null;
+
+                                    if (agent.version !== agent.targetVersion) {
+                                        return (
+                                            <div className="px-2 md:px-3 py-1 bg-amber-600/20 text-amber-400 rounded border border-amber-600/50 text-[10px] md:text-xs font-bold flex items-center gap-1 animate-pulse">
+                                                <RefreshCw size={10} className="animate-spin" /> {agent.targetVersion}
+                                            </div>
+                                        );
+                                    }
+
+                                    if (agent.version === latestVersion) {
+                                        return (
+                                            <div className="px-2 md:px-3 py-1 bg-green-600/20 text-green-400 rounded border border-green-600/50 text-[10px] md:text-xs font-bold flex items-center gap-1">
+                                                <Check size={10} /> Latest
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <button onClick={() => handleUpdateAgent(agent.agentId)} className="px-2 md:px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20">
+                                            <Download size={10} /> Update
+                                        </button>
+                                    );
+                                })()}
+                                {viewMode === 'logs' && (
+                                    <button onClick={handleSimulateEvent} className="px-2 md:px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-[10px] md:text-xs font-bold border border-red-600/50"> Simulate </button>
+                                )}
+                                <button onClick={closeModal} className="p-1.5 md:p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white transition-colors"> <X className="w-5 h-5 md:w-6 md:h-6" /> </button>
+                            </div>
+                        </div>
+                        <div className="bg-gray-800/50 border-b border-gray-800 p-2 overflow-x-auto scrollbar-none">
+                            <div className="flex gap-2 min-w-max">
+                                {TAB_TABS.map(t => {
+                                    const locked = t.feat ? isFeatureLocked(t.feat) : false;
+                                    const restricted = t.role && user?.role !== t.role;
+                                    const disabled = locked || restricted;
+                                    return (
+                                        <button
+                                            key={t.id}
+                                            onClick={() => !restricted && setViewMode(t.id as any)}
+                                            className={`text-[10px] md:text-xs font-bold uppercase tracking-wider px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${viewMode === t.id ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            {t.label} {disabled && <Lock size={10} />}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        {viewMode === 'logs' && (
+                            <div className="flex-1 overflow-hidden p-3 md:p-6 bg-gray-900/50 flex flex-col">
+                                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
+                                        <div className="flex flex-wrap items-center gap-2 md:gap-3">
                                             {/* [NEW] Type Dropdown */}
-                                            <div className="relative">
+                                            <div className="relative flex-1 md:flex-none">
                                                 <select
                                                     value={eventTypeFilter}
                                                     onChange={(e) => setEventTypeFilter(e.target.value)}
-                                                    className="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none appearance-none pr-6 cursor-pointer"
+                                                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-[10px] md:text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none appearance-none pr-6 cursor-pointer"
                                                 >
                                                     {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
                                                 </select>
@@ -1484,45 +1491,44 @@ export default function Agents() {
                                             </div>
 
                                             {/* Search Input */}
-                                            <div className="relative">
+                                            <div className="relative flex-1 md:flex-none">
                                                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                                                 <input
                                                     type="text"
-                                                    placeholder="Filter logs..."
-                                                    className="bg-gray-800 border border-gray-700 rounded pl-7 pr-2 py-1 text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none w-48"
+                                                    placeholder="Filter..."
+                                                    className="w-full bg-gray-800 border border-gray-700 rounded pl-7 pr-2 py-1.5 text-[10px] md:text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none md:w-48"
                                                     value={logFilter}
                                                     onChange={(e) => setLogFilter(e.target.value)}
                                                 />
                                             </div>
 
                                             {modalStartDate && (
-                                                <span className="text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider shadow-sm">
+                                                <span className="hidden md:inline-block text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider shadow-sm">
                                                     Showing: {modalStartDate.split('-').reverse().join('-')} to {modalEndDate.split('-').reverse().join('-')}
                                                 </span>
                                             )}
                                         </div>
 
-                                        <div className="flex bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner">
-                                            <div className="flex bg-gray-200 dark:bg-gray-900/50 rounded p-0.5">
-                                                <button onClick={() => setModalQuickFilter(1)} className={`text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>24H</button>
-                                                <button onClick={() => setModalQuickFilter(7)} className={`text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>7D</button>
-                                                <button onClick={() => setModalQuickFilter(30)} className={`text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>30D</button>
+                                        <div className="flex bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner overflow-x-auto">
+                                            <div className="flex bg-gray-200 dark:bg-gray-900/50 rounded p-0.5 shrink-0">
+                                                <button onClick={() => setModalQuickFilter(1)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>24H</button>
+                                                <button onClick={() => setModalQuickFilter(7)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>7D</button>
+                                                <button onClick={() => setModalQuickFilter(30)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>30D</button>
                                             </div>
-                                            <Calendar size={14} className="text-gray-500 ml-1" />
+                                            <Calendar size={12} className="text-gray-500 ml-1 shrink-0" />
                                             <input
                                                 type="date"
                                                 value={modalStartDate}
                                                 onChange={(e) => setModalStartDate(e.target.value)}
-                                                className="bg-transparent text-[10px] text-gray-400 outline-none w-24"
+                                                className="bg-transparent text-[9px] md:text-[10px] text-gray-400 outline-none w-20 md:w-24 shrink-0"
                                             />
                                             <span className="text-gray-600 dark:text-gray-500 text-[10px]">-</span>
                                             <input
                                                 type="date"
                                                 value={modalEndDate}
                                                 onChange={(e) => setModalEndDate(e.target.value)}
-                                                className="bg-transparent text-[10px] text-gray-400 outline-none w-24"
+                                                className="bg-transparent text-[9px] md:text-[10px] text-gray-400 outline-none w-20 md:w-24 shrink-0"
                                             />
-                                            <button onClick={() => { setModalStartDate(''); setModalEndDate(''); }} className="text-[10px] text-gray-500 hover:text-red-500 font-bold px-2">Clear</button>
                                         </div>
                                     </div>
                                     {showGraphs && events.length > 0 && (

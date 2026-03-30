@@ -169,18 +169,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 >
                     <Menu size={20} />
                 </button>
-                <div className="relative w-96 group hidden md:block" ref={searchRef}>
+                <div className="relative w-full md:w-96 group" ref={searchRef}>
                     <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${showSearch ? 'text-cyan-500' : 'text-gray-500'}`} />
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="SEARCH COMMANDS..."
+                        placeholder="SEARCH..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => setShowSearch(true)}
-                        className={`w-full bg-gray-100 dark:bg-black/40 backdrop-blur border rounded pl-10 pr-12 py-2 text-xs font-mono text-gray-800 dark:text-cyan-100 placeholder-gray-500 dark:placeholder-gray-600 outline-none transition-all ${showSearch ? 'ring-1 ring-cyan-500/50 border-cyan-500/50' : 'border-gray-200 dark:border-gray-800'}`}
+                        className={`w-full bg-gray-100 dark:bg-black/40 backdrop-blur border rounded-lg pl-10 pr-12 py-2 text-xs font-mono text-gray-800 dark:text-cyan-100 placeholder-gray-500 dark:placeholder-gray-600 outline-none transition-all ${showSearch ? 'ring-2 ring-cyan-500/30 border-cyan-500/50' : 'border-gray-200 dark:border-gray-800'}`}
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1 pointer-events-none">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex gap-1 pointer-events-none">
                         <span className="text-[10px] text-gray-400 border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded">CTRL</span>
                         <span className="text-[10px] text-gray-400 border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded">K</span>
                     </div>

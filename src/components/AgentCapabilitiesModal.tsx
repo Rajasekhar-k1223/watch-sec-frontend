@@ -126,8 +126,9 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                     </div>
                 </div>
 
-                <div className="p-8 overflow-y-auto bg-gray-50 dark:bg-black/20">
-                    <div className="bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
+                <div className="p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-black/20">
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
                         <table className="w-full text-left text-[11px] uppercase tracking-wider">
                             <thead className="bg-gray-100 dark:bg-gray-900/50 text-gray-600 dark:text-gray-500 border-b border-gray-200 dark:border-gray-700/50">
                                 <tr>
@@ -209,6 +210,61 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden space-y-4">
+                        {features.map((feat) => (
+                            <div key={feat.id} className="bg-white dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-sm">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <span className="p-2 bg-blue-500/10 text-blue-500 rounded-lg">
+                                            {feat.id === 'activity' && <Activity size={18} />}
+                                            {feat.id === 'keylogger' && <Key size={18} />}
+                                            {feat.id === 'clipboard' && <Clipboard size={18} />}
+                                            {feat.id === 'app_blocker' && <ShieldAlert size={18} />}
+                                            {feat.id === 'browser' && <Globe size={18} />}
+                                            {feat.id === 'printer' && <Printer size={18} />}
+                                            {feat.id === 'shadow' && <Ghost size={18} />}
+                                            {feat.id === 'live_stream' && <Video size={18} />}
+                                            {feat.id === 'remote_shell' && <Terminal size={18} />}
+                                            {feat.id === 'mail' && <Mail size={18} />}
+                                            {feat.id === 'screenshots' && <Camera size={18} />}
+                                            {feat.id === 'location' && <MapPin size={18} />}
+                                            {feat.id === 'usb' && <Usb size={18} />}
+                                            {feat.id === 'network' && <Wifi size={18} />}
+                                            {feat.id === 'file_dlp' && <FileText size={18} />}
+                                        </span>
+                                        <div>
+                                            <h4 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wide">{feat.name}</h4>
+                                            <span className="text-[10px] text-gray-500 font-bold uppercase">{feat.domain}</span>
+                                        </div>
+                                    </div>
+                                    {getTierLevel(feat.tier || 'Starter') > getTierLevel(selectedPlan) ? (
+                                        <Lock size={16} className="text-gray-400 mt-1" />
+                                    ) : (
+                                        <button
+                                            onClick={() => toggleFeature(feat.id)}
+                                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${enabledFeatures[feat.id] ? 'bg-blue-600' : 'bg-gray-400 dark:bg-gray-600'}`}
+                                        >
+                                            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform shadow-sm ${enabledFeatures[feat.id] ? 'translate-x-5' : 'translate-x-1'}`} />
+                                        </button>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{feat.description}</p>
+                                <div className="flex flex-wrap gap-2 items-center justify-between mt-auto pt-3 border-t border-gray-100 dark:border-gray-700/50">
+                                    <div className="flex gap-1.5">
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.win ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : 'opacity-20'}`}>WIN</span>
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.linux ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'opacity-20'}`}>LIN</span>
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.mac ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : 'opacity-20'}`}>MAC</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-mono font-bold text-gray-900 dark:text-white">${feat.price}</span>
+                                        <span className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-0.5 rounded font-bold tracking-tight">{feat.perm}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

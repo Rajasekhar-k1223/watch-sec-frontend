@@ -25,7 +25,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
     const [loadingSettings, setLoadingSettings] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
-    const [settings, setSettings] = useState({ quality: 80, resolution: 'Original', maxSize: 0 });
+    const [settings, setSettings] = useState({ quality: 80, resolution: 'Original', maxSize: 0, interval: 60 });
     const [viewMode, setViewMode] = useState<'grid' | 'table' | 'small'>('grid');
 
     const [ocrResults, setOcrResults] = useState<any[]>([]);
@@ -72,7 +72,8 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                         setSettings({
                             quality: agent.ScreenshotQuality || 80,
                             resolution: agent.ScreenshotResolution || 'Original',
-                            maxSize: agent.MaxScreenshotSize || 0
+                            maxSize: agent.MaxScreenshotSize || 0,
+                            interval: agent.ScreenshotInterval || 60
                         });
                     }
                 }
@@ -181,7 +182,12 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
             await fetch(`${apiUrl}/agents/${agentId}/settings`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ScreenshotQuality: settings.quality, ScreenshotResolution: settings.resolution, MaxScreenshotSize: settings.maxSize })
+                body: JSON.stringify({ 
+                    ScreenshotQuality: settings.quality, 
+                    ScreenshotResolution: settings.resolution, 
+                    MaxScreenshotSize: settings.maxSize,
+                    ScreenshotInterval: settings.interval
+                })
             });
             setShowSettings(false);
         } catch (e) { console.error("Failed settings save", e); }
@@ -192,103 +198,129 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
     return (
         <div className="space-y-6">
             {/* Forensic Stats Bar */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 hover:bg-white/10 transition-all group">
-                    <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
-                        <Layers className="w-6 h-6" />
+            {/* Forensic Stats Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-3 md:p-4 flex items-center gap-3 md:gap-4 hover:bg-white/10 transition-all group">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                        <Layers className="w-5 h-5 md:w-6 md:h-6" />
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Total Frames</div>
-                        <div className="text-xl font-black text-white">{stats.totalImages} <span className="text-xs text-blue-500/50 underline decoration-blue-500/30">Stored</span></div>
+                        <div className="text-[9px] md:text-[10px] text-gray-500 font-black uppercase tracking-widest">Total Frames</div>
+                        <div className="text-lg md:text-xl font-black text-white">{stats.totalImages}</div>
                     </div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 hover:bg-white/10 transition-all group">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
-                        <Database className="w-6 h-6" />
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-3 md:p-4 flex items-center gap-3 md:gap-4 hover:bg-white/10 transition-all group">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform">
+                        <Database className="w-5 h-5 md:w-6 md:h-6" />
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Storage Consumed</div>
-                        <div className="text-xl font-black text-white">{formatSize(stats.totalSize)}</div>
+                        <div className="text-[9px] md:text-[10px] text-gray-500 font-black uppercase tracking-widest">Storage</div>
+                        <div className="text-lg md:text-xl font-black text-white">{formatSize(stats.totalSize)}</div>
                     </div>
                 </div>
-                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center gap-4 hover:bg-white/10 transition-all group">
-                    <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                        <HardDrive className="w-6 h-6" />
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-3 md:p-4 flex items-center gap-3 md:gap-4 hover:bg-white/10 transition-all group">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <HardDrive className="w-5 h-5 md:w-6 md:h-6" />
                     </div>
                     <div>
-                        <div className="text-[10px] text-gray-500 font-black uppercase tracking-widest">Memory Impact</div>
-                        <div className="text-xl font-black text-white">~{formatSize(stats.memoryImpact)}</div>
+                        <div className="text-[9px] md:text-[10px] text-gray-500 font-black uppercase tracking-widest">Memory</div>
+                        <div className="text-lg md:text-xl font-black text-white">~{formatSize(stats.memoryImpact)}</div>
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-800/50 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-2xl">
-                <div className="flex items-center gap-4">
-                    <h3 className="text-sm font-black text-white flex gap-2 uppercase tracking-tighter"><Image className="w-5 h-5 text-blue-500" /> Evidence Pipeline</h3>
-                    <div className="h-4 w-[1px] bg-white/10" />
+            <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-gray-800/50 backdrop-blur-xl p-3 md:p-4 rounded-2xl md:rounded-3xl border border-white/10 shadow-2xl">
+                <div className="flex items-center justify-between lg:justify-start gap-4">
+                    <h3 className="text-xs md:text-sm font-black text-white flex gap-2 uppercase tracking-tighter"><Image className="w-4 h-4 md:w-5 md:h-5 text-blue-500" /> Evidence</h3>
+                    <div className="hidden sm:block h-4 w-[1px] bg-white/10" />
                     <div className="flex bg-black/40 rounded-xl p-1 border border-white/5">
-                        <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-white'}`}><LayoutGrid size={16} /></button>
-                        <button onClick={() => setViewMode('small')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'small' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-white'}`}><Grid2X2 size={16} /></button>
-                        <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-white'}`}><List size={16} /></button>
+                        <button onClick={() => setViewMode('grid')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-white'}`}><LayoutGrid size={14} /></button>
+                        <button onClick={() => setViewMode('small')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'small' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-white'}`}><Grid2X2 size={14} /></button>
+                        <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:text-white'}`}><List size={14} /></button>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                    <form onSubmit={handleSearch} className="relative group flex-grow">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <form onSubmit={handleSearch} className="relative group flex-1 min-w-0">
                         <input
                             type="text"
-                            placeholder="OCR Forensic Search..."
+                            placeholder="OCR Search..."
                             value={searchQuery}
                             onChange={(e: any) => setSearchQuery(e.target.value)}
-                            className="bg-black/50 border border-white/10 rounded-2xl px-5 py-2 text-[11px] text-gray-200 focus:outline-none focus:border-blue-500 w-64 transition-all focus:ring-1 focus:ring-blue-500/30"
+                            className="w-full bg-black/50 border border-white/10 rounded-xl md:rounded-2xl px-4 md:px-5 py-2 text-[10px] md:text-[11px] text-gray-200 focus:outline-none focus:border-blue-500 sm:w-48 md:w-64 transition-all focus:ring-1 focus:ring-blue-500/30"
                         />
                         <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-blue-400">
                             {isSearching ? <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div> : <Search size={14} />}
                         </button>
                     </form>
-                    <button onClick={async () => { await fetch(`${apiUrl}/agents/${agentId}/take-screenshot`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }} className="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-2xl text-white font-black text-[10px] shadow-lg shadow-blue-600/20 transition-all active:scale-95 uppercase tracking-widest">Capture</button>
-                    <button onClick={() => setShowSettings(true)} className="p-2.5 bg-white/5 border border-white/10 rounded-2xl text-gray-400 hover:text-white transition-all shadow-xl" title="Settings"><SettingsIcon className="w-5 h-5" /></button>
-                    <div className="flex items-center gap-3 pl-2">
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${isEnabled ? 'text-green-400' : 'text-gray-500'}`}>{isEnabled ? 'Live' : 'Off'}</span>
-                        <button onClick={toggleScreenshots} disabled={loadingSettings} className={`w-10 h-5 rounded-full p-1 relative transition-colors ${isEnabled ? 'bg-green-600' : 'bg-gray-700'}`}>
-                            <div className={`w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${isEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
-                        </button>
+                    <div className="flex items-center gap-2">
+                        <button onClick={async () => { await fetch(`${apiUrl}/agents/${agentId}/take-screenshot`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }); }} className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl md:rounded-2xl text-white font-black text-[9px] md:text-[10px] shadow-lg shadow-blue-600/20 transition-all active:scale-95 uppercase tracking-widest">Capture</button>
+                        <button onClick={() => setShowSettings(true)} className="p-2 md:p-2.5 bg-white/5 border border-white/10 rounded-xl md:rounded-2xl text-gray-400 hover:text-white transition-all shadow-xl" title="Settings"><SettingsIcon className="w-4 h-4 md:w-5 md:h-5" /></button>
+                        <div className="flex items-center gap-2 pl-2 border-l border-white/10">
+                            <button onClick={toggleScreenshots} disabled={loadingSettings} className={`w-9 h-4 md:w-10 md:h-5 rounded-full p-1 relative transition-colors ${isEnabled ? 'bg-green-600' : 'bg-gray-700'}`}>
+                                <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full bg-white shadow-sm transition-transform ${isEnabled ? 'translate-x-4 md:translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                            <span className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest min-w-[24px] ${isEnabled ? 'text-green-400' : 'text-gray-500'}`}>{isEnabled ? 'Live' : 'Off'}</span>
+                        </div>
                     </div>
                 </div>
             </div>
             {showSettings && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg w-96 shadow-xl">
-                        <h3 className="text-lg font-bold text-white mb-4">Settings</h3>
-                        <div className="space-y-4">
-                            <div><label className="text-xs text-gray-400">Resolution</label><select value={settings.resolution} onChange={e => setSettings({ ...settings, resolution: e.target.value })} className="w-full bg-gray-800 border border-gray-700 rounded p-2 text-white"><option value="Original">Original</option><option value="720p">720p</option></select></div>
-                            <div><label className="text-xs text-gray-400">Quality {settings.quality}%</label><input type="range" min="10" max="100" value={settings.quality} onChange={e => setSettings({ ...settings, quality: parseInt(e.target.value) })} className="w-full" /></div>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-end sm:items-center justify-center z-[100] p-0 sm:p-4">
+                    <div className="bg-gray-900 border-t sm:border border-gray-800 p-6 md:p-8 rounded-t-3xl sm:rounded-3xl w-full sm:w-96 shadow-2xl animate-in slide-in-from-bottom duration-300">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-black text-white uppercase tracking-widest">Forensic Config</h3>
+                            <button onClick={() => setShowSettings(false)} className="text-gray-500 hover:text-white sm:hidden text-xs font-bold">Close</button>
                         </div>
-                        <div className="flex justify-end gap-2 mt-6">
-                            <button onClick={() => setShowSettings(false)} className="text-gray-400 text-sm">Cancel</button>
-                            <button onClick={saveSettings} className="bg-blue-600 text-white rounded px-3 py-1 text-sm font-bold">Save</button>
+                        <div className="space-y-6">
+                            <div><label className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2 block">Resolution</label><select value={settings.resolution} onChange={e => setSettings({ ...settings, resolution: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white text-sm focus:outline-none focus:border-blue-500 transition-all"><option value="Original">Original (Full)</option><option value="720p">720p (Medium)</option><option value="480p">480p (Lite)</option></select></div>
+                            <div><label className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2 block">Quality {settings.quality}%</label><input type="range" min="10" max="100" value={settings.quality} onChange={e => setSettings({ ...settings, quality: parseInt(e.target.value) })} className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600" /></div>
+                            <div>
+                                <label className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2 block flex justify-between">
+                                    <span>Capture Interval</span>
+                                    <span className="text-blue-400 font-bold">{settings.interval}s</span>
+                                </label>
+                                <input 
+                                    type="range" 
+                                    min="5" 
+                                    max="3600" 
+                                    step="5"
+                                    value={settings.interval} 
+                                    onChange={e => setSettings({ ...settings, interval: parseInt(e.target.value) })} 
+                                    className="w-full h-1.5 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-blue-600" 
+                                />
+                                <div className="flex justify-between text-[8px] text-gray-500 uppercase font-black mt-2">
+                                    <span>5s (RAPID)</span>
+                                    <span>1h (STILL)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8">
+                            <button onClick={() => setShowSettings(false)} className="p-3 text-gray-500 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors">Discard</button>
+                            <button onClick={saveSettings} className="bg-blue-600 hover:bg-blue-500 text-white rounded-xl px-6 py-3 text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all active:scale-95">Commit Changes</button>
                         </div>
                     </div>
                 </div>
             )}
+
             {viewMode === 'grid' && (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {images.map((img, i) => {
                         const ocrHit = ocrResults.find(r => r.screenshotId === img.Filename);
                         const isMatched = searchQuery && ocrHit;
 
                         return (
-                            <div key={i} className={`group relative bg-white/5 backdrop-blur-md rounded-3xl overflow-hidden border transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl ${isMatched ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'border-white/10'}`}>
+                            <div key={i} className={`group relative bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl overflow-hidden border transition-all duration-500 hover:shadow-2xl ${isMatched ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'border-white/10'}`}>
                                 <div className="aspect-video bg-black relative">
                                     <img 
                                         src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
                                         alt={img.Filename} 
                                         className={`w-full h-full object-cover transition-all duration-700 ${isMatched ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:scale-110'}`} 
                                     />
-                                    <div className="absolute top-3 left-3 flex gap-2">
+                                    <div className="absolute top-2 left-2 flex gap-2">
                                         {isMatched && (
                                             <div className="bg-blue-600 text-[8px] font-black text-white px-2 py-1 rounded-lg shadow-lg uppercase tracking-widest flex items-center gap-1.5 backdrop-blur-md border border-white/20">
-                                                <Search size={10} /> OCR Match
+                                                <Search size={10} /> Match
                                             </div>
                                         )}
                                         {img.IsAlert && (
@@ -297,7 +329,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                             </div>
                                         )}
                                     </div>
-                                    <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-[8px] font-mono text-white/80 px-2 py-1 rounded-lg border border-white/10">
+                                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md text-[8px] font-mono text-white/80 px-2 py-1 rounded-lg border border-white/10">
                                         {formatSize(img.Size)}
                                     </div>
                                 </div>
@@ -307,16 +339,9 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                         <Clock className="w-3 h-3 text-gray-500" />
                                         <p className="text-[9px] text-gray-400 font-bold uppercase">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleString()}</p>
                                     </div>
-                                    {isMatched && ocrHit.extractedText && (
-                                        <div className="mt-2 text-[9px] text-blue-300 font-mono italic truncate bg-blue-500/10 border border-blue-500/20 p-1.5 rounded-xl">
-                                            {ocrHit.extractedText.toLowerCase().includes(searchQuery.toLowerCase()) ?
-                                                `"...${ocrHit.extractedText.substr(Math.max(0, ocrHit.extractedText.toLowerCase().indexOf(searchQuery.toLowerCase()) - 10), 40)}..."` :
-                                                `"...${ocrHit.extractedText.substr(0, 40)}..."`}
-                                        </div>
-                                    )}
                                 </div>
                                 <a href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-blue-600/20 backdrop-blur-[2px] transition-all duration-300">
-                                    <span className="bg-white text-black px-5 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-2xl translate-y-4 group-hover:translate-y-0 transition-transform">Inspect Frame</span>
+                                    <span className="bg-white text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-2xl translate-y-4 group-hover:translate-y-0 transition-transform">Inspect</span>
                                 </a>
                             </div>
                         );
@@ -325,7 +350,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
             )}
 
             {viewMode === 'small' && (
-                <div className="grid grid-cols-5 md:grid-cols-10 lg:grid-cols-12 gap-2">
+                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 lg:grid-cols-12 gap-2">
                     {images.map((img, i) => (
                         <a key={i} href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="group relative aspect-square bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-blue-500 transition-all hover:scale-110 active:scale-95 z-0 hover:z-10">
                             <img 
@@ -333,25 +358,23 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                 alt={img.Filename} 
                                 className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" 
                             />
-                            {img.IsAlert && <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full shadow-[0_0_5px_red] animate-pulse" />}
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/80 text-[6px] text-white p-0.5 text-center font-mono opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap overflow-hidden">
-                                {img.Filename.split('_').pop()}
-                            </div>
+                            {img.IsAlert && <div className="absolute top-1 right-1 w-1.5 h-1.5 bg-red-500 rounded-full shadow-[0_0_5px_red] animate-pulse" />}
                         </a>
                     ))}
                 </div>
             )}
 
             {viewMode === 'table' && (
-                <div className="bg-black/20 border border-white/10 rounded-3xl overflow-hidden backdrop-blur-xl">
-                    <table className="w-full text-left">
+                <div className="bg-black/20 border border-white/10 rounded-2xl md:rounded-3xl overflow-hidden backdrop-blur-xl">
+                    {/* Desktop Table */}
+                    <table className="w-full text-left hidden md:table">
                         <thead>
                             <tr className="border-b border-white/10 bg-white/5">
                                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Preview</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Metadata / Filename</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Metadata</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Timestamp</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Forensic Size</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest">Actions</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-gray-500 uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -368,21 +391,43 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                     </td>
                                     <td className="px-6 py-3">
                                         <div className="flex flex-col">
-                                            <span className={`text-[11px] font-mono leading-none ${img.IsAlert ? 'text-red-400 font-bold' : 'text-white/90'}`}>{img.Filename}</span>
-                                            {img.IsAlert && <span className="text-[8px] text-red-500 font-black uppercase mt-1 tracking-tighter">Security Alert Triggered</span>}
+                                            <span className={`text-[11px] font-mono leading-none truncate max-w-xs ${img.IsAlert ? 'text-red-400 font-bold' : 'text-white/90'}`}>{img.Filename}</span>
+                                            {img.IsAlert && <span className="text-[8px] text-red-500 font-black uppercase mt-1 tracking-tighter">Alert Triggered</span>}
                                         </div>
                                     </td>
                                     <td className="px-6 py-3 text-[10px] text-gray-400 font-black uppercase">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleString()}</td>
                                     <td className="px-6 py-3">
                                         <span className="text-[10px] font-mono bg-white/5 border border-white/5 px-2 py-1 rounded-lg text-cyan-400 font-bold">{formatSize(img.Size)}</span>
                                     </td>
-                                    <td className="px-6 py-3">
-                                        <a href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase tracking-tighter text-blue-400 hover:text-blue-300 transition-colors">Inspect Frame</a>
+                                    <td className="px-6 py-3 text-right">
+                                        <a href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase tracking-tighter text-blue-400 hover:text-blue-300 transition-colors">Inspect</a>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
+
+                    {/* Mobile List View */}
+                    <div className="md:hidden divide-y divide-white/5">
+                        {images.map((img, i) => (
+                            <div key={i} className="p-4 flex gap-4 items-center">
+                                <div className="w-20 h-14 bg-black rounded-xl overflow-hidden border border-white/10 relative flex-shrink-0">
+                                    <img 
+                                        src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                        className="w-full h-full object-cover" 
+                                    />
+                                    {img.IsAlert && <div className="absolute inset-0 border-2 border-red-500/50" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className={`text-[11px] font-mono truncate ${img.IsAlert ? 'text-red-400 font-bold' : 'text-white/90'}`}>{img.Filename}</div>
+                                    <div className="text-[9px] text-gray-500 font-black uppercase mt-1">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleTimeString()} • {formatSize(img.Size)}</div>
+                                </div>
+                                <a href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
+                                    <Layers size={14} />
+                                </a>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 

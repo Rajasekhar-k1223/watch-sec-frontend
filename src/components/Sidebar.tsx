@@ -56,11 +56,11 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             {/* Background Overlay */}
             <div className="absolute inset-0 bg-gray-50/80 dark:bg-gray-900/60 -z-10"></div>
 
-            <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-black/20 relative">
+            <div className="p-4 md:p-6 border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-black/20 relative">
                 {/* Mobile Close Button */}
                 <button
                     onClick={onClose}
-                    className="md:hidden absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900 dark:hover:text-white p-1"
+                    className="md:hidden absolute right-4 top-4 text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-sm"
                 >
                     <X size={20} />
                 </button>

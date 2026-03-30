@@ -69,17 +69,17 @@ export default function BlockedAppsManager({ agentId, token, apiUrl, currentBloc
     };
 
     return (
-        <div className="flex-1 overflow-y-auto p-8 bg-gray-900/50 font-sans">
-            <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-2xl mx-auto shadow-lg">
-                <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 border-b border-gray-700 pb-4">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-900/50 font-sans">
+            <div className="bg-gray-800 rounded-2xl border border-gray-700 p-4 md:p-6 max-w-2xl mx-auto shadow-xl">
+                <h3 className="text-lg font-bold text-white mb-5 flex items-center gap-2 border-b border-gray-700 pb-4">
                     <Ban className="w-5 h-5 text-red-500" /> Application Blocking
                 </h3>
 
-                <div className="mb-6 bg-blue-900/20 border border-blue-500/30 p-4 rounded-lg flex items-start gap-3">
+                <div className="mb-6 bg-blue-900/20 border border-blue-500/30 p-4 rounded-xl flex items-start gap-3">
                     <AlertCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-                    <div className="text-sm text-gray-300">
-                        <p className="font-bold text-blue-400 mb-1">How it works</p>
-                        <p>The agent will monitor running processes and immediately terminate any application matching the names in this list. Use strict process names (e.g., <code className="bg-black/30 px-1 rounded text-gray-200">spotify.exe</code>, <code className="bg-black/30 px-1 rounded text-gray-200">steam.exe</code>).</p>
+                    <div className="text-[11px] md:text-xs text-gray-300">
+                        <p className="font-bold text-blue-400 mb-1">Execution Guard</p>
+                        <p>Terminate any process matching the names below. Use strict binary names (e.g., <code className="bg-black/30 px-1 rounded text-red-400 font-mono">spotify.exe</code>).</p>
                     </div>
                 </div>
 
@@ -90,40 +90,40 @@ export default function BlockedAppsManager({ agentId, token, apiUrl, currentBloc
                             value={newApp}
                             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewApp(e.target.value)}
                             onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => e.key === 'Enter' && handleAdd()}
-                            placeholder="Enter process name (e.g., game.exe)..."
-                            className="w-full bg-gray-900 border border-gray-600 rounded-lg pl-4 pr-10 py-3 text-white focus:ring-2 focus:ring-red-500 outline-none transition-all placeholder-gray-500"
+                            placeholder="Process name..."
+                            className="w-full bg-gray-950 border border-gray-700 rounded-xl pl-4 pr-12 py-3 text-white text-sm focus:ring-2 focus:ring-red-500/50 outline-none transition-all placeholder-gray-600"
                         />
-                        <button onClick={handleAdd} className="absolute right-2 top-2 p-1 bg-gray-700 hover:bg-gray-600 rounded text-gray-300 transition-colors">
+                        <button onClick={handleAdd} className="absolute right-2 top-2 p-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg text-red-500 transition-colors">
                             <Plus size={20} />
                         </button>
                     </div>
                 </div>
 
-                {error && <div className="mb-4 text-red-400 text-sm font-bold bg-red-900/20 p-2 rounded border border-red-900/50">{error}</div>}
+                {error && <div className="mb-4 text-[10px] text-red-400 font-black uppercase bg-red-900/10 p-2 rounded-lg border border-red-500/20">{error}</div>}
 
-                <div className="space-y-2 mb-8 max-h-64 overflow-y-auto pr-2">
+                <div className="space-y-2 mb-8 max-h-80 overflow-y-auto pr-1 no-scrollbar">
                     {apps.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-700 rounded-lg">
-                            No applications are currently blocked.
+                        <div className="text-center py-12 text-gray-500 border border-dashed border-gray-700 rounded-xl text-xs">
+                            No active execution blocks.
                         </div>
                     ) : apps.map((app: string, idx: number) => (
-                        <div key={idx} className="flex justify-between items-center bg-gray-700/30 p-3 rounded-lg border border-gray-700 hover:border-red-500/30 transition-colors group">
-                            <span className="font-mono text-gray-200">{app}</span>
-                            <button onClick={() => handleRemove(app)} className="text-gray-500 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                                <Trash2 size={18} />
+                        <div key={idx} className="flex justify-between items-center bg-black/40 p-3 rounded-xl border border-white/5 hover:border-red-500/30 transition-all group">
+                            <span className="font-mono text-xs text-gray-300">{app}</span>
+                            <button onClick={() => handleRemove(app)} className="p-2 text-gray-600 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all">
+                                <Trash2 size={16} />
                             </button>
                         </div>
                     ))}
                 </div>
 
-                <div className="text-right">
+                <div className="pt-4 border-t border-gray-700">
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className={`px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2 ml-auto transition-all ${saving ? 'opacity-50 cursor-not-allowed' : 'shadow-lg shadow-red-900/20'}`}
+                        className={`w-full sm:w-auto px-8 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 ml-auto transition-all ${saving ? 'opacity-50 cursor-not-allowed' : 'shadow-lg shadow-red-600/20 active:scale-95'}`}
                     >
-                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save size={18} />}
-                        Save Changes
+                        {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : <Save size={16} />}
+                        Sync with Agent
                     </button>
                 </div>
             </div>

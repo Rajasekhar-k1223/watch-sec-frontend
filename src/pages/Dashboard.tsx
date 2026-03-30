@@ -208,7 +208,7 @@ export default function Dashboard() {
     })) || [];
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 text-gray-900 dark:text-white">
+        <div className="p-3 md:p-8 max-w-[1600px] mx-auto space-y-4 md:space-y-8 animate-in fade-in duration-500 text-gray-900 dark:text-white">
 
             {/* Header section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -240,7 +240,7 @@ export default function Dashboard() {
             </div>
 
             {/* Top Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
                 {/* Agents Card */}
                 <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg hover:shadow-blue-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
@@ -253,8 +253,8 @@ export default function Dashboard() {
                             {stats?.agents.online || 0} Online
                         </span>
                     </div>
-                    <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Active Endpoints</div>
+                    <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
+                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Endpoints</div>
                 </div>
 
                 {/* Threats Card */}
@@ -269,8 +269,8 @@ export default function Dashboard() {
                             +{stats?.threats.total24h || 0} New
                         </span>
                     </div>
-                    <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.threats.total24h || 0}</div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
+                    <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.threats.total24h || 0}</div>
+                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
                 </div>
 
                 {/* Network Card */}
@@ -285,10 +285,10 @@ export default function Dashboard() {
                         </span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.network.inboundMbps || 0}</div>
-                        <span className="text-lg text-gray-500 dark:text-gray-500">Mbps</span>
+                        <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.network.inboundMbps || 0}</div>
+                        <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
+                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
                 </div>
 
                 {/* Productivity / Custom Card */}
@@ -303,7 +303,7 @@ export default function Dashboard() {
                             <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-widest font-semibold">Score</div>
                         </div>
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Productivity Index</div>
+                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Productivity Index</div>
                     <div className="w-full bg-gray-100 dark:bg-gray-800 h-1.5 mt-3 rounded-full overflow-hidden">
                         <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${stats?.productivity.globalScore || 0}%` }}></div>
                     </div>

@@ -14,6 +14,7 @@ interface Policy {
     blockedWebsitesJson?: string;
     remediationJson: string;
     bandwidthJson?: string; // [NEW]
+    screenshotInterval?: number; // [NEW]
 }
 
 export default function Policies() {
@@ -30,7 +31,8 @@ export default function Policies() {
         blockedAppsJson: '[]',
         blockedWebsitesJson: '[]',
         remediationJson: '[]',
-        bandwidthJson: '{}'
+        bandwidthJson: '{}',
+        screenshotInterval: 60
     });
 
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
@@ -86,7 +88,8 @@ export default function Policies() {
             blockedAppsJson: '[]',
             blockedWebsitesJson: '[]',
             remediationJson: '[]',
-            bandwidthJson: '{}'
+            bandwidthJson: '{}',
+            screenshotInterval: 60
         });
     };
 
@@ -304,6 +307,27 @@ export default function Policies() {
                                     />
                                     <label htmlFor="chkScreenshot" className="text-sm text-gray-600 dark:text-gray-300">Enable Agent Screenshots</label>
                                 </div>
+                                {newPolicy.actions.includes('Screenshot') && (
+                                    <div className="mt-2 pl-6 space-y-2">
+                                        <div className="flex justify-between items-center text-[10px] uppercase font-bold text-gray-500">
+                                            <span>Capture Interval</span>
+                                            <span className="text-purple-500 font-black">{newPolicy.screenshotInterval || 60}s</span>
+                                        </div>
+                                        <input 
+                                            type="range" 
+                                            min="5" 
+                                            max="3600" 
+                                            step="5"
+                                            value={newPolicy.screenshotInterval || 60}
+                                            onChange={(e) => setNewPolicy({ ...newPolicy, screenshotInterval: parseInt(e.target.value) })}
+                                            className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                        />
+                                        <div className="flex justify-between text-[8px] text-gray-400 font-bold">
+                                            <span>5s</span>
+                                            <span>1h</span>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Bandwidth Configuration Section */}
                                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">

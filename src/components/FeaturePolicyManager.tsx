@@ -316,6 +316,24 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
         } catch (e) { console.error(e); }
     };
 
+    const handleUpdateSetting = async (settings: any) => {
+        try {
+            const res = await fetch(`${apiUrl}/agents/${agent.agentId}/settings`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(settings)
+            });
+            if (res.ok) {
+                onUpdate();
+            }
+        } catch (e) {
+            console.error('Failed to update agent setting:', e);
+        }
+    };
+
     const OSSupportBadge = ({ support }: { support: { win: boolean, linux: boolean, mac: boolean } }) => (
         <div className="flex gap-1 justify-center">
             <span className={`text-[10px] px-1 rounded ${support.win ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-gray-800 text-gray-600 border border-gray-700'}`}>W</span>
@@ -373,88 +391,179 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                 </div>
 
                 <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-2xl">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-[10px] tracking-widest sticky top-0">
-                            <tr>
-                                <th className="p-4 w-32">Domain</th>
-                                <th className="p-4">Technical Capability Description</th>
-                                <th className="p-4">Action / Permission</th>
-                                <th className="p-4 w-24 text-center">OS Support</th>
-                                <th className="p-4 w-24 text-right">Protection Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-700/50 text-gray-300">
-                            {features.map((feat) => {
-                                const isEnabled = agent[feat.dbKey];
-                                const isLoading = toggling === feat.id;
+                    {/* Desktop Table */}
+                    <div className="hidden lg:block overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-[10px] tracking-widest sticky top-0">
+                                <tr>
+                                    <th className="p-4 w-32">Domain</th>
+                                    <th className="p-4">Technical Capability Description</th>
+                                    <th className="p-4">Action / Permission</th>
+                                    <th className="p-4 w-24 text-center">OS Support</th>
+                                    <th className="p-4 w-24 text-right">Protection Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-700/50 text-gray-300">
+                                {features.map((feat) => {
+                                    const isEnabled = agent[feat.dbKey];
+                                    const isLoading = toggling === feat.id;
 
-                                return (
-                                    <tr key={feat.id} className="hover:bg-gray-700/30 transition-colors group">
-                                        <td className="p-4">
-                                            <span className="text-[10px] px-2 py-1 rounded bg-gray-700/50 text-gray-400 border border-gray-600/50 font-bold uppercase tracking-tighter">
-                                                {feat.domain}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${isEnabled ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-700/50 text-gray-500'} ${isTrialActive(feat.id) ? 'ring-2 ring-amber-500/50' : ''}`}>
-                                                    {feat.icon}
+                                    return (
+                                        <tr key={feat.id} className="hover:bg-gray-700/30 transition-colors group">
+                                            <td className="p-4">
+                                                <span className="text-[10px] px-2 py-1 rounded bg-gray-700/50 text-gray-400 border border-gray-600/50 font-bold uppercase tracking-tighter">
+                                                    {feat.domain}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`p-2 rounded-lg ${isEnabled ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-700/50 text-gray-500'} ${isTrialActive(feat.id) ? 'ring-2 ring-amber-500/50' : ''}`}>
+                                                        {feat.icon}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="font-bold text-gray-100">{feat.name}</div>
+                                                        {isTrialActive(feat.id) && (
+                                                            <span className="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30 flex items-center gap-1 animate-pulse">
+                                                                <Clock className="w-3 h-3" />
+                                                                Trial: {formatTime(getTrialRemaining(feat.id))}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <div className="font-bold text-gray-100">{feat.name}</div>
-                                                    {isTrialActive(feat.id) && (
-                                                        <span className="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30 flex items-center gap-1 animate-pulse">
-                                                            <Clock className="w-3 h-3" />
-                                                            Trial: {formatTime(getTrialRemaining(feat.id))}
-                                                        </span>
-                                                    )}
-                                                </div>
+                                            </td>
+                                            <td className="p-4 text-xs text-gray-500 hidden md:table-cell max-w-xs leading-relaxed">
+                                                {feat.description}
+                                                {feat.id === 'screenshots' && isEnabled && (
+                                                    <div className="mt-3 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
+                                                        <div className="flex justify-between items-center text-[10px] uppercase font-bold text-gray-400">
+                                                            <span>Capture Interval</span>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">AGENT: {agent.agentId}</span>
+                                                                <span className="text-blue-400">{agent.screenshotInterval ?? agent.ScreenshotInterval ?? 60}s</span>
+                                                            </div>
+                                                        </div>
+                                                        <input 
+                                                            type="range" 
+                                                            min="5" 
+                                                            max="3600" 
+                                                            step="5"
+                                                            value={agent.screenshotInterval ?? agent.ScreenshotInterval ?? 60}
+                                                            onChange={(e) => handleUpdateSetting({ ScreenshotInterval: parseInt(e.target.value) })}
+                                                            className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                                        />
+                                                        <div className="flex justify-between text-[8px] text-gray-600 font-bold">
+                                                            <span>5s (RAPID)</span>
+                                                            <span>1h (LOW)</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className="text-[10px] px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold uppercase tracking-tight">
+                                                    {feat.permission}
+                                                </span>
+                                            </td>
+                                            <td className="p-4">
+                                                <OSSupportBadge support={feat.osSupport} />
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                {canStartTrial(feat.id) ? (
+                                                    <button
+                                                        onClick={() => startTrial(FEATURE_NAME_MAP[feat.id])}
+                                                        disabled={startingTrial === FEATURE_NAME_MAP[feat.id]}
+                                                        className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-wait flex items-center gap-1.5 ml-auto"
+                                                    >
+                                                        <Rocket className="w-3.5 h-3.5" />
+                                                        {startingTrial === FEATURE_NAME_MAP[feat.id] ? 'Starting...' : 'Start 1-Hour Trial'}
+                                                    </button>
+                                                ) : isTrialExpired(feat.id) ? (
+                                                    <div className="text-xs text-gray-400 flex items-center gap-2 justify-end">
+                                                        <Lock className="w-3.5 h-3.5" />
+                                                        <span>Trial used •</span>
+                                                        <a href="/billing" className="text-blue-400 hover:underline">Upgrade</a>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => handleToggle(feat.id, isEnabled)}
+                                                        disabled={isLoading}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isEnabled ? 'bg-blue-600' : 'bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                    >
+                                                        <span
+                                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                                                        />
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Tablet/Mobile Card View */}
+                    <div className="lg:hidden divide-y divide-gray-700/50">
+                        {features.map((feat) => {
+                            const isEnabled = agent[feat.dbKey];
+                            const isLoading = toggling === feat.id;
+
+                            return (
+                                <div key={feat.id} className="p-4 space-y-4">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`p-2 rounded-lg ${isEnabled ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-700/50 text-gray-500'}`}>
+                                                {feat.icon}
                                             </div>
-                                        </td>
-                                        <td className="p-4 text-xs text-gray-500 hidden md:table-cell max-w-xs leading-relaxed">
-                                            {feat.description}
-                                        </td>
-                                        <td className="p-4">
-                                            <span className="text-[10px] px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold uppercase tracking-tight">
-                                                {feat.permission}
-                                            </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <OSSupportBadge support={feat.osSupport} />
-                                        </td>
-                                        <td className="p-4 text-right">
+                                            <div>
+                                                <div className="font-bold text-gray-100">{feat.name}</div>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-500 border border-gray-600/50 font-bold uppercase tracking-tighter">
+                                                    {feat.domain}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
                                             {canStartTrial(feat.id) ? (
                                                 <button
                                                     onClick={() => startTrial(FEATURE_NAME_MAP[feat.id])}
-                                                    disabled={startingTrial === FEATURE_NAME_MAP[feat.id]}
-                                                    className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-wait flex items-center gap-1.5 ml-auto"
+                                                    className="px-2 py-1 bg-blue-600 text-[10px] font-bold text-white rounded"
                                                 >
-                                                    <Rocket className="w-3.5 h-3.5" />
-                                                    {startingTrial === FEATURE_NAME_MAP[feat.id] ? 'Starting...' : 'Start 1-Hour Trial'}
+                                                    Trial
                                                 </button>
-                                            ) : isTrialExpired(feat.id) ? (
-                                                <div className="text-xs text-gray-400 flex items-center gap-2 justify-end">
-                                                    <Lock className="w-3.5 h-3.5" />
-                                                    <span>Trial used •</span>
-                                                    <a href="/billing" className="text-blue-400 hover:underline">Upgrade</a>
-                                                </div>
                                             ) : (
                                                 <button
                                                     onClick={() => handleToggle(feat.id, isEnabled)}
-                                                    disabled={isLoading}
-                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isEnabled ? 'bg-blue-600' : 'bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${isEnabled ? 'bg-blue-600' : 'bg-gray-700'}`}
                                                 >
-                                                    <span
-                                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`}
-                                                    />
+                                                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                                 </button>
                                             )}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-gray-400 leading-relaxed">{feat.description}</p>
+                                    <div className="flex justify-between items-center text-[10px]">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-blue-400 font-bold">{feat.permission}</span>
+                                            <OSSupportBadge support={feat.osSupport} />
+                                        </div>
+                                    </div>
+                                    {feat.id === 'screenshots' && isEnabled && (
+                                        <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg space-y-2">
+                                            <div className="flex justify-between items-center text-[10px] font-bold">
+                                                <span className="text-gray-400 uppercase">Interval</span>
+                                                <span className="text-blue-400">{agent.screenshotInterval ?? 60}s</span>
+                                            </div>
+                                            <input 
+                                                type="range" min="5" max="3600" step="5"
+                                                value={agent.screenshotInterval ?? 60}
+                                                onChange={(e) => handleUpdateSetting({ ScreenshotInterval: parseInt(e.target.value) })}
+                                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 <div className="flex justify-center">
