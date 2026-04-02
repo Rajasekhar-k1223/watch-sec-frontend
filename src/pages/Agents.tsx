@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, MapPin, MapPinOff, Usb, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera, CameraOff } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -161,12 +161,10 @@ export default function Agents() {
 
 
     // [NEW] Plan State
-    const [currentPlan, setCurrentPlan] = useState<string>("Starter");
+
     const [planLevel, setPlanLevel] = useState<number>(1);
 
     const isFeatureLocked = (featureKey: string) => {
-        // Super Admins override? Maybe not, simulate plan strictly.
-        // User.role check? If TenantAdmin, enforce plan.
         const req = FEATURE_TIERS[featureKey] || 3;
         return planLevel < req;
     };
@@ -231,7 +229,6 @@ export default function Agents() {
                 .then(data => {
                     const p = data.Plan || data.plan || "Starter"; // Try both to be safe
                     console.log("[Agents] Plan Fetched:", p);
-                    setCurrentPlan(p);
                     setPlanLevel(PLAN_LEVELS[p.toLowerCase()] || 1);
                 })
                 .catch(e => console.error("Failed to fetch plan", e));
@@ -369,33 +366,9 @@ export default function Agents() {
         );
     }, [agents, agentSearch]);
 
-    const handleToggleNetwork = async (agentId: string, currentStatus: boolean) => {
-        if (isFeatureLocked('network')) {
-            toast.error(`Upgrade specific to ${currentPlan} Plan required for Network Monitoring.`);
-            return;
-        }
-        try {
-            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-network?enabled=${!currentStatus}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) fetchAgents();
-        } catch (e) { console.error(e); }
-    };
 
-    const handleToggleFile = async (agentId: string, currentStatus: boolean) => {
-        if (isFeatureLocked('file_dlp')) {
-            toast.error(`Upgrade specific to ${currentPlan} Plan required for File DLP.`);
-            return;
-        }
-        try {
-            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-file-dlp?enabled=${!currentStatus}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) fetchAgents();
-        } catch (e) { console.error(e); }
-    };
+
+
 
     const handleUpdateAgent = async (agentId: string) => {
         if (!window.confirm("Trigger remote software update for this agent?")) return;
@@ -450,24 +423,7 @@ export default function Agents() {
     };
     // ... 
     // [NEW] Toggle USB
-    const handleToggleUsb = async (agentId: string, currentStatus: boolean) => {
-        if (isFeatureLocked('usb')) {
-            toast.error(`Upgrade specific to ${currentPlan} Plan required for USB Blocking.`);
-            return;
-        }
-        try {
-            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-usb?enabled=${!currentStatus}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                fetchAgents();
-                Analytics.track('Toggle USB Block', { agentId, enabled: !currentStatus });
-            }
-        } catch (e) {
-            console.error("Failed to toggle USB", e);
-        }
-    };
+
 
 
 
@@ -566,24 +522,7 @@ export default function Agents() {
     */
 
     // [NEW] Toggle Location
-    const handleToggleLocation = async (agentId: string, currentStatus: boolean) => {
-        if (isFeatureLocked('location')) {
-            toast.error(`Upgrade specific to ${currentPlan} Plan required for Location Tracking.`);
-            return;
-        }
-        try {
-            const res = await fetch(`${API_URL}/agents/${agentId}/toggle-location?enabled=${!currentStatus}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                fetchAgents(); // Refresh list
-                Analytics.track('Toggle Location', { agentId, enabled: !currentStatus });
-            }
-        } catch (e) {
-            console.error("Failed to toggle location", e);
-        }
-    };
+
 
     const handleDelete = async (identifier: number | string) => {
         let finalId = identifier;

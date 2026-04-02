@@ -1,5 +1,13 @@
 @import "tailwindcss";
-@config "../tailwind.config.js";
+/* @config "../tailwind.config.js"; */
+
+@utility scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
 
 :root {
     /* Default variables if needed, usually empty or system pref */

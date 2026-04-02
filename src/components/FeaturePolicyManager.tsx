@@ -532,7 +532,8 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                             ) : (
                                                 <button
                                                     onClick={() => handleToggle(feat.id, isEnabled)}
-                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${isEnabled ? 'bg-blue-600' : 'bg-gray-700'}`}
+                                                    disabled={isLoading}
+                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${isEnabled ? 'bg-blue-600' : 'bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                                 >
                                                     <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                                 </button>
