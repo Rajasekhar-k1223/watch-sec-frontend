@@ -201,7 +201,7 @@ export default function Productivity() {
                                     <Monitor size={20} className="text-green-500" />
                                 </div>
                             </div>
-                            <div className="w-full bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
                                 <div className="bg-green-500 h-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" style={{ width: `${(data.breakdown.productive / data.totalSeconds) * 100}%` }}></div>
                             </div>
                         </div>
@@ -217,7 +217,7 @@ export default function Productivity() {
                                     <Coffee size={20} className="text-red-500" />
                                 </div>
                             </div>
-                            <div className="w-full bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
                                 <div className="bg-red-500 h-full shadow-[0_0_8px_rgba(239,68,68,0.6)]" style={{ width: `${(data.breakdown.unproductive / data.totalSeconds) * 100}%` }}></div>
                             </div>
                         </div>
@@ -233,7 +233,7 @@ export default function Productivity() {
                                     <Clock size={20} className="text-gray-400" />
                                 </div>
                             </div>
-                            <div className="w-full bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
+                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
                                 <div className="bg-gray-500 h-full" style={{ width: `${(data.breakdown.idle / data.totalSeconds) * 100}%` }}></div>
                             </div>
                         </div>
@@ -254,11 +254,12 @@ export default function Productivity() {
                                             <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
+                                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-100 dark:stroke-gray-800" vertical={false} />
                                     <XAxis dataKey="time" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} minTickGap={30} />
                                     <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }}
+                                        contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e2e8f0)', color: 'var(--tooltip-text, #0f172a)' }}
+                                        itemStyle={{ color: 'var(--tooltip-text, #0f172a)' }}
                                         labelStyle={{ color: '#9CA3AF' }}
                                     />
                                     <Area type="monotone" dataKey="score" stroke="#06b6d4" fillOpacity={1} fill="url(#colorScore)" strokeWidth={2} />
@@ -288,7 +289,8 @@ export default function Productivity() {
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }}
+                                            contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e2e8f0)', color: 'var(--tooltip-text, #0f172a)' }}
+                                            itemStyle={{ color: 'var(--tooltip-text, #0f172a)' }}
                                             formatter={(val: any) => formatTime(val)}
                                         />
                                         <Legend />
@@ -310,9 +312,10 @@ export default function Productivity() {
                                         <XAxis type="number" hide />
                                         <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#9CA3AF', fontSize: 11 }} />
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', color: '#fff' }}
+                                            contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e2e8f0)', color: 'var(--tooltip-text, #0f172a)' }}
+                                            itemStyle={{ color: 'var(--tooltip-text, #0f172a)' }}
                                             formatter={(val: any) => [formatTime(val), "Duration"]}
-                                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                            cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                                         />
                                         <Bar dataKey="duration" radius={[0, 4, 4, 0]} barSize={20}>
                                             {data.topApps.map((entry, index) => (
@@ -327,12 +330,12 @@ export default function Productivity() {
 
                     {/* DETAILED TABLE */}
                     <div className="glass-panel rounded-xl overflow-hidden">
-                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
                             <h3 className="text-gray-900 dark:text-white font-bold">Session Detail</h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-black/20 text-gray-400 uppercase font-bold text-xs">
+                                <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs">
                                     <tr>
                                         <th className="p-4">Application</th>
                                         <th className="p-4">Category</th>
@@ -340,9 +343,9 @@ export default function Productivity() {
                                         <th className="p-4 w-full">Impact</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-800 text-gray-300">
+                                <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-gray-600 dark:text-gray-300">
                                     {data.topApps.map((app, i) => (
-                                        <tr key={i} className="hover:bg-cyan-500/5 transition-colors">
+                                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-cyan-500/5 transition-colors">
                                             <td className="p-4 font-bold text-gray-900 dark:text-white">{app.name}</td>
                                             <td className="p-4">
                                                 <span className={`px-2 py-1 rounded text-xs font-bold border ${app.category === 'Productive' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
@@ -353,7 +356,7 @@ export default function Productivity() {
                                             </td>
                                             <td className="p-4 font-mono">{formatTime(app.duration)}</td>
                                             <td className="p-4">
-                                                <div className="w-32 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                                                <div className="w-32 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                                     <div
                                                         className={`h-full ${app.category === 'Productive' ? 'bg-green-500' : app.category === 'Unproductive' ? 'bg-red-500' : 'bg-yellow-500'}`}
                                                         style={{ width: `${(app.duration / data.totalSeconds) * 100}%` }}

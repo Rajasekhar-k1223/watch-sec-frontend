@@ -293,7 +293,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                         <p className="text-xs font-bold text-gray-700 dark:text-gray-200 tracking-wide">{user?.username || 'GUEST'}</p>
                         <p className="text-[10px] text-cyan-600 dark:text-cyan-500/70 uppercase tracking-wider">{user?.role || 'VIEWER'}</p>
                     </div>
-                    <div className="w-8 h-8 rounded bg-gradient-to-tr from-cyan-900 to-blue-900 border border-cyan-500/20 flex items-center justify-center text-cyan-100 font-bold shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+                    <div className="w-8 h-8 rounded bg-gradient-to-tr from-cyan-100 to-blue-100 dark:from-cyan-900 dark:to-blue-900 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-100 font-bold shadow-[0_0_10px_rgba(6,182,212,0.2)]">
                         {user?.username?.charAt(0).toUpperCase() || 'U'}
                     </div>
                 </div>

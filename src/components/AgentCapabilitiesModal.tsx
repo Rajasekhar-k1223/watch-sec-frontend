@@ -94,7 +94,7 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
     };
 
     return createPortal(
-        <div className="fixed inset-0 bg-gray-500/75 dark:bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
+        <div className="fixed inset-0 bg-gray-500/50 dark:bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[9999]">
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl w-full max-w-7xl flex flex-col overflow-hidden max-h-[90vh]">
                 <div className="p-8 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gradient-to-r dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
                     <div>
@@ -126,7 +126,7 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                     </div>
                 </div>
 
-                <div className="p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-black/20">
+                <div className="p-4 md:p-8 overflow-y-auto bg-white dark:bg-black/20">
                     {/* Desktop Table View */}
                     <div className="hidden md:block bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm">
                         <table className="w-full text-left text-[11px] uppercase tracking-wider">

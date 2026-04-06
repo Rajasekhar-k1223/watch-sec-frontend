@@ -1,13 +1,4 @@
 @import "tailwindcss";
-/* @config "../tailwind.config.js"; */
-
-@utility scrollbar-none {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
 
 :root {
     /* Default variables if needed, usually empty or system pref */
@@ -15,22 +6,14 @@
 
 .light {
     color-scheme: light;
-    --bg-color: #f8fafc;
-    --text-color: #0f172a;
-    --tooltip-bg: #ffffff;
-    --tooltip-border: #e2e8f0;
-    --tooltip-text: #0f172a;
-    --grid-color: rgba(0, 0, 0, 0.05);
+    --bg-color: #f3f4f6;
+    --text-color: #111827;
 }
 
 .dark {
     color-scheme: dark;
     --bg-color: #030712;
     --text-color: #ffffff;
-    --tooltip-bg: #0f172a;
-    --tooltip-border: #334155;
-    --tooltip-text: #ffffff;
-    --grid-color: rgba(255, 255, 255, 0.05);
 }
 
 body {
@@ -106,7 +89,7 @@ body {
 
 /* Chart Gradients */
 .bg-grid-pattern {
-    background-image: linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+    background-image: linear-gradient(to right, #374151 1px, transparent 1px),
+        linear-gradient(to bottom, #374151 1px, transparent 1px);
     background-size: 20px 20px;
 }

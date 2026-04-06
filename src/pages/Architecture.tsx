@@ -424,7 +424,7 @@ const Architecture = () => {
         <div>
 
             {/* 3D ISOMETRIC WORKSPACE */}
-            <div className={`relative w-full max-w-[1800px] h-[800px] bg-[#020408] border transition-all duration-1000 rounded-[60px] shadow-[0_50px_100px_rgba(0,0,0,0.5)] ring-1 ring-white/10 flex items-center justify-center perspective-[2000px] pr-40 ${connState === 'critical' ? 'border-red-500/30' : connState === 'interrupted' ? 'border-amber-500/30' : 'border-white/10'}`}>
+            <div className={`relative w-full max-w-[1800px] h-[800px] bg-white dark:bg-[#020408] border transition-all duration-1000 rounded-[60px] shadow-[0_50px_100px_rgba(0,0,0,0.2)] dark:shadow-[0_50px_100px_rgba(0,0,0,0.5)] ring-1 ring-black/5 dark:ring-white/10 flex items-center justify-center perspective-[2000px] pr-40 ${connState === 'critical' ? 'border-red-500/30' : connState === 'interrupted' ? 'border-amber-500/30' : 'border-gray-200 dark:border-white/10'}`}>
 
                 {/* INTERNAL HEADER - Integrated inside 3D Container */}
                 <div className="absolute top-0 left-0 w-full p-10 z-50 flex justify-between items-start pointer-events-auto">
@@ -722,7 +722,7 @@ const Architecture = () => {
                     {/* --- NODE 4: 3D SOC COMMAND (BACK RIGHT) --- */}
                     {/* FLATTENED TO Z=50px, SHIFTED TO X=1250 */}
                     <div className="absolute top-[65px] left-[1100px] w-[350px] h-[520px] transition-all duration-1000" style={{ transform: 'translateZ(50px)' }}>
-                        <div className="w-full h-full bg-[#0d1117] border-4 border-white/10 rounded-[50px] p-8 flex flex-col gap-6 shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative group overflow-hidden">
+                        <div className="w-full h-full bg-white dark:bg-[#0d1117] border-4 border-gray-200 dark:border-white/10 rounded-[50px] p-8 flex flex-col gap-6 shadow-[0_50px_100px_rgba(0,0,0,0.2)] dark:shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative group overflow-hidden">
                             <div className="absolute top-0 right-0 p-8">
                                 <Activity className="w-12 h-12 text-indigo-500/30" />
                             </div>

@@ -343,34 +343,34 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
     );
 
     return (
-        <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50">
+        <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 transition-colors">
             <div className="max-w-6xl mx-auto space-y-6">
-                <div className="bg-blue-600/10 border border-blue-500/20 rounded-xl p-4 flex items-start gap-4">
-                    <div className="bg-blue-600/20 p-2 rounded-lg">
-                        <Info className="w-5 h-5 text-blue-400" />
+                <div className="bg-blue-50 dark:bg-blue-600/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 flex items-start gap-4 transition-colors shadow-sm">
+                    <div className="bg-blue-100 dark:bg-blue-600/20 p-2 rounded-lg">
+                        <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
-                        <h4 className="text-white font-bold text-sm">Enterprise Policy Control</h4>
-                        <p className="text-gray-400 text-xs mt-1 leading-relaxed">
+                        <h4 className="text-blue-900 dark:text-white font-bold text-sm">Enterprise Policy Control</h4>
+                        <p className="text-blue-700 dark:text-gray-400 text-xs mt-1 leading-relaxed">
                             Use these controls to activate or deactivate agent capabilities in real-time. Toggling a feature will send a command to the remote device, which will reconfigure and sync immediately.
                         </p>
                     </div>
                 </div>
 
                 {/* [NEW] Policy Assignment Section */}
-                <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-lg flex items-center justify-between">
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm flex items-center justify-between transition-colors">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-purple-500/10 rounded-full border border-purple-500/20">
-                            <Shield className="w-6 h-6 text-purple-400" />
+                        <div className="p-3 bg-purple-100 dark:bg-purple-500/10 rounded-full border border-purple-200 dark:border-purple-500/20">
+                            <Shield className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                         </div>
                         <div>
-                            <h3 className="text-white font-bold text-lg">Active DLP Policy</h3>
-                            <p className="text-gray-400 text-xs">Assign a centralized policy to override local agent settings.</p>
+                            <h3 className="text-gray-900 dark:text-white font-bold text-lg">Active DLP Policy</h3>
+                            <p className="text-gray-500 dark:text-gray-400 text-xs">Assign a centralized policy to override local agent settings.</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
                         <select
-                            className="bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 text-white text-sm outline-none focus:border-purple-500 min-w-[200px]"
+                            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2 text-gray-900 dark:text-white text-sm outline-none focus:border-purple-500 min-w-[200px] transition-all"
                             value={agent.policyId || ""}
                             onChange={(e) => handleAssignPolicy(e.target.value ? Number(e.target.value) : null)}
                         >
@@ -390,17 +390,17 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                     </div>
                 </div>
 
-                <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden shadow-2xl">
+                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm transition-colors">
                     {/* Desktop Table */}
                     <div className="hidden lg:block overflow-x-auto">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-[10px] tracking-widest sticky top-0">
+                            <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-[10px] tracking-widest sticky top-0">
                                 <tr>
-                                    <th className="p-4 w-32">Domain</th>
-                                    <th className="p-4">Technical Capability Description</th>
-                                    <th className="p-4">Action / Permission</th>
-                                    <th className="p-4 w-24 text-center">OS Support</th>
-                                    <th className="p-4 w-24 text-right">Protection Status</th>
+                                    <th className="p-4 w-32 border-b border-gray-200 dark:border-gray-700">Domain</th>
+                                    <th className="p-4 border-b border-gray-200 dark:border-gray-700">Technical Capability Description</th>
+                                    <th className="p-4 border-b border-gray-200 dark:border-gray-700">Action / Permission</th>
+                                    <th className="p-4 w-24 text-center border-b border-gray-200 dark:border-gray-700">OS Support</th>
+                                    <th className="p-4 w-24 text-right border-b border-gray-200 dark:border-gray-700">Protection Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-700/50 text-gray-300">
@@ -411,19 +411,19 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                     return (
                                         <tr key={feat.id} className="hover:bg-gray-700/30 transition-colors group">
                                             <td className="p-4">
-                                                <span className="text-[10px] px-2 py-1 rounded bg-gray-700/50 text-gray-400 border border-gray-600/50 font-bold uppercase tracking-tighter">
+                                                <span className="text-[10px] px-2 py-1 rounded bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-600/50 font-bold uppercase tracking-tighter">
                                                     {feat.domain}
                                                 </span>
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-lg ${isEnabled ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-700/50 text-gray-500'} ${isTrialActive(feat.id) ? 'ring-2 ring-amber-500/50' : ''}`}>
+                                                    <div className={`p-2 rounded-lg ${isEnabled ? 'bg-blue-600/20 text-blue-500 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500'}`}>
                                                         {feat.icon}
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <div className="font-bold text-gray-100">{feat.name}</div>
+                                                        <div className="font-bold text-gray-900 dark:text-gray-100">{feat.name}</div>
                                                         {isTrialActive(feat.id) && (
-                                                            <span className="px-2 py-0.5 text-[10px] bg-amber-500/20 text-amber-400 rounded-full border border-amber-500/30 flex items-center gap-1 animate-pulse">
+                                                            <span className="px-2 py-0.5 text-[10px] bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full border border-amber-200 dark:border-amber-500/30 flex items-center gap-1 animate-pulse">
                                                                 <Clock className="w-3 h-3" />
                                                                 Trial: {formatTime(getTrialRemaining(feat.id))}
                                                             </span>
@@ -434,12 +434,12 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                             <td className="p-4 text-xs text-gray-500 hidden md:table-cell max-w-xs leading-relaxed">
                                                 {feat.description}
                                                 {feat.id === 'screenshots' && isEnabled && (
-                                                    <div className="mt-3 p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl space-y-2">
-                                                        <div className="flex justify-between items-center text-[10px] uppercase font-bold text-gray-400">
+                                                    <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-500/5 border border-blue-100 dark:border-blue-500/10 rounded-xl space-y-2">
+                                                        <div className="flex justify-between items-center text-[10px] uppercase font-bold text-gray-500 dark:text-gray-400">
                                                             <span>Capture Interval</span>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20">AGENT: {agent.agentId}</span>
-                                                                <span className="text-blue-400">{agent.screenshotInterval ?? agent.ScreenshotInterval ?? 60}s</span>
+                                                                <span className="text-[8px] bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-500/20">AGENT: {agent.agentId}</span>
+                                                                <span className="text-blue-600 dark:text-blue-400">{agent.screenshotInterval ?? agent.ScreenshotInterval ?? 60}s</span>
                                                             </div>
                                                         </div>
                                                         <input 
@@ -449,9 +449,9 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                                             step="5"
                                                             value={agent.screenshotInterval ?? agent.ScreenshotInterval ?? 60}
                                                             onChange={(e) => handleUpdateSetting({ ScreenshotInterval: parseInt(e.target.value) })}
-                                                            className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                                            className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                                                         />
-                                                        <div className="flex justify-between text-[8px] text-gray-600 font-bold">
+                                                        <div className="flex justify-between text-[8px] text-gray-400 dark:text-gray-600 font-bold">
                                                             <span>5s (RAPID)</span>
                                                             <span>1h (LOW)</span>
                                                         </div>
@@ -459,7 +459,7 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                                 )}
                                             </td>
                                             <td className="p-4">
-                                                <span className="text-[10px] px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold uppercase tracking-tight">
+                                                <span className="text-[10px] px-2 py-1 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 font-bold uppercase tracking-tight">
                                                     {feat.permission}
                                                 </span>
                                             </td>
@@ -486,10 +486,10 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                                     <button
                                                         onClick={() => handleToggle(feat.id, isEnabled)}
                                                         disabled={isLoading}
-                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isEnabled ? 'bg-blue-600' : 'bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                                     >
                                                         <span
-                                                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`}
+                                                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`}
                                                         />
                                                     </button>
                                                 )}
@@ -508,15 +508,15 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                             const isLoading = toggling === feat.id;
 
                             return (
-                                <div key={feat.id} className="p-4 space-y-4">
+                                <div key={feat.id} className="p-4 space-y-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                     <div className="flex justify-between items-start">
                                         <div className="flex items-center gap-3">
-                                            <div className={`p-2 rounded-lg ${isEnabled ? 'bg-blue-600/20 text-blue-400' : 'bg-gray-700/50 text-gray-500'}`}>
+                                            <div className={`p-2 rounded-lg ${isEnabled ? 'bg-blue-600/20 text-blue-500 dark:text-blue-400' : 'bg-gray-100 dark:bg-gray-700/50 text-gray-400 dark:text-gray-500'}`}>
                                                 {feat.icon}
                                             </div>
                                             <div>
-                                                <div className="font-bold text-gray-100">{feat.name}</div>
-                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-700/50 text-gray-500 border border-gray-600/50 font-bold uppercase tracking-tighter">
+                                                <div className="font-bold text-gray-900 dark:text-gray-100">{feat.name}</div>
+                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-600/50 font-bold uppercase tracking-tighter">
                                                     {feat.domain}
                                                 </span>
                                             </div>
@@ -525,7 +525,7 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                             {canStartTrial(feat.id) ? (
                                                 <button
                                                     onClick={() => startTrial(FEATURE_NAME_MAP[feat.id])}
-                                                    className="px-2 py-1 bg-blue-600 text-[10px] font-bold text-white rounded"
+                                                    className="px-2 py-1 bg-blue-600 text-[10px] font-bold text-white rounded shadow-md hover:bg-blue-700 transition-colors"
                                                 >
                                                     Trial
                                                 </button>
@@ -533,14 +533,14 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                                 <button
                                                     onClick={() => handleToggle(feat.id, isEnabled)}
                                                     disabled={isLoading}
-                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${isEnabled ? 'bg-blue-600' : 'bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${isEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
                                                 >
                                                     <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                                 </button>
                                             )}
                                         </div>
                                     </div>
-                                    <p className="text-xs text-gray-400 leading-relaxed">{feat.description}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{feat.description}</p>
                                     <div className="flex justify-between items-center text-[10px]">
                                         <div className="flex items-center gap-2">
                                             <span className="text-blue-400 font-bold">{feat.permission}</span>
@@ -582,9 +582,9 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-700 to-transparent" />
                     </div>
 
-                    <div className="bg-gray-800/40 border border-gray-700/50 rounded-xl overflow-hidden backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 rounded-xl overflow-hidden backdrop-blur-sm shadow-sm transition-colors">
                         <table className="w-full text-left text-[9px] uppercase tracking-tighter">
-                            <thead className="bg-gray-900/50 text-gray-500 border-b border-gray-700/50">
+                            <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 border-b border-gray-200 dark:border-gray-700/50">
                                 <tr>
                                     <th className="p-3 font-bold">Module ID</th>
                                     <th className="p-3 font-bold">Technical Capability Description</th>
@@ -597,10 +597,10 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                             </thead>
                             <tbody className="divide-y divide-gray-700/30 text-gray-400">
                                 {features.map((feat) => (
-                                    <tr key={`matrix-${feat.id}`} className="hover:bg-white/5 transition-colors group">
+                                    <tr key={`matrix-${feat.id}`} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
                                         <td className="p-3 font-mono text-gray-600">
                                             <div className="flex flex-col">
-                                                <span className="text-gray-300 font-bold text-[10px]">{feat.name}</span>
+                                                <span className="text-gray-900 dark:text-gray-300 font-bold text-[10px]">{feat.name}</span>
                                                 <span className="text-[8px] opacity-50">{feat.id}</span>
                                             </div>
                                         </td>
@@ -608,16 +608,16 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                             {feat.description}
                                         </td>
                                         <td className="p-3 text-center">
-                                            {feat.osSupport.win ? <CheckCircle className="w-3 h-3 text-blue-500 mx-auto" /> : <span className="text-gray-800">●</span>}
+                                            {feat.osSupport.win ? <CheckCircle className="w-3 h-3 text-blue-500 mx-auto" /> : <span className="text-gray-200 dark:text-gray-800">●</span>}
                                         </td>
                                         <td className="p-3 text-center">
-                                            {feat.osSupport.linux ? <CheckCircle className="w-3 h-3 text-orange-500 mx-auto" /> : <span className="text-gray-800">●</span>}
+                                            {feat.osSupport.linux ? <CheckCircle className="w-3 h-3 text-orange-500 mx-auto" /> : <span className="text-gray-200 dark:text-gray-800">●</span>}
                                         </td>
                                         <td className="p-3 text-center">
-                                            {feat.osSupport.mac ? <CheckCircle className="w-3 h-3 text-gray-300 mx-auto" /> : <span className="text-gray-800">●</span>}
+                                            {feat.osSupport.mac ? <CheckCircle className="w-3 h-3 text-gray-300 mx-auto" /> : <span className="text-gray-200 dark:text-gray-800">●</span>}
                                         </td>
                                         <td className="p-3 text-center">
-                                            <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[8px] font-bold">
+                                            <span className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 text-[8px] font-bold">
                                                 {feat.permission}
                                             </span>
                                         </td>
@@ -625,7 +625,7 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                             <button
                                                 onClick={() => handleToggle(feat.id, agent[feat.dbKey])}
                                                 disabled={toggling === feat.id}
-                                                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${agent[feat.dbKey] ? 'bg-blue-600' : 'bg-gray-700'
+                                                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${agent[feat.dbKey] ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
                                                     }`}
                                             >
                                                 <span

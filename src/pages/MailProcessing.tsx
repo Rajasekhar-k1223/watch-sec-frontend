@@ -122,11 +122,11 @@ export default function MailProcessing() {
         <div className="p-8">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <Mail className="text-yellow-500" />
                         Mail Processing (SMTP/Agent)
                     </h1>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                         Intercept, inspect, and audit email traffic from Outlook and Webmail.
                     </p>
                 </div>
@@ -136,25 +136,25 @@ export default function MailProcessing() {
                             Showing: {startDate.split('-').reverse().join('-')} - {(endDate || '').split('-').reverse().join('-')}
                         </div>
                     )}
-                    <div className="flex bg-gray-800 border border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner">
-                        <div className="flex bg-gray-700 rounded p-0.5 mr-1">
-                            <button onClick={() => setQuickFilter(1)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-600 rounded transition-all text-gray-400">24H</button>
-                            <button onClick={() => setQuickFilter(7)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-600 rounded transition-all text-gray-400 border-l border-gray-700">7D</button>
-                            <button onClick={() => setQuickFilter(30)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-gray-600 rounded transition-all text-gray-400 border-l border-gray-700">30D</button>
+                    <div className="flex bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 items-center gap-1 shadow-sm">
+                        <div className="flex bg-gray-100 dark:bg-gray-700 rounded p-0.5 mr-1">
+                            <button onClick={() => setQuickFilter(1)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-600 rounded transition-all text-gray-500 dark:text-gray-400">24H</button>
+                            <button onClick={() => setQuickFilter(7)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-600 rounded transition-all text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700">7D</button>
+                            <button onClick={() => setQuickFilter(30)} className="px-2 py-0.5 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-600 rounded transition-all text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700">30D</button>
                         </div>
                         <Calendar className="w-3.5 h-3.5 text-gray-500 ml-1" />
                         <input
                             type="date"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-300 text-xs focus:ring-0 w-28 p-0"
+                            className="bg-transparent border-none text-gray-700 dark:text-gray-300 text-xs focus:ring-0 w-28 p-0"
                         />
-                        <span className="text-gray-500 text-[10px]">-</span>
+                        <span className="text-gray-400 dark:text-gray-500 text-[10px]">-</span>
                         <input
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
-                            className="bg-transparent border-none text-gray-300 text-xs focus:ring-0 w-28 p-0"
+                            className="bg-transparent border-none text-gray-700 dark:text-gray-300 text-xs focus:ring-0 w-28 p-0"
                         />
                         {(startDate || endDate) && (
                             <button onClick={() => { setStartDate(''); setEndDate(''); }} className="px-2 text-[10px] font-bold text-teal-500 hover:text-teal-400 uppercase">Clear</button>
@@ -168,7 +168,7 @@ export default function MailProcessing() {
                     </button>
                     <button
                         onClick={fetchLogs}
-                        className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors font-bold text-xs"
+                        className="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 border border-gray-200 dark:border-gray-600 shadow-sm transition-colors font-bold text-xs"
                     >
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
                     </button>
@@ -177,10 +177,10 @@ export default function MailProcessing() {
 
             {/* View Modal */}
             {selectedLog && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
-                        <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
-                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
+                        <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50/80 dark:bg-gray-800/50">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <Mail className="text-blue-500" /> Message Details
                             </h2>
                             <button onClick={() => setSelectedLog(null)} className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"><EyeOff className="w-5 h-5" /></button>
@@ -188,10 +188,10 @@ export default function MailProcessing() {
 
                         <div className="p-6 overflow-y-auto space-y-6 font-mono text-sm" id="mail-print-area">
                             {/* Header Info */}
-                            <div className="bg-gray-800/50 p-4 rounded-lg border border-gray-700 grid grid-cols-2 gap-4">
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-4">
                                 <div className="space-y-1">
-                                    <span className="text-xs text-gray-500 uppercase font-bold">Timestamp</span>
-                                    <div className="text-white">{new Date(selectedLog.Timestamp).toLocaleString()}</div>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold">Timestamp</span>
+                                    <div className="text-gray-900 dark:text-white">{new Date(selectedLog.Timestamp).toLocaleString()}</div>
                                 </div>
                                 <div className="space-y-1">
                                     <span className="text-xs text-gray-500 uppercase font-bold">Risk Level</span>
@@ -199,27 +199,27 @@ export default function MailProcessing() {
                                         {selectedLog.RiskLevel}
                                     </div>
                                 </div>
-                                <div className="col-span-2 space-y-1 border-t border-gray-700 pt-2 mt-2">
-                                    <span className="text-xs text-gray-500 uppercase font-bold">Agent ID</span>
-                                    <div className="text-gray-300 font-mono text-xs">{selectedLog.AgentId}</div>
+                                <div className="col-span-2 space-y-1 border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                                    <span className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold">Agent ID</span>
+                                    <div className="text-gray-600 dark:text-gray-300 font-mono text-xs">{selectedLog.AgentId}</div>
                                 </div>
                                 <div className="col-span-2 space-y-1">
-                                    <span className="text-xs text-gray-500 uppercase font-bold">Subject</span>
-                                    <div className="text-white font-bold text-lg">{selectedLog.Subject}</div>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold">Subject</span>
+                                    <div className="text-gray-900 dark:text-white font-bold text-lg">{selectedLog.Subject}</div>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-xs text-gray-500 uppercase font-bold">From</span>
-                                    <div className="text-blue-300 break-all bg-blue-900/10 p-1 rounded border border-blue-500/20">{selectedLog.Sender}</div>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold">From</span>
+                                    <div className="text-blue-600 dark:text-blue-300 break-all bg-blue-50 dark:bg-blue-900/10 p-1 rounded border border-blue-200 dark:border-blue-500/20">{selectedLog.Sender}</div>
                                 </div>
                                 <div className="space-y-1">
-                                    <span className="text-xs text-gray-500 uppercase font-bold">To</span>
-                                    <div className="text-purple-300 break-all bg-purple-900/10 p-1 rounded border border-purple-500/20">{selectedLog.Recipient}</div>
+                                    <span className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold">To</span>
+                                    <div className="text-purple-600 dark:text-purple-300 break-all bg-purple-50 dark:bg-purple-900/10 p-1 rounded border border-purple-200 dark:border-purple-500/20">{selectedLog.Recipient}</div>
                                 </div>
                             </div>
 
                             {/* Attachments */}
                             {selectedLog.HasAttachments && (
-                                <div className="bg-gray-800 p-3 rounded border border-gray-700">
+                                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded border border-gray-200 dark:border-gray-700">
                                     <div className="flex justify-between items-center mb-3">
                                         <span className="text-xs text-gray-400 uppercase flex items-center gap-2 font-bold">
                                             <Paperclip size={14} />
@@ -230,11 +230,11 @@ export default function MailProcessing() {
                                     {selectedLog.Attachments && selectedLog.Attachments.length > 0 ? (
                                         <div className="space-y-2">
                                             {selectedLog.Attachments.map(att => (
-                                                <div key={att.Id} className="flex justify-between items-center bg-gray-900 p-2 rounded border border-gray-700 hover:border-gray-500 transition-colors">
+                                                <div key={att.Id} className="flex justify-between items-center bg-white dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
                                                     <div className="flex items-center gap-2 overflow-hidden">
-                                                        <File size={16} className="text-blue-400 shrink-0" />
-                                                        <span className="truncate text-gray-300">{att.FileName}</span>
-                                                        <span className="text-xs text-gray-500">({formatBytes(att.Size)})</span>
+                                                        <File size={16} className="text-blue-500 dark:text-blue-400 shrink-0" />
+                                                        <span className="truncate text-gray-700 dark:text-gray-300">{att.FileName}</span>
+                                                        <span className="text-xs text-gray-400 dark:text-gray-500">({formatBytes(att.Size)})</span>
                                                     </div>
                                                     <a
                                                         href={`${API_URL}/mail/attachment/${att.Id}`}
@@ -257,19 +257,19 @@ export default function MailProcessing() {
 
                             {/* Body */}
                             <div className="space-y-2">
-                                <span className="text-xs text-gray-500 uppercase font-bold flex items-center gap-2"><FileText size={14} /> Body Content</span>
-                                <div className="bg-black p-4 rounded border border-gray-800 text-gray-300 whitespace-pre-wrap leading-relaxed h-[300px] overflow-y-auto">
+                                <span className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold flex items-center gap-2"><FileText size={14} /> Body Content</span>
+                                <div className="bg-gray-50 dark:bg-black p-4 rounded border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-300 whitespace-pre-wrap leading-relaxed h-[300px] overflow-y-auto font-sans">
                                     {selectedLog.BodyPreview || "(No Content)"}
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="p-4 border-t border-gray-800 bg-gray-800/50 flex justify-end gap-3">
-                            <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold flex items-center gap-2 transition-colors">
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end gap-3">
+                            <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold flex items-center gap-2 transition-colors text-xs">
                                 <Printer size={16} /> Print / Save PDF
                             </button>
-                            <button onClick={() => setSelectedLog(null)} className="px-4 py-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-bold">Close</button>
+                            <button onClick={() => setSelectedLog(null)} className="px-4 py-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white font-bold text-xs">Close</button>
                         </div>
                     </div>
                 </div>
@@ -277,31 +277,31 @@ export default function MailProcessing() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Stats Cards */}
-                <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-                    <h3 className="text-gray-400 text-sm uppercase font-bold mb-2">Total Emails</h3>
-                    <p className="text-3xl font-bold text-white">{logs.length}</p>
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                    <h3 className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold mb-2">Total Emails</h3>
+                    <p className="text-3xl font-black text-gray-900 dark:text-white">{logs.length}</p>
                 </div>
-                <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-                    <h3 className="text-gray-400 text-sm uppercase font-bold mb-2">Blocked / Sensitive</h3>
-                    <p className="text-3xl font-bold text-red-400">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                    <h3 className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold mb-2">Blocked / Sensitive</h3>
+                    <p className="text-3xl font-black text-red-600 dark:text-red-400">
                         {logs.filter(l => l.RiskLevel === 'High').length}
                     </p>
                 </div>
-                <div className="bg-gray-800 rounded-xl border border-gray-700 p-6">
-                    <h3 className="text-gray-400 text-sm uppercase font-bold mb-2">With Attachments</h3>
-                    <p className="text-3xl font-bold text-blue-400">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+                    <h3 className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold mb-2">With Attachments</h3>
+                    <p className="text-3xl font-black text-blue-600 dark:text-blue-400">
                         {logs.filter(l => l.HasAttachments).length}
                     </p>
                 </div>
 
                 {/* Main List */}
-                <div className="col-span-1 lg:col-span-3 bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                    <div className="p-4 border-b border-gray-700 bg-gray-900/50 flex justify-between">
-                        <h3 className="font-bold text-white">Intercepted Emails</h3>
-                        <div className="text-xs text-gray-500">{logs.length} Records</div>
+                <div className="col-span-1 lg:col-span-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                    <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex justify-between">
+                        <h3 className="font-bold text-gray-900 dark:text-white">Intercepted Emails</h3>
+                        <div className="text-xs text-gray-500 uppercase font-bold">{logs.length} Records</div>
                     </div>
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
+                        <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-black text-[10px] tracking-widest">
                             <tr>
                                 <th className="p-4">Timestamp</th>
                                 <th className="p-4">Agent ID</th>
@@ -312,19 +312,19 @@ export default function MailProcessing() {
                                 <th className="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-700 text-gray-300">
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-700 text-gray-700 dark:text-gray-300">
                             {loading ? (
-                                <tr><td colSpan={7} className="p-8 text-center text-gray-500">Loading logs...</td></tr>
+                                <tr><td colSpan={7} className="p-8 text-center text-gray-400 animate-pulse">Loading logs...</td></tr>
                             ) : logs.map((log, i) => (
-                                <tr key={log.Id || i} className="hover:bg-gray-700/50 transition-colors">
+                                <tr key={log.Id || i} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all group">
                                     <td className="p-4 text-gray-400 text-xs">{new Date(log.Timestamp).toLocaleString()}</td>
-                                    <td className="p-4 font-mono text-gray-500 text-xs">{log.AgentId}</td>
-                                    <td className="p-4 font-mono text-blue-300 text-xs">{log.Sender}</td>
-                                    <td className="p-4 font-mono text-purple-300 text-xs truncate max-w-[150px]" title={log.Recipient}>{log.Recipient}</td>
+                                    <td className="p-4 font-mono text-gray-500 dark:text-gray-500 text-xs">{log.AgentId}</td>
+                                    <td className="p-4 font-mono text-blue-600 dark:text-blue-300 text-xs font-bold">{log.Sender}</td>
+                                    <td className="p-4 font-mono text-purple-600 dark:text-purple-300 text-xs truncate max-w-[150px]" title={log.Recipient}>{log.Recipient}</td>
                                     <td className="p-4">
-                                        <div className="font-bold text-white mb-1 flex items-center gap-2">
+                                        <div className="font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-2">
                                             <span className="truncate max-w-[200px]" title={log.Subject}>{log.Subject}</span>
-                                            {log.HasAttachments && <Paperclip size={12} className="text-gray-400" />}
+                                            {log.HasAttachments && <Paperclip size={12} className="text-blue-500" />}
                                         </div>
                                         <div className="text-xs text-gray-500 truncate max-w-[200px]">{log.BodyPreview}</div>
                                     </td>

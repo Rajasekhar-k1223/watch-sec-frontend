@@ -44,8 +44,8 @@ export default function SpeechLogViewer({ agentId, apiUrl, token }: SpeechLogVie
     }, [agentId]);
 
     return (
-        <div className="flex flex-col h-full bg-gray-900/50 rounded-xl border border-gray-800 overflow-hidden">
-            <div className="p-3 md:p-4 border-b border-gray-800 bg-gray-800/30 flex justify-between items-center">
+        <div className="flex flex-col h-full bg-white dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden transition-colors">
+            <div className="p-3 md:p-4 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <Mic className="w-4 h-4 text-red-500" />
                     <span className="text-[10px] md:text-sm font-bold text-gray-300 uppercase tracking-wider">Audio Transcription History</span>
@@ -57,7 +57,7 @@ export default function SpeechLogViewer({ agentId, apiUrl, token }: SpeechLogVie
                 {/* Desktop View Table */}
                 <div className="hidden md:block">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-950 text-gray-500 uppercase text-[10px] font-bold sticky top-0 z-10">
+                        <thead className="bg-gray-50 dark:bg-gray-950 text-gray-500 uppercase text-[10px] font-bold sticky top-0 z-10">
                             <tr>
                                 <th className="p-4">Timestamp</th>
                                 <th className="p-4">Transcription Snippet</th>
@@ -66,17 +66,17 @@ export default function SpeechLogViewer({ agentId, apiUrl, token }: SpeechLogVie
                                 <th className="p-4 text-right">Playback</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-800">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                             {loading ? (
                                 <tr><td colSpan={5} className="p-12 text-center text-gray-500 italic animate-pulse">Synchronizing audio data...</td></tr>
                             ) : logs.length === 0 ? (
                                 <tr><td colSpan={5} className="p-12 text-center text-gray-500 italic">No audio logs captured.</td></tr>
                             ) : logs.map(log => (
-                                <tr key={log.Id} className="hover:bg-gray-800/30 transition-colors group">
+                                <tr key={log.Id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group">
                                     <td className="p-4 text-xs font-mono text-gray-500">
                                         {new Date(log.Timestamp).toLocaleString()}
                                     </td>
-                                    <td className="p-4 text-gray-300 italic max-w-md truncate text-xs">
+                                    <td className="p-4 text-gray-700 dark:text-gray-300 italic max-w-md truncate text-xs">
                                         "{log.TranscribedText}"
                                     </td>
                                     <td className="p-4">

@@ -13,16 +13,16 @@ export default function CentralServer() {
     const [activeTab, setActiveTab] = useState("General");
 
     return (
-        <div className="flex flex-col h-full bg-gray-900 text-white">
+        <div className="flex flex-col h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-white transition-colors">
             {/* Top Tabs Bar */}
-            <div className="flex items-center gap-1 px-4 border-b border-gray-700 bg-gray-800/50">
+            <div className="flex items-center gap-1 px-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-800/50 transition-colors">
                 {tabs.map(tab => (
                     <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
                         className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab
-                            ? 'border-blue-500 text-white bg-gray-800'
-                            : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                            ? 'border-blue-500 text-blue-600 dark:text-white bg-white dark:bg-gray-800'
+                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'
                             }`}
                     >
                         {tab}
@@ -96,27 +96,27 @@ function GeneralSettingsTab() {
 
     return (
         <div className="space-y-6 max-w-4xl">
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2">Data Retention & Storage</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Data Retention & Storage</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Activity Log Retention (Days)</label>
-                        <input type="number" value={settings.DataRetentionDays} onChange={e => setSettings({ ...settings, DataRetentionDays: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:border-blue-500 outline-none" />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Activity Log Retention (Days)</label>
+                        <input type="number" value={settings.DataRetentionDays} onChange={e => setSettings({ ...settings, DataRetentionDays: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all" />
                         <p className="text-xs text-gray-500 mt-1">Logs older than this will be automatically archived/deleted.</p>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Storage Path</label>
-                        <input type="text" value={settings.StoragePath} readOnly className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-gray-400 cursor-not-allowed" />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Storage Path</label>
+                        <input type="text" value={settings.StoragePath} readOnly className="w-full bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-500 cursor-not-allowed transition-all" />
                         <p className="text-xs text-gray-500 mt-1">Physical path where recordings and screenshots are stored.</p>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2">System Logging</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">System Logging</h3>
                 <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Log Level</label>
-                    <select value={settings.LogLevel} onChange={e => setSettings({ ...settings, LogLevel: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white focus:border-blue-500 outline-none">
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Log Level</label>
+                    <select value={settings.LogLevel} onChange={e => setSettings({ ...settings, LogLevel: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white focus:border-blue-500 outline-none transition-all">
                         <option value="DEBUG">DEBUG (Verbose)</option>
                         <option value="INFO">INFO (Standard)</option>
                         <option value="WARN">WARN (Issues Only)</option>
@@ -141,37 +141,37 @@ function AuthSettingsTab() {
 
     return (
         <div className="space-y-6 max-w-4xl">
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Critical Security Controls</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500"></div> Critical Security Controls</h3>
 
-                <div className="flex items-center justify-between p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-6">
+                <div className="flex items-center justify-between p-4 bg-red-500/10 border border-red-500/20 rounded-lg mb-6 transition-colors">
                     <div>
-                        <h4 className="font-bold text-red-400">System Lockdown</h4>
-                        <p className="text-sm text-gray-400">Prevents ANY new agent registrations or connections. Existing sessions maintained.</p>
+                        <h4 className="font-bold text-red-500 dark:text-red-400">System Lockdown</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Prevents ANY new agent registrations or connections. Existing sessions maintained.</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" checked={settings.EnableGlobalLockdown} onChange={e => setSettings({ ...settings, EnableGlobalLockdown: e.target.checked })} className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                     </label>
                 </div>
 
-                <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
                     <div>
-                        <h4 className="font-bold text-white">Enforce 2FA for Admin Access</h4>
-                        <p className="text-sm text-gray-400">Require Two-Factor Authentication for all Tenant Admins.</p>
+                        <h4 className="font-bold text-gray-900 dark:text-white">Enforce 2FA for Admin Access</h4>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Require Two-Factor Authentication for all Tenant Admins.</p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" checked={settings.Require2FA} onChange={e => setSettings({ ...settings, Require2FA: e.target.checked })} className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                 </div>
             </div>
 
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2">Network Access Control (NAC)</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Network Access Control (NAC)</h3>
                 <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Trusted IP Whitelist (One per line)</label>
-                    <textarea rows={5} value={settings.TrustedIps} onChange={e => setSettings({ ...settings, TrustedIps: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white font-mono text-sm focus:border-blue-500 outline-none" />
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Trusted IP Whitelist (One per line)</label>
+                    <textarea rows={5} value={settings.TrustedIps} onChange={e => setSettings({ ...settings, TrustedIps: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white font-mono text-sm focus:border-blue-500 outline-none transition-all" />
                     <p className="text-xs text-gray-500 mt-1">Only APIs requests from these IPs/Subnets will be allowed administrative privileges.</p>
                 </div>
             </div>
@@ -258,37 +258,37 @@ function ThesaurusSettingsTab() {
     return (
         <div className="space-y-8 max-w-5xl">
             {/* Add New Section */}
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
                     <Plus size={18} className="text-green-500" /> Add Thesaurus Entry
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="col-span-1">
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Keyword</label>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Keyword</label>
                         <input
                             type="text"
                             placeholder="e.g. 'Money'"
                             value={newKeyword}
                             onChange={e => setNewKeyword(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
                         />
                     </div>
                     <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Synonyms (Comma separated)</label>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Synonyms (Comma separated)</label>
                         <input
                             type="text"
                             placeholder="e.g. Cash, Funds, Capital, Currency"
                             value={newSynonyms}
                             onChange={e => setNewSynonyms(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
                         />
                     </div>
                     <div className="col-span-1">
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Category</label>
                         <select
                             value={newCategory}
                             onChange={e => setNewCategory(e.target.value)}
-                            className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500"
+                            className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all"
                         >
                             <option value="General">General</option>
                             <option value="Finance">Finance</option>
@@ -299,21 +299,21 @@ function ThesaurusSettingsTab() {
                     </div>
                 </div>
                 <div className="mt-4 flex justify-end">
-                    <button onClick={handleAdd} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2">
+                    <button onClick={handleAdd} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition-all">
                         <Save size={18} /> Save Entry
                     </button>
                 </div>
             </div>
 
             {/* List Section */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700 bg-gray-900/50 flex justify-between items-center">
-                    <h3 className="font-bold text-white">Active Thesauruses</h3>
-                    <span className="text-xs text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-700">{entries.length} Entries</span>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-colors">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center transition-colors">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Active Thesauruses</h3>
+                    <span className="text-xs text-gray-600 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 transition-colors">{entries.length} Entries</span>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
+                        <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs">
                             <tr>
                                 <th className="p-4 w-1/4">Keyword</th>
                                 <th className="p-4 w-1/2">Synonyms / Expansion</th>
@@ -321,26 +321,26 @@ function ThesaurusSettingsTab() {
                                 <th className="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-700 text-gray-300">
-                            {loading && <tr><td colSpan={4} className="p-8 text-center">Loading...</td></tr>}
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300">
+                            {loading && <tr><td colSpan={4} className="p-8 text-center animate-pulse">Loading...</td></tr>}
                             {!loading && entries.length === 0 && (
-                                <tr><td colSpan={4} className="p-8 text-center text-gray-500">No entries found. Add one above.</td></tr>
+                                <tr><td colSpan={4} className="p-8 text-center text-gray-400 italic">No entries found. Add one above.</td></tr>
                             )}
                             {entries.map(entry => (
-                                <tr key={entry.id} className="hover:bg-gray-700/50">
-                                    <td className="p-4 font-bold text-white">{entry.keyword}</td>
+                                <tr key={entry.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <td className="p-4 font-bold text-gray-900 dark:text-white">{entry.keyword}</td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
                                             {entry.synonyms.map((s: string) => (
-                                                <span key={s} className="bg-blue-900/40 text-blue-300 px-2 py-0.5 rounded text-xs border border-blue-800/50">{s}</span>
+                                                <span key={s} className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded text-xs border border-blue-200 dark:border-blue-800/50">{s}</span>
                                             ))}
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="bg-gray-700 text-gray-300 px-2 py-1 rounded text-xs">{entry.category}</span>
+                                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded text-xs">{entry.category}</span>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button onClick={() => handleDelete(entry.id)} className="text-red-400 hover:text-red-300 p-2 hover:bg-red-900/20 rounded-lg transition-colors">
+                                        <button onClick={() => handleDelete(entry.id)} className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                                             <Trash size={16} />
                                         </button>
                                     </td>
@@ -374,54 +374,54 @@ function RecognitionSettingsTab() {
     return (
         <div className="space-y-6 max-w-4xl">
             {/* OCR Settings */}
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-blue-500"></div> OCR Configuration
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
                         <div>
-                            <h4 className="font-bold text-gray-300">Enable OCR</h4>
+                            <h4 className="font-bold text-gray-900 dark:text-gray-300">Enable OCR</h4>
                             <p className="text-xs text-gray-500">Extract text from screenshots.</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" checked={settings.EnableOCR} onChange={e => setSettings({ ...settings, EnableOCR: e.target.checked })} className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                         </label>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Processing Interval (Seconds)</label>
-                        <input type="number" value={settings.OCRInterval} onChange={e => setSettings({ ...settings, OCRInterval: parseInt(e.target.value) })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500" />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Processing Interval (Seconds)</label>
+                        <input type="number" value={settings.OCRInterval} onChange={e => setSettings({ ...settings, OCRInterval: parseInt(e.target.value) })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                     </div>
                 </div>
             </div>
 
             {/* Speech Settings */}
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-purple-500"></div> Speech Recognition
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex items-center justify-between p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
                         <div>
-                            <h4 className="font-bold text-gray-300">Enable Audio Analysis</h4>
+                            <h4 className="font-bold text-gray-900 dark:text-gray-300">Enable Audio Analysis</h4>
                             <p className="text-xs text-gray-500">Transcribe and analyze microphone input.</p>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" checked={settings.EnableSpeech} onChange={e => setSettings({ ...settings, EnableSpeech: e.target.checked })} className="sr-only peer" />
-                            <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            <div className="w-11 h-6 bg-gray-200 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                         </label>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Confidence Threshold (0.0 - 1.0)</label>
-                        <input type="number" step="0.1" max="1" min="0" value={settings.SpeechConfidenceThreshold} onChange={e => setSettings({ ...settings, SpeechConfidenceThreshold: parseFloat(e.target.value) })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500" />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Confidence Threshold (0.0 - 1.0)</label>
+                        <input type="number" step="0.1" max="1" min="0" value={settings.SpeechConfidenceThreshold} onChange={e => setSettings({ ...settings, SpeechConfidenceThreshold: parseFloat(e.target.value) })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                         <p className="text-xs text-gray-500 mt-1">Ignore transcriptions below this confidence score.</p>
                     </div>
                 </div>
 
-                <div className="mt-6 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
-                    <h4 className="font-bold text-blue-400 text-sm mb-2">Integration Note</h4>
-                    <p className="text-xs text-gray-400">
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-500/30 rounded-lg transition-colors">
+                    <h4 className="font-bold text-blue-600 dark:text-blue-400 text-sm mb-2">Integration Note</h4>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                         Speech recognition relies on the <strong>Thesaurus</strong> for keyword flagging. Ensure you have defined 'High Risk' categories in the search thesauruses tab.
                     </p>
                 </div>
@@ -481,54 +481,54 @@ function HashBanksTab() {
     return (
         <div className="space-y-8 max-w-5xl">
             {/* Add New */}
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2 flex items-center gap-2">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-red-500"></div> Add IOC Hash
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                     <div className="col-span-2">
-                        <label className="block text-sm font-medium text-gray-400 mb-1">File Hash (MD5/SHA256)</label>
-                        <input type="text" value={form.hash} onChange={e => setForm({ ...form, hash: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500 font-mono text-sm" placeholder="e.g. 5e884898da28047151d0e56f8dc62927..." />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">File Hash (MD5/SHA256)</label>
+                        <input type="text" value={form.hash} onChange={e => setForm({ ...form, hash: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 font-mono text-sm transition-all" placeholder="e.g. 5e884898da28047151d0e56f8dc62927..." />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Reputation</label>
-                        <select value={form.reputation} onChange={e => setForm({ ...form, reputation: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500">
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Reputation</label>
+                        <select value={form.reputation} onChange={e => setForm({ ...form, reputation: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all">
                             <option value="Malicious">Malicious</option>
                             <option value="Suspicious">Suspicious</option>
                             <option value="Safe">Safe (Whitelist)</option>
                         </select>
                     </div>
                     <div>
-                        <button onClick={handleAdd} className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold transition-colors">Add Hash</button>
+                        <button onClick={handleAdd} className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg shadow-red-900/20">Add Hash</button>
                     </div>
                 </div>
                 <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Description / Notes</label>
-                    <input type="text" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500" placeholder="e.g. Known Ransomware variant" />
+                    <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Description / Notes</label>
+                    <input type="text" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all" placeholder="e.g. Known Ransomware variant" />
                 </div>
             </div>
 
             {/* List */}
-            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700 bg-gray-900/50 flex justify-between items-center">
-                    <h3 className="font-bold text-white">Hash Database</h3>
-                    <span className="text-xs text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-700">{hashes.length} Entries</span>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-colors">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center transition-colors">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Hash Database</h3>
+                    <span className="text-xs text-gray-600 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 transition-colors">{hashes.length} Entries</span>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
+                        <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs">
                             <tr><th className="p-4">Hash</th><th className="p-4">Reputation</th><th className="p-4">Description</th><th className="p-4 text-right">Actions</th></tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-700 text-gray-300">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300">
                             {hashes.map(h => (
-                                <tr key={h.id} className="hover:bg-gray-700/50">
-                                    <td className="p-4 font-mono text-xs text-blue-300">{h.hash}</td>
-                                    <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold ${h.reputation === 'Safe' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{h.reputation}</span></td>
-                                    <td className="p-4 text-gray-400">{h.description || '-'}</td>
-                                    <td className="p-4 text-right"><button onClick={() => handleDelete(h.id)} className="text-red-400 hover:text-red-300"><Trash size={16} /></button></td>
+                                <tr key={h.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <td className="p-4 font-mono text-xs text-blue-600 dark:text-blue-300">{h.hash}</td>
+                                    <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold ${h.reputation === 'Safe' ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/30' : 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30'}`}>{h.reputation}</span></td>
+                                    <td className="p-4 text-gray-600 dark:text-gray-400">{h.description || '-'}</td>
+                                    <td className="p-4 text-right"><button onClick={() => handleDelete(h.id)} className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"><Trash size={16} /></button></td>
                                 </tr>
                             ))}
-                            {hashes.length === 0 && !loading && <tr><td colSpan={4} className="p-8 text-center text-gray-500">No hashes found.</td></tr>}
+                            {hashes.length === 0 && !loading && <tr><td colSpan={4} className="p-8 text-center text-gray-400 italic">No hashes found.</td></tr>}
                         </tbody>
                     </table>
                 </div>
@@ -540,24 +540,24 @@ function HashBanksTab() {
 function LicenseInfoTab() {
     return (
         <div className="space-y-6 max-w-4xl">
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2">Subscription & License</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Subscription & License</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">License Key</label>
-                        <input type="text" readOnly value="XXXX-XXXX-XXXX-XXXX" className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-gray-500 font-mono" />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">License Key</label>
+                        <input type="text" readOnly value="XXXX-XXXX-XXXX-XXXX" className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-500 dark:text-gray-400 font-mono transition-all" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Plan</label>
-                        <div className="text-white font-bold text-lg">Enterprise (Unlimited)</div>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Plan</label>
+                        <div className="text-gray-900 dark:text-white font-bold text-lg">Enterprise (Unlimited)</div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Expiry Date</label>
-                        <div className="text-white font-bold">December 31, 2025</div>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Expiry Date</label>
+                        <div className="text-gray-900 dark:text-white font-bold">December 31, 2025</div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Support Status</label>
-                        <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">Active</span>
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Support Status</label>
+                        <div><span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold shadow-lg shadow-green-900/20">Active</span></div>
                     </div>
                 </div>
             </div>
@@ -602,43 +602,43 @@ function SearchesTab() {
 
     return (
         <div className="space-y-8 max-w-5xl">
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                <h3 className="text-lg font-bold text-white mb-4 border-b border-gray-700 pb-2">Save New Search</h3>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">Save New Search</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Search Name</label>
-                        <input type="text" value={newSearch.name} onChange={e => setNewSearch({ ...newSearch, name: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500" placeholder="e.g. High Risk Web Access" />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Search Name</label>
+                        <input type="text" value={newSearch.name} onChange={e => setNewSearch({ ...newSearch, name: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all" placeholder="e.g. High Risk Web Access" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-1">Category</label>
-                        <input type="text" value={newSearch.category} onChange={e => setNewSearch({ ...newSearch, category: e.target.value })} className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white outline-none focus:border-blue-500" />
+                        <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Category</label>
+                        <input type="text" value={newSearch.category} onChange={e => setNewSearch({ ...newSearch, category: e.target.value })} className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-gray-900 dark:text-white outline-none focus:border-blue-500 transition-all" />
                     </div>
                     <div>
-                        <button onClick={handleSave} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold">Save Search</button>
+                        <button onClick={handleSave} className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg shadow-blue-900/20">Save Search</button>
                     </div>
                 </div>
             </div>
 
-            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                <div className="p-4 border-b border-gray-700 bg-gray-900/50 flex justify-between items-center">
-                    <h3 className="font-bold text-white">Saved Searches</h3>
-                    <span className="text-xs text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-700">{searches.length} Entries</span>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm transition-colors">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center transition-colors">
+                    <h3 className="font-bold text-gray-900 dark:text-white">Saved Searches</h3>
+                    <span className="text-xs text-gray-600 dark:text-gray-500 bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded border border-gray-200 dark:border-gray-700 transition-colors">{searches.length} Entries</span>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
-                        <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs">
+                        <thead className="bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs">
                             <tr><th className="p-4">Name</th><th className="p-4">Category</th><th className="p-4">Created</th><th className="p-4 text-right">Actions</th></tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-700 text-gray-300">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300">
                             {searches.map(s => (
-                                <tr key={s.id} className="hover:bg-gray-700/50">
-                                    <td className="p-4 font-bold text-white">{s.name}</td>
-                                    <td className="p-4"><span className="bg-blue-900/30 text-blue-300 px-2 py-1 rounded text-xs">{s.category}</span></td>
+                                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                    <td className="p-4 font-bold text-gray-900 dark:text-white">{s.name}</td>
+                                    <td className="p-4"><span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-2 py-1 rounded text-xs border border-blue-200 dark:border-blue-800/50">{s.category}</span></td>
                                     <td className="p-4 text-gray-500 text-xs">{new Date(s.createdAt).toLocaleDateString()}</td>
-                                    <td className="p-4 text-right"><button onClick={() => handleDelete(s.id)} className="text-red-400 hover:text-red-300"><Trash size={16} /></button></td>
+                                    <td className="p-4 text-right"><button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"><Trash size={16} /></button></td>
                                 </tr>
                             ))}
-                            {searches.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-gray-500">No saved searches.</td></tr>}
+                            {searches.length === 0 && <tr><td colSpan={4} className="p-8 text-center text-gray-400 italic">No saved searches.</td></tr>}
                         </tbody>
                     </table>
                 </div>
@@ -650,10 +650,10 @@ function SearchesTab() {
 function DigitalFingerprintsTab() {
     return (
         <div className="space-y-6 max-w-4xl">
-            <div className="bg-gray-800 p-6 rounded-xl border border-gray-700 text-center">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm transition-colors text-center">
                 <div className="p-8">
-                    <h3 className="text-xl font-bold text-white mb-2">Digital Fingerprints</h3>
-                    <p className="text-gray-400">Manage device fingerprints and identity tracking here.</p>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Digital Fingerprints</h3>
+                    <p className="text-gray-600 dark:text-gray-400">Manage device fingerprints and identity tracking here.</p>
                 </div>
             </div>
         </div>

@@ -71,7 +71,7 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
                         <ShieldAlert className="w-5 h-5 text-emerald-500" />
                     </div>
                     <div>
-                        <h3 className="text-sm md:text-lg font-bold text-white tracking-tight">Security Audit Ledger</h3>
+                        <h3 className="text-sm md:text-lg font-bold text-gray-900 dark:text-white tracking-tight">Security Audit Ledger</h3>
                         <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Automated Intelligence Scan Results</p>
                     </div>
                 </div>
@@ -79,7 +79,7 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
                     <button
                         onClick={fetchAlerts}
                         disabled={loading}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-[10px] font-bold uppercase rounded-lg border border-gray-700 transition-all disabled:opacity-50"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] font-bold uppercase rounded-lg border border-gray-200 dark:border-gray-700 transition-all disabled:opacity-50"
                         title="Refresh detection list"
                     >
                         <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
@@ -97,11 +97,11 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
                 </div>
             </div>
 
-            <div className="bg-gray-800/50 rounded-xl border border-gray-700 overflow-hidden shadow-2xl">
+            <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-2xl">
                 {/* Desktop View Table */}
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-xs">
-                        <thead className="bg-gray-950 text-gray-500 uppercase font-bold tracking-wider">
+                        <thead className="bg-gray-50 dark:bg-gray-950 text-gray-500 uppercase font-bold tracking-wider">
                             <tr>
                                 <th className="p-4 w-40">Detection Time</th>
                                 <th className="p-4 w-32">Type</th>
@@ -109,7 +109,7 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
                                 <th className="p-4 text-center">Action</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-800">
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                             {loading ? (
                                 <tr><td colSpan={4} className="p-16 text-center text-gray-500 italic animate-pulse">Synchronizing with intelligence feed...</td></tr>
                             ) : alerts.length === 0 ? (
@@ -122,7 +122,7 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
                                     </td>
                                 </tr>
                             ) : alerts.map(alert => (
-                                <tr key={alert.Id} className="hover:bg-gray-800/30 transition-colors">
+                                <tr key={alert.Id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
                                     <td className="p-4 text-gray-500 font-mono">
                                         {new Date(alert.Timestamp).toLocaleString()}
                                     </td>
@@ -132,7 +132,7 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
                                         </span>
                                     </td>
                                     <td className="p-4">
-                                        <div className="bg-black/30 p-2.5 rounded border border-gray-700/50 text-gray-300 font-mono text-[11px] leading-relaxed">
+                                        <div className="bg-gray-50 dark:bg-black/30 p-2.5 rounded border border-gray-200 dark:border-gray-700/50 text-gray-600 dark:text-gray-300 font-mono text-[11px] leading-relaxed">
                                             {alert.Details}
                                         </div>
                                     </td>
@@ -167,7 +167,7 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
                                         {new Date(alert.Timestamp).toLocaleTimeString()}
                                     </span>
                                 </div>
-                                <div className="bg-black/30 p-3 rounded border border-gray-700/50 text-gray-300 font-mono text-[11px] leading-relaxed">
+                                <div className="bg-gray-50 dark:bg-black/30 p-3 rounded border border-gray-200 dark:border-gray-700/50 text-gray-600 dark:text-gray-300 font-mono text-[11px] leading-relaxed">
                                     {alert.Details}
                                 </div>
                                 <div className="flex justify-between items-center pt-1">
@@ -183,7 +183,7 @@ export default function AgentSecurityLedger({ agentId, apiUrl, token }: AgentSec
             </div>
             <div className="flex items-center gap-2 p-3 bg-blue-500/5 border border-blue-500/10 rounded-lg">
                 <Shield className="w-4 h-4 text-blue-500" />
-                <p className="text-[10px] text-blue-400 font-bold uppercase tracking-tight">Enterprise Patch Intelligence is active. All system manifests are being correlated with global CVE databases.</p>
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-tight">Enterprise Patch Intelligence is active. All system manifests are being correlated with global CVE databases.</p>
             </div>
         </div>
     );

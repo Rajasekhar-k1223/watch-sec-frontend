@@ -79,11 +79,11 @@ export default function SpeechRecognition() {
     return (
         <div className="p-8 animate-fade-in transition-colors text-gray-900 dark:text-white relative min-h-screen">
             {isLocked && (
-                <div className="absolute inset-0 z-[60] bg-gray-900/90 backdrop-blur-xl flex flex-col items-center justify-center text-center p-6">
+                <div className="absolute inset-0 z-[60] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl flex flex-col items-center justify-center text-center p-6">
                     <div className="p-6 bg-red-500/10 rounded-full mb-6 ring-8 ring-red-500/5 animate-pulse">
                         <Lock className="w-16 h-16 text-red-500" />
                     </div>
-                    <h2 className="text-4xl font-extrabold text-white mb-4 tracking-tight">Enterprise Access Required</h2>
+                    <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white mb-4 tracking-tight">Enterprise Access Required</h2>
                     <p className="text-gray-400 max-w-md mb-10 text-lg leading-relaxed">
                         <b>Speech Recognition</b> and Real-time Audio Intelligence are premium modules reserved for <b>Enterprise Plan</b> customers.
                     </p>

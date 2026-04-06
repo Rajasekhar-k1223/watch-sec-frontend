@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Image, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -13,6 +13,7 @@ import AgentSecurityLedger from '../components/AgentSecurityLedger'; // [NEW]
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
+// import { useTheme } from '../contexts/ThemeContext';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
@@ -128,8 +129,7 @@ const FEATURE_TIERS: Record<string, number> = {
 
 const TAB_TABS = [
     { id: 'logs', label: 'Logs', feat: null },
-    { id: 'monitor', label: 'Monitor', feat: null },
-    { id: 'remote', label: 'Remote', feat: 'remote_shell' },
+    { id: 'monitor', label: 'Live Control', feat: null },
     { id: 'screenshots', label: 'Screenshots', feat: 'screenshots' },
     { id: 'activity', label: 'Activity', feat: 'activity' },
     { id: 'mail', label: 'Mail', feat: 'mail' },
@@ -143,6 +143,8 @@ const TAB_TABS = [
 
 export default function Agents() {
     const { user, token, logout } = useAuth();
+    const fullApiUrl = API_URL.startsWith('http') ? API_URL : `${window.location.origin}${API_URL}`;
+    // const { theme } = useTheme();
     const [agents, setAgents] = useState<AgentReport[]>([]);
     const [policies, setPolicies] = useState<any[]>([]); // [NEW]
     const [loading, setLoading] = useState(true);
@@ -430,6 +432,7 @@ export default function Agents() {
 
     const [showDeployModal, setShowDeployModal] = useState(false);
     const [deployOS, setDeployOS] = useState<'windows' | 'linux-x64' | 'linux-arm64' | 'mac'>('windows');
+
     // const [showOtpModal, setShowOtpModal] = useState(false);
     // const [otpToken, setOtpToken] = useState<string | null>(null);
     const [tenantApiKey, setTenantApiKey] = useState<string | null>(null);
@@ -557,6 +560,7 @@ export default function Agents() {
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | 'specs' | 'apps' | 'vault' | 'policy' | 'speech' | 'vuln' | null>(null);
+    const [isInteractive, setIsInteractive] = useState(false);
     const [events, setEvents] = useState<AgentEvent[]>([]);
     const [showGraphs, setShowGraphs] = useState(false);
     const [logFilter, setLogFilter] = useState(''); // [NEW] Filter State: Text
@@ -644,19 +648,32 @@ export default function Agents() {
     const [isScreenMaximized, setIsScreenMaximized] = useState(false);
     const [liveScreen, setLiveScreen] = useState<string | null>(null);
     const [isStreaming, setIsStreaming] = useState(false);
+    const isStreamingRef = useRef(false);
+    useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+    
+    const [streamQuality, setStreamQuality] = useState('moderate');
     const [socketStatus, setSocketStatus] = useState<string>('Disconnected');
-    const socketRef = useRef<any>(null); // socketio types are complex, any is okayish here but let's keep it for now
+    const socketRef = useRef<any>(null);
 
     // Recording Logic
     const [isRecording, setIsRecording] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
     const chunksRef = useRef<Blob[]>([]);
 
     const handleStartRecording = () => {
-        if (!remoteStreamRef.current) return;
+        const canvas = hiddenCanvasRef.current;
+        if (!canvas) {
+            toast.error("Stream not initialized for recording.");
+            return;
+        }
 
         try {
-            const recorder = new MediaRecorder(remoteStreamRef.current);
+            // Capture stream from canvas at 10-15 FPS
+            const stream = canvas.captureStream(12);
+            const recorder = new MediaRecorder(stream, {
+                mimeType: 'video/webm;codecs=vp9'
+            });
             chunksRef.current = [];
 
             recorder.ondataavailable = (e) => {
@@ -670,7 +687,7 @@ export default function Agents() {
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `recording-${selectedAgentId}-${new Date().toISOString()}.webm`;
+                a.download = `monitorix-recording-${selectedAgentId}-${new Date().getTime()}.webm`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -678,12 +695,13 @@ export default function Agents() {
                 chunksRef.current = [];
             };
 
-            recorder.start();
+            recorder.start(1000); // 1 second chunks
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
+            toast.success("Recording started locally.");
         } catch (err) {
             console.error("Failed to start recording:", err);
-            toast.error("Failed to start recording.");
+            toast.error("Browser recording failed.");
         }
     };
 
@@ -733,11 +751,46 @@ export default function Agents() {
 
         socket.on("disconnect", () => setSocketStatus('Disconnected'));
 
-        socket.on("ReceiveScreen", (agentId: string, base64: string) => {
-            if (selectedAgentId && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
-                setLiveScreen(base64);
+        const handleFrame = (agentId: any, base64?: any) => {
+            let actualAgentId = agentId;
+            let actualBase64 = base64;
+            
+            // If data came as a single object {agentId, image}
+            if (agentId && typeof agentId === 'object' && agentId.agentId) {
+                actualAgentId = agentId.agentId;
+                actualBase64 = agentId.image || agentId.base64;
             }
-        });
+
+            if (isStreamingRef.current && selectedAgentId && actualAgentId && (typeof actualAgentId === 'string') && (actualAgentId.toLowerCase() === selectedAgentId.toLowerCase()) && actualBase64) {
+                const prefix = actualBase64.startsWith('data:image') ? '' : 'data:image/jpeg;base64,';
+                const fullBase64 = prefix + actualBase64;
+                
+                // Update Image for Display
+                setLiveScreen(fullBase64);
+
+                // Draw to Canvas for Recording
+                const canvas = hiddenCanvasRef.current;
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        const img = new Image();
+                        img.onload = () => {
+                            if (canvas.width !== img.width || canvas.height !== img.height) {
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                            }
+                            ctx.drawImage(img, 0, 0);
+                        };
+                        img.src = fullBase64;
+                    }
+                }
+            } else if (isStreamingRef.current) {
+                console.log(`[DEBUG] Frame ignored. Agent mismatch or invalid payload: ${actualAgentId} vs ${selectedAgentId}`);
+            }
+        };
+
+        socket.on("ReceiveScreen", handleFrame);
+        socket.on("stream_frame", handleFrame);
 
         socket.on("ReceiveEvent", (data: any) => {
             const agentId = data.agentId || data.AgentId;
@@ -745,7 +798,7 @@ export default function Agents() {
             const details = data.details || data.Details || '';
             const timestamp = normalizeTimestamp(data.timestamp || data.Timestamp);
 
-            if (agentId && selectedAgentId && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
+            if (agentId && selectedAgentId && typeof agentId === 'string' && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
                 setEvents(prev => [{ type: title, details, timestamp }, ...prev]);
             }
         });
@@ -903,15 +956,32 @@ export default function Agents() {
 
     const handleStartStream = () => {
         if (socketRef.current && selectedAgentId) {
-            socketRef.current.emit('start_stream', { agentId: selectedAgentId });
+            const qualityMap: any = {
+                fluid: { width: 800, quality: 50 },
+                moderate: { width: 1280, quality: 80 },
+                hd: { width: 1920, quality: 95 }
+            };
+            const settings = qualityMap[streamQuality] || qualityMap.moderate;
+            console.log("[Stream] Starting stream with settings:", { agentId: selectedAgentId, ...settings });
+            socketRef.current.emit('start_stream', { 
+                agentId: selectedAgentId,
+                ...settings
+            });
             setIsStreaming(true);
         }
     };
+
+    useEffect(() => {
+        if (isStreaming && socketRef.current) {
+            handleStartStream();
+        }
+    }, [streamQuality]);
 
     const handleStopStream = () => {
         if (socketRef.current && selectedAgentId) {
             socketRef.current.emit('stop_stream', { agentId: selectedAgentId });
             setIsStreaming(false);
+            setLiveScreen(null); // Clear last frame
         }
     };
 
@@ -1087,11 +1157,11 @@ export default function Agents() {
 
 
             {showDeployModal && createPortal(
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
+                <div className="fixed inset-0 bg-gray-500/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
                     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden transition-colors">
                         <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <Server className="w-5 h-5 text-blue-600 dark:text-blue-500" /> Deploy Agent v1.8.23
+                                <Server className="w-5 h-5 text-blue-600 dark:text-blue-500" /> Deploy Agent {latestVersion}
                             </h2>
                             <button onClick={() => setShowDeployModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors"><X className="w-6 h-6" /></button>
                         </div>
@@ -1121,10 +1191,10 @@ export default function Agents() {
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">PowerShell (Run as Administrator)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`powershell -Ep Bypass -C "irm '${API_URL}/downloads/script?key=${tenantApiKey || 'YOUR_API_KEY'}' | iex"`}
+                                            {`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=windows' | iex"`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`powershell -Ep Bypass -C "irm '${API_URL}/downloads/script?key=${tenantApiKey}' | iex"`).then(() => toast.success('Copied!'))}
+                                            onClick={() => navigator.clipboard.writeText(`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=${tenantApiKey}&os_type=windows' | iex"`).then(() => toast.success('Copied!'))}
                                             className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
                                             <FileText size={14} />
                                         </button>
@@ -1134,10 +1204,10 @@ export default function Agents() {
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as root / sudo)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=${deployOS}" | sudo bash`}
+                                            {`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=${deployOS}" | sudo bash`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | sudo bash`).then(() => toast.success('Copied!'))}
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | sudo bash`).then(() => toast.success('Copied!'))}
                                             className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
                                             <FileText size={14} />
                                         </button>
@@ -1147,10 +1217,10 @@ export default function Agents() {
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as Administrator)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=mac" | sudo bash`}
+                                            {`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=mac" | sudo bash`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${API_URL}/downloads/public/agent?key=${tenantApiKey}&os_type=mac" | sudo bash`).then(() => toast.success('Copied!'))}
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey}&os_type=mac" | sudo bash`).then(() => toast.success('Copied!'))}
                                             className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
                                             <FileText size={14} />
                                         </button>
@@ -1162,25 +1232,17 @@ export default function Agents() {
                             <div className="flex items-start gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg p-3">
                                 <span className="text-blue-500 mt-0.5">ℹ️</span>
                                 <div className="text-xs text-blue-700 dark:text-blue-300">
-                                    {deployOS === 'windows' && <span>The command downloads and installs the agent as a <strong>Windows Service</strong> with auto-restart. Requires an elevated PowerShell prompt (Run as Administrator).</span>}
+                                    {deployOS === 'windows' && (
+                                        <span>
+                                            The command downloads and installs the agent as a Windows Service with auto-restart. Requires an elevated PowerShell prompt (Run as Administrator).
+                                        </span>
+                                    )}
                                     {(deployOS === 'linux-x64' || deployOS === 'linux-arm64') && <span>The command downloads and installs the agent as a <strong>systemd service</strong> that starts automatically on boot. Requires root or sudo access.</span>}
                                     {deployOS === 'mac' && <span>The command downloads and installs the agent as a <strong>LaunchDaemon</strong> that starts automatically at login. Requires sudo access.</span>}
                                 </div>
                             </div>
 
-                            {/* Download EXE button for Windows */}
-                            {deployOS === 'windows' && (
-                                <div className="flex items-center gap-3">
-                                    <a
-                                        href={`${API_URL}/downloads/exe/windows?key=${tenantApiKey}`}
-                                        download="monitorixagent.exe"
-                                        className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-                                    >
-                                        <Download size={15} /> Download .exe (73 MB)
-                                    </a>
-                                    <span className="text-xs text-gray-400">for manual SCCM/GPO deployment</span>
-                                </div>
-                            )}
+                            {/* Download EXE button for Windows - removed upon request */}
                         </div>
                     </div>
                 </div>,
@@ -1274,7 +1336,7 @@ export default function Agents() {
                                     <td className="p-4">
                                         <div className="flex gap-2 items-center">
                                             <button onClick={() => handleMonitor(agent.agentId)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-colors" title="Monitor"> <Monitor size={16} /> </button>
-                                            <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="p-2 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors" title="Remote Desktop"> <MousePointer size={16} /> </button>
+                                            <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('monitor'); setIsInteractive(true); }} className="p-2 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors" title="Remote Desktop"> <MousePointer size={16} /> </button>
                                             <button onClick={() => handleViewLogs(agent.agentId)} className="p-2 bg-gray-500/10 text-gray-500 rounded-lg hover:bg-gray-500/20 transition-colors" title="Logs"> <List size={16} /> </button>
                                             <button onClick={() => handleDelete(agent.id || agent.agentId)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Delete"> <Trash2 size={16} /> </button>
                                         </div>
@@ -1325,7 +1387,7 @@ export default function Agents() {
                                 <div className="flex items-center justify-between">
                                     <div className="flex gap-2">
                                         <button onClick={() => handleMonitor(agent.agentId)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-blue-500/20">Monitor</button>
-                                        <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('remote'); }} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-purple-500/20">Remote</button>
+                                        <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('monitor'); setIsInteractive(true); }} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-purple-500/20">Remote</button>
                                         <button onClick={() => handleViewLogs(agent.agentId)} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold">Logs</button>
                                     </div>
                                     <button onClick={() => handleDelete(agent.id || agent.agentId)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 size={16} /></button>
@@ -1337,9 +1399,9 @@ export default function Agents() {
             </div>
 
             {selectedAgentId && createPortal(
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 z-50">
-                    <div className="bg-gray-900 sm:border border-gray-800 sm:rounded-3xl shadow-2xl w-full sm:max-w-[95vw] h-full sm:h-[95vh] flex flex-col overflow-hidden">
-                        <div className="p-3 md:p-6 border-b border-gray-800 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-gray-900/80 backdrop-blur-md sticky top-0 z-20">
+                <div className="fixed inset-0 bg-gray-500/50 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-0 sm:p-4 z-50">
+                    <div className="bg-white dark:bg-gray-900 sm:border border-gray-200 dark:border-gray-800 sm:rounded-3xl shadow-2xl w-full sm:max-w-[95vw] h-full sm:h-[95vh] flex flex-col overflow-hidden">
+                        <div className="p-3 md:p-6 border-b border-gray-200 dark:border-gray-800 flex flex-col md:flex-row md:justify-between md:items-center gap-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md sticky top-0 z-20">
                             <div className="flex items-center gap-3">
                                 <div className="p-2 bg-blue-600/20 rounded-lg">
                                     {viewMode === 'logs' && <List className="w-5 h-5 text-blue-400" />}
@@ -1350,11 +1412,11 @@ export default function Agents() {
                                     {viewMode === 'vuln' && <ShieldCheck className="w-5 h-5 text-blue-400" />}
                                 </div>
                                 <div>
-                                    <h2 className="text-sm md:text-xl font-bold text-white flex items-center gap-2">
+                                    <h2 className="text-sm md:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                         {selectedAgentId}
-                                        <span className="text-[10px] md:text-xs font-normal text-gray-500 uppercase tracking-widest px-2 py-0.5 bg-gray-800 rounded">{viewMode}</span>
+                                        <span className="text-[10px] md:text-xs font-normal text-gray-500 dark:text-gray-400 uppercase tracking-widest px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">{viewMode}</span>
                                     </h2>
-                                    <p className="text-[10px] md:text-xs text-gray-400 font-mono">
+                                    <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-mono">
                                         {agents.find(a => a.agentId === selectedAgentId)?.hostname || 'Unknown'} • {agents.find(a => a.agentId === selectedAgentId)?.status}
                                     </p>
                                 </div>
@@ -1395,7 +1457,7 @@ export default function Agents() {
                                 <button onClick={closeModal} className="p-1.5 md:p-2 hover:bg-gray-700 rounded-full text-gray-400 hover:text-white transition-colors"> <X className="w-5 h-5 md:w-6 md:h-6" /> </button>
                             </div>
                         </div>
-                        <div className="bg-gray-800/50 border-b border-gray-800 p-2 overflow-x-auto scrollbar-none">
+                        <div className="bg-gray-100/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 p-2 overflow-x-auto scrollbar-none">
                             <div className="flex gap-2 min-w-max">
                                 {TAB_TABS.map(t => {
                                     const locked = t.feat ? isFeatureLocked(t.feat) : false;
@@ -1414,7 +1476,7 @@ export default function Agents() {
                             </div>
                         </div>
                         {viewMode === 'logs' && (
-                            <div className="flex-1 overflow-hidden p-3 md:p-6 bg-gray-900/50 flex flex-col">
+                            <div className="flex-1 overflow-hidden p-3 md:p-6 bg-white dark:bg-gray-900/50 flex flex-col">
                                     <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
                                         <div className="flex flex-wrap items-center gap-2 md:gap-3">
                                             {/* [NEW] Type Dropdown */}
@@ -1422,7 +1484,7 @@ export default function Agents() {
                                                 <select
                                                     value={eventTypeFilter}
                                                     onChange={(e) => setEventTypeFilter(e.target.value)}
-                                                    className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-[10px] md:text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none appearance-none pr-6 cursor-pointer"
+                                                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-[10px] md:text-xs text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none appearance-none pr-6 cursor-pointer"
                                                 >
                                                     {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
                                                 </select>
@@ -1435,7 +1497,7 @@ export default function Agents() {
                                                 <input
                                                     type="text"
                                                     placeholder="Filter..."
-                                                    className="w-full bg-gray-800 border border-gray-700 rounded pl-7 pr-2 py-1.5 text-[10px] md:text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none md:w-48"
+                                                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded pl-7 pr-2 py-1.5 text-[10px] md:text-xs text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none md:w-48"
                                                     value={logFilter}
                                                     onChange={(e) => setLogFilter(e.target.value)}
                                                 />
@@ -1501,13 +1563,13 @@ export default function Agents() {
                                             </div>
                                         </div>
                                     )}
-                                    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden flex-1 flex flex-col">
+                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex flex-col">
                                         <div className="overflow-y-auto flex-1">
                                             <table className="w-full text-left text-sm">
-                                                <thead className="bg-gray-900 text-gray-400 uppercase font-bold text-xs sticky top-0">
+                                                <thead className="bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs sticky top-0">
                                                     <tr><th className="p-4 w-48">Timestamp</th><th className="p-4 w-48">Event Type</th><th className="p-4">Details</th></tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-gray-700 text-gray-300 font-mono">
+                                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300 font-mono text-[11px]">
                                                     {filteredEvents.length === 0 ? <tr><td colSpan={3} className="p-8 text-center text-gray-500 italic">No logs recorded (or no match).</td></tr> : filteredEvents.map((evt, i) => (
                                                         <tr key={i} className="hover:bg-gray-700/30">
                                                             <td className="p-4 text-gray-500">{new Date(evt.timestamp).toLocaleString()}</td>
@@ -1518,7 +1580,7 @@ export default function Agents() {
                                                 </tbody>
                                              </table>
                                             {hasMoreLogs && (
-                                                <div className="p-4 flex justify-center border-t border-gray-700 bg-gray-900/50">
+                                                <div className="p-4 flex justify-center border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                                                     <button
                                                         onClick={loadMoreLogs}
                                                         className="px-6 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
@@ -1535,10 +1597,10 @@ export default function Agents() {
                             {viewMode === 'monitor' && (
                                 <div className={`flex-1 ${isScreenMaximized ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-3'} gap-0 overflow-hidden min-h-0`}>
                                     {!isScreenMaximized && (
-                                        <div className="flex flex-col border-r border-gray-800 bg-gray-900/50 col-span-1 overflow-hidden min-h-0">
-                                            <div className="p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2"> <List className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-300 uppercase">Recent Activity</span> </div>
+                                        <div className="flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 col-span-1 overflow-hidden min-h-0">
+                                            <div className="p-3 bg-gray-100 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2"> <List className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">Recent Activity</span> </div>
                                             <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
-                                                <div className="mb-4 bg-black/40 p-2 rounded border border-gray-700 h-32">
+                                                <div className="mb-4 bg-gray-100 dark:bg-black/40 p-2 rounded border border-gray-200 dark:border-gray-700 h-32">
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
                                                             <YAxis hide domain={[0, 100]} />
@@ -1547,15 +1609,15 @@ export default function Agents() {
                                                     </ResponsiveContainer>
                                                 </div>
                                                 {events.map((evt, i) => (
-                                                    <div key={i} className="p-3 bg-gray-800 rounded border border-gray-700/50 hover:border-gray-600">
+                                                    <div key={i} className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700/50 hover:border-gray-400 dark:hover:border-gray-600">
                                                         <div className="flex justify-between text-xs text-gray-500 mb-1"> <span>{new Date(normalizeTimestamp(evt.timestamp)).toLocaleTimeString()}</span> <span className="font-bold text-blue-500">{evt.type}</span> </div>
-                                                        <p className="text-gray-300 break-all line-clamp-2" title={evt.details}>{evt.details}</p>
+                                                        <p className="text-gray-700 dark:text-gray-300 break-all line-clamp-2" title={evt.details}>{evt.details}</p>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
                                     )}
-                                    <div ref={monitorContainerRef} className={`flex flex-col bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0 relative`}>
+                                    <div ref={monitorContainerRef} className={`flex flex-col bg-gray-50 dark:bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0 relative`}>
                                         {isFeatureLocked('live_stream') && (
                                             <div className="absolute inset-0 z-[60] bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
                                                 <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
@@ -1573,42 +1635,73 @@ export default function Agents() {
                                                 </button>
                                             </div>
                                         )}
-                                        <div className={`p-3 bg-gray-800/30 border-b border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
-                                            <Image className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-300 uppercase">Live Screen Feed</span>
+                                        <div className={`p-3 bg-gray-100 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-white/50 dark:bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className={`w-2 h-2 rounded-full ${isInteractive ? 'bg-purple-500 animate-pulse' : 'bg-blue-500'}`}></div>
+                                                <span className="text-[10px] md:text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest">{isInteractive ? 'Interactive Control' : 'Passive Monitoring'}</span>
+                                            </div>
                                             <div className="ml-auto flex items-center gap-3">
-                                                {isStreaming ? (
-                                                    <button onClick={handleStopStream} className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Stop Stream </button>
-                                                ) : (
-                                                    <button onClick={handleStartStream} className="px-3 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-500 border border-green-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <Server className="w-3 h-3" /> Start Stream </button>
-                                                )}
-                                                {isStreaming && (
+                                                <button 
+                                                    onClick={() => setIsInteractive(!isInteractive)}
+                                                    className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all ${isInteractive ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                                                >
+                                                    <MousePointer className="w-3 h-3" /> {isInteractive ? 'Control ON' : 'Remote Control'}
+                                                </button>
+
+                                                <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        value={streamQuality}
+                                                        onChange={(e) => setStreamQuality(e.target.value)}
+                                                        className="px-2 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 outline-none"
+                                                    >
+                                                        <option value="fluid">Fluid (Low)</option>
+                                                        <option value="moderate">Moderate</option>
+                                                        <option value="hd">HD (High)</option>
+                                                    </select>
+
+                                                    {isStreaming ? (
+                                                        <button onClick={handleStopStream} className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Stop Stream </button>
+                                                    ) : (
+                                                        <button onClick={handleStartStream} className="px-3 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-500 border border-green-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <Server className="w-3 h-3" /> Start Stream </button>
+                                                    )}
+                                                </div>
+                                                {isStreaming && !isInteractive && (
                                                     <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`px-3 py-1 border rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-700/50 text-gray-300 border-gray-600'}`}>
                                                         {isRecording ? <StopCircle className="w-3 h-3 animate-pulse" /> : <Video className="w-3 h-3" />} {isRecording ? 'Rec ON' : 'Record'}
                                                     </button>
                                                 )}
-                                                <button
-                                                    onClick={() => setViewMode('remote')}
-                                                    className="px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 border border-purple-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"
-                                                    title="Switch to Interactive Remote Desktop"
-                                                >
-                                                    <MousePointer className="w-3 h-3" /> Remote Control
-                                                </button>
                                                 <button onClick={handleToggleFullscreen} className="text-gray-400 hover:text-white transition-colors"> {isScreenMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} </button>
                                             </div>
                                         </div>
-                                        <div className="flex-1 relative overflow-hidden bg-black min-h-0">
-                                            {liveScreen ? (
-                                                <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain z-10" autoPlay playsInline muted />
+                                        <div className="flex-1 relative overflow-hidden bg-gray-50 dark:bg-black min-h-0">
+                                            {/* Hidden Canvas for Recording JPEG Stream */}
+                                            <canvas ref={hiddenCanvasRef} className="hidden" />
+                                            {isInteractive ? (
+                                                <RemoteDesktop agentId={selectedAgentId!} token={token!} />
                                             ) : (
-                                                <div className="text-center text-gray-600 bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-700 h-full flex flex-col justify-center items-center">
-                                                    <div className="w-12 h-12 border-2 border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                                                    <h3 className="text-white font-bold mb-2">Waiting for video stream...</h3>
-                                                    <div className="text-xs font-mono text-left inline-block bg-black/50 p-3 rounded border border-gray-800 space-y-1">
-                                                        <p className="text-gray-400">Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
-                                                        <p className="text-gray-400">Socket: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
-                                                        <p className="text-gray-400">Streaming: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
+                                                liveScreen ? (
+                                                    liveScreen.length > 500 ? (
+                                                        <img 
+                                                            src={liveScreen.startsWith('data:image') ? liveScreen : `data:image/jpeg;base64,${liveScreen}`} 
+                                                            className="absolute inset-0 w-full h-full object-contain z-10"
+                                                            alt="Live Stream"
+                                                        />
+                                                    ) : (
+                                                        <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain z-10" autoPlay playsInline muted />
+                                                    )
+                                                ) : (
+                                                    <div className="text-center text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 h-full flex flex-col justify-center items-center">
+                                                        <div className="w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+                                                        <h3 className="text-gray-900 dark:text-white font-bold mb-2">Waiting for video stream...</h3>
+                                                        <div className="text-xs font-mono text-left inline-block bg-white dark:bg-black/50 p-3 rounded border border-gray-200 dark:border-gray-800 space-y-1">
+                                                            <p className="text-gray-400">Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
+                                                            <p className="text-gray-400">Socket: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
+                                                            <p className="text-gray-400">Streaming: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )
                                             )}
                                         </div>
                                     </div>
@@ -1627,7 +1720,7 @@ export default function Agents() {
                                         agentId={selectedAgentId}
                                         apiUrl={API_URL}
                                         token={token}
-                                        isEnabled={agents.find(a => a.agentId === selectedAgentId)?.activityMonitorEnabled}
+                                        isEnabled={agents.find(a => a.agentId === selectedAgentId)?.activityMonitorEnabled ?? true}
                                         onEnable={async () => toggleAgentSetting(selectedAgentId!, 'ActivityMonitorEnabled', true)}
                                         planLevel={planLevel}
                                         requiredTier={FEATURE_TIERS['activity']}
@@ -1635,33 +1728,10 @@ export default function Agents() {
                                 </div>
                             )}
 
-                            {viewMode === 'remote' && (
-                                <div className="flex-1 overflow-hidden p-6 bg-gray-900/50 font-sans relative">
-                                    {isFeatureLocked('remote_shell') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
-                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
-                                                <Lock className="w-12 h-12 text-purple-500" />
-                                            </div>
-                                            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
-                                            <p className="text-gray-400 max-w-xs mb-8 text-sm">
-                                                Remote Desktop and Shell access are exclusive to the <b>Enterprise Plan</b>.
-                                            </p>
-                                            <button
-                                                onClick={() => setShowCapabilities(true)}
-                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
-                                            >
-                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
-                                            </button>
-                                        </div>
-                                    )}
-                                    <RemoteDesktop agentId={selectedAgentId!} token={token!} />
-                                </div>
-                            )}
-
                             {viewMode === 'mail' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans relative">
+                                <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
                                     {isFeatureLocked('mail') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
                                             <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
                                                 <Lock className="w-12 h-12 text-purple-500" />
                                             </div>
@@ -1682,9 +1752,9 @@ export default function Agents() {
                             )}
 
                             {viewMode === 'speech' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans relative">
+                                <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
                                     {isFeatureLocked('speech') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
                                             <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
                                                 <Lock className="w-12 h-12 text-purple-500" />
                                             </div>
@@ -1707,9 +1777,9 @@ export default function Agents() {
 
 
                             {viewMode === 'vuln' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans relative">
+                                <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
                                     {isFeatureLocked('vuln') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
                                             <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
                                                 <Lock className="w-12 h-12 text-purple-500" />
                                             </div>
@@ -1744,7 +1814,7 @@ export default function Agents() {
                             {viewMode === 'vault' && (
                                 <div className="flex-1 overflow-hidden relative">
                                     {isFeatureLocked('shadow') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
                                             <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
                                                 <Lock className="w-12 h-12 text-purple-500" />
                                             </div>
@@ -1809,8 +1879,8 @@ export default function Agents() {
 
                             {viewMode === 'specs' && (
                                 <div className="flex-1 overflow-y-auto p-8 bg-gray-900/50 font-sans">
-                                    <div className="bg-gray-800 rounded-xl border border-gray-700 p-6 max-w-4xl mx-auto shadow-lg">
-                                        <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2 border-b border-gray-700 pb-4">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-4xl mx-auto shadow-lg">
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-4">
                                             <Cpu className="w-5 h-5 text-blue-500" /> System Specifications
                                         </h3>
                                         {(() => {
@@ -1832,7 +1902,7 @@ export default function Agents() {
                                                     <div className="space-y-6">
                                                         <div>
                                                             <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Processor</label>
-                                                            <div className="text-white text-lg font-medium">{hw.CpuModel || 'Unknown'}</div>
+                                                            <div className="text-gray-900 dark:text-white text-lg font-medium">{hw.CpuModel || 'Unknown'}</div>
                                                             <div className="text-sm text-gray-400 mt-1 flex gap-4">
                                                                 <span>Cores: <b className="text-gray-300">{hw.CpuCores}</b></span>
                                                                 <span>Threads: <b className="text-gray-300">{hw.CpuThreads}</b></span>
@@ -1844,7 +1914,7 @@ export default function Agents() {
                                                                 <span className="text-2xl font-bold text-green-400">{hw.RamTotalGB} GB</span>
                                                                 <span className="text-sm text-gray-500 mb-1">Total</span>
                                                             </div>
-                                                            <div className="w-full bg-gray-700 h-2 rounded-full mt-2 overflow-hidden">
+                                                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-2 rounded-full mt-2 overflow-hidden">
                                                                 <div className="bg-green-500 h-full" style={{ width: `${hw.RamPercent}%` }}></div>
                                                             </div>
                                                             <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -1868,20 +1938,20 @@ export default function Agents() {
                                                                 </div>
                                                                 <div className="space-y-2 text-sm text-gray-300">
                                                                     <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Used: {(hw.DiskTotalGB - hw.DiskFreeGB).toFixed(2)} GB</div>
-                                                                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-600"></div> Free: {hw.DiskFreeGB} GB</div>
+                                                                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div> Free: {hw.DiskFreeGB} GB</div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                         <div>
                                                             <label className="text-xs font-bold text-gray-500 uppercase block mb-1">System</label>
                                                             <div className="grid grid-cols-2 gap-4">
-                                                                <div className="bg-gray-700/50 p-3 rounded text-sm">
-                                                                    <span className="text-gray-400 block text-xs">Hostname</span>
-                                                                    <span className="font-mono text-white">{currentAgent?.hostname}</span>
+                                                                <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded text-sm border border-gray-200 dark:border-transparent">
+                                                                    <span className="text-gray-500 dark:text-gray-400 block text-xs">Hostname</span>
+                                                                    <span className="font-mono text-gray-900 dark:text-white font-bold">{currentAgent?.hostname}</span>
                                                                 </div>
-                                                                <div className="bg-gray-700/50 p-3 rounded text-sm">
-                                                                    <span className="text-gray-400 block text-xs">Agent ID</span>
-                                                                    <span className="font-mono text-white truncate" title={currentAgent?.agentId}>{currentAgent?.agentId}</span>
+                                                                <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded text-sm border border-gray-200 dark:border-transparent">
+                                                                    <span className="text-gray-500 dark:text-gray-400 block text-xs">Agent ID</span>
+                                                                    <span className="font-mono text-gray-900 dark:text-white truncate font-bold" title={currentAgent?.agentId}>{currentAgent?.agentId}</span>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1894,13 +1964,13 @@ export default function Agents() {
                                                                 return (
                                                                     <div className="mt-6 border-t border-gray-700 pt-6">
                                                                         <label className="text-xs font-bold text-gray-500 uppercase block mb-3">Power & Battery Analysis</label>
-                                                                        <div className="bg-gray-700/30 p-4 rounded-lg flex items-center justify-between">
+                                                                        <div className="bg-gray-100 dark:bg-gray-700/30 p-4 rounded-lg flex items-center justify-between border border-gray-200 dark:border-transparent">
                                                                             <div className="flex items-center gap-4">
                                                                                 <div className={`p-3 rounded-full ${pwr.power_plugged ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-500'}`}>
                                                                                     {pwr.power_plugged ? <Zap size={24} /> : <Monitor size={24} />}
                                                                                 </div>
                                                                                 <div>
-                                                                                    <div className="text-white font-bold text-xl">{pwr.battery_percent}%</div>
+                                                                                    <div className="text-gray-900 dark:text-white font-bold text-xl">{pwr.battery_percent}%</div>
                                                                                     <div className="text-xs text-gray-400 uppercase tracking-tighter">
                                                                                         {pwr.power_plugged ? 'AC Power Connected' : 'Running on Battery'}
                                                                                     </div>
@@ -1925,8 +1995,8 @@ export default function Agents() {
                                 </div>
                             )}
 
-                            <div className="p-4 border-t border-gray-800 bg-gray-800/50 flex justify-end">
-                                <button onClick={closeModal} className="px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors">Close Viewer</button>
+                            <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end">
+                                <button onClick={closeModal} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-colors">Close Viewer</button>
                             </div>
                         </div>
                     </div>,

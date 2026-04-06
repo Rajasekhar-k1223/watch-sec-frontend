@@ -48,7 +48,7 @@ export default function WorldMap({ agents }: WorldMapProps) {
 
     return (
         <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-lg h-full min-h-[400px] flex flex-col relative z-0 transition-colors">
-            <div className="absolute top-6 left-6 z-[400] bg-white/90 dark:bg-gray-900/90 p-2 rounded border border-gray-200 dark:border-gray-700 pointer-events-none shadow-sm">
+            <div className="absolute top-6 left-6 z-[400] bg-white/90 dark:bg-gray-900/90 p-2 rounded border border-gray-200 dark:border-gray-700 pointer-events-none shadow-sm transition-colors">
                 <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
                     Global Operations
                 </h3>

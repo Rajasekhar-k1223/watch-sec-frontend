@@ -18,6 +18,8 @@ export default function RemoteDesktop({ agentId, token }: Props) {
 
     // Recording State
     const [isRecording, setIsRecording] = useState(false);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const chunksRef = useRef<Blob[]>([]);
 
     // Privacy State
     const [isPrivacyMode, setIsPrivacyMode] = useState(false);
@@ -43,8 +45,8 @@ export default function RemoteDesktop({ agentId, token }: Props) {
             setIsConnected(true);
             // Join Agent Room to receive stream
             socket.emit('join', { room: agentId });
-            // Start the stream explicitly (On-Demand)
-            socket.emit('start_stream', { agentId });
+            // Emit start_stream so the agent begins streaming
+            socket.emit('start_stream', { agentId: agentId, width: 1920, quality: 95 });
         });
 
         socket.on('disconnect', () => {
@@ -121,16 +123,54 @@ export default function RemoteDesktop({ agentId, token }: Props) {
 
     const handleToggleRecording = () => {
         if (isRecording) {
-            // Stop Agent Recording
+            // Stop Browser Recording
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+            
+            // Stop Agent-side HQ Recording
             sendInput('stop_recording');
             setIsRecording(false);
-            toast("Recording stopped. Agent is uploading the video to the backend.", {
-                icon: '🎬',
-            });
+            toast.success("Recording saved locally.");
         } else {
-            // Start Agent Recording
-            sendInput('start_recording');
-            setIsRecording(true);
+            const canvas = canvasRef.current;
+            if (!canvas) {
+                toast.error("No canvas detected.");
+                return;
+            }
+
+            try {
+                const stream = canvas.captureStream(15);
+                const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                chunksRef.current = [];
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) chunksRef.current.push(e.data);
+                };
+
+                recorder.onstop = () => {
+                    const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `monitorix-remote-${agentId}-${Date.now()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                };
+
+                recorder.start(1000);
+                mediaRecorderRef.current = recorder;
+
+                // Start AgentHQ Recording
+                sendInput('start_recording');
+                setIsRecording(true);
+                toast.success("Recording remote session...");
+            } catch (err) {
+                console.error("Local recording failed", err);
+                toast.error("Browser recording not supported.");
+            }
         }
     };
 
@@ -186,10 +226,10 @@ export default function RemoteDesktop({ agentId, token }: Props) {
     };
 
     return (
-        <div ref={containerRef} className="flex flex-col h-full bg-black rounded-lg overflow-hidden border border-gray-800 outline-none" tabIndex={0} onKeyDown={handleKeyDown}>
+        <div ref={containerRef} className="flex flex-col h-full bg-white dark:bg-black rounded-lg overflow-hidden border border-gray-200 dark:border-gray-800 outline-none transition-colors" tabIndex={0} onKeyDown={handleKeyDown}>
             {/* Toolbar */}
             {/* Toolbar */}
-            <div className="bg-gray-900 border-b border-gray-800 p-2 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 text-xs shrink-0 z-10">
+            <div className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-2 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 text-xs shrink-0 z-10 transition-colors">
                 <div className="flex items-center justify-between sm:justify-start gap-4">
                     <span className={`flex items-center gap-1 font-bold ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
                         {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />} {status}
@@ -201,35 +241,35 @@ export default function RemoteDesktop({ agentId, token }: Props) {
                 <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
                     {/* Connect/Disconnect */}
                     {!isConnected ? (
-                        <button onClick={connectSocket} className="bg-green-700 hover:bg-green-600 text-white px-2 py-1.5 rounded border border-green-600 flex items-center gap-1 transition-colors whitespace-nowrap">
+                        <button onClick={connectSocket} className="bg-green-600 hover:bg-green-500 text-white px-2 py-1.5 rounded border border-green-500 flex items-center gap-1 transition-colors whitespace-nowrap shadow-sm">
                             <Play size={12} fill="currentColor" /> <span className="hidden xs:inline">Connect</span>
                         </button>
                     ) : (
-                        <button onClick={disconnectSocket} className="bg-red-900/50 hover:bg-red-900 text-red-300 px-2 py-1.5 rounded border border-red-800 flex items-center gap-1 transition-colors whitespace-nowrap">
+                        <button onClick={disconnectSocket} className="bg-red-50 dark:bg-red-900/50 hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-300 px-2 py-1.5 rounded border border-red-200 dark:border-red-800 flex items-center gap-1 transition-colors whitespace-nowrap">
                             <Square size={12} fill="currentColor" /> <span className="hidden xs:inline">Disconnect</span>
                         </button>
                     )}
 
-                    <div className="w-px h-4 bg-gray-800 mx-0.5" />
+                    <div className="w-px h-4 bg-gray-200 dark:bg-gray-800 mx-0.5" />
 
-                    <button onClick={handleToggleRecording} className={`px-2 py-1.5 rounded border flex items-center gap-1 transition-colors whitespace-nowrap ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}>
+                    <button onClick={handleToggleRecording} className={`px-2 py-1.5 rounded border flex items-center gap-1 transition-colors whitespace-nowrap ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
                         {isRecording ? <StopCircle size={14} className="animate-pulse" /> : <Video size={14} />}
                         <span className="hidden xs:inline">{isRecording ? 'Stop' : 'Record'}</span>
                     </button>
 
-                    <button onClick={handleLock} className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-2 py-1.5 rounded border border-gray-700 flex items-center gap-1 transition-colors" title="Lock Workstation">
+                    <button onClick={handleLock} className="bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1.5 rounded border border-gray-200 dark:border-gray-700 flex items-center gap-1 transition-colors" title="Lock Workstation">
                         <Lock size={12} /> <span className="hidden xs:inline">Lock</span>
                     </button>
 
                     <button
                         onClick={handleTogglePrivacy}
-                        className={`px-2 py-1.5 rounded border flex items-center gap-1 transition-colors whitespace-nowrap ${isPrivacyMode ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'}`}
+                        className={`px-2 py-1.5 rounded border flex items-center gap-1 transition-colors whitespace-nowrap ${isPrivacyMode ? 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/50' : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                         title="Privacy Mode"
                     >
                         {isPrivacyMode ? <EyeOff size={12} /> : <Eye size={12} />} <span className="hidden xs:inline">{isPrivacyMode ? 'Unblock' : 'Block'}</span>
                     </button>
 
-                    <button onClick={handleToggleFullscreen} className="bg-gray-800 hover:bg-gray-700 text-gray-300 p-1.5 rounded border border-gray-700 transition-colors ml-auto" title="Fullscreen">
+                    <button onClick={handleToggleFullscreen} className="bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 p-1.5 rounded border border-gray-200 dark:border-gray-700 transition-colors ml-auto" title="Fullscreen">
                         {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
                 </div>
@@ -246,6 +286,7 @@ export default function RemoteDesktop({ agentId, token }: Props) {
                 <canvas
                     ref={canvasRef}
                     className="max-w-full max-h-full cursor-crosshair shadow-2xl"
+                    style={{ imageRendering: 'crisp-edges' }} 
                     onMouseMove={handleMouseMove}
                     onClick={handleClick}
                     onContextMenu={(e) => { e.preventDefault(); handleClick(e); }}

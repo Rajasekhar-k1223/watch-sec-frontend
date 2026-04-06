@@ -257,8 +257,8 @@ export default function BandwidthSettings() {
 
                     {plan.toLowerCase() !== 'enterprise' && (
                         <div className="absolute inset-0 flex items-center justify-center z-10">
-                            <div className="bg-gray-900/80 backdrop-blur-sm text-white shadow-lg border border-gray-700 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-bold">
-                                <Lock size={12} className="text-orange-400" />
+                            <div className="bg-white/90 dark:bg-gray-900/80 backdrop-blur-sm text-gray-900 dark:text-white shadow-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-bold">
+                                <Lock size={12} className="text-orange-500" />
                                 <span>Enterprise Only</span>
                             </div>
                         </div>

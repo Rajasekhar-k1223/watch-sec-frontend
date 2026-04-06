@@ -211,7 +211,7 @@ export default function ProjectFlowAnimation() {
     }, []);
 
     return (
-        <div className="w-full h-[500px] bg-slate-900/50 rounded-3xl border border-slate-800 relative overflow-hidden backdrop-blur-sm">
+        <div className="w-full h-[500px] bg-white dark:bg-slate-900/50 rounded-3xl border border-gray-200 dark:border-slate-800 relative overflow-hidden backdrop-blur-sm transition-colors">
             <canvas ref={canvasRef} className="absolute inset-0" />
 
             {/* Status Overlay */}

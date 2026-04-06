@@ -63,9 +63,9 @@ function App() {
       <ThemeProvider>
         <Toaster position="top-right" toastOptions={{
           style: {
-            background: '#1f2937',
-            color: '#fff',
-            border: '1px solid #374151'
+            background: '#fff',
+            color: '#1f2937',
+            border: '1px solid #e5e7eb'
           }
         }} />
         <BrowserRouter>

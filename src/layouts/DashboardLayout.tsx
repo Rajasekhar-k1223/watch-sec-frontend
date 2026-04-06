@@ -9,14 +9,14 @@ export default function DashboardLayout() {
     return (
         <div className="flex min-h-screen transition-colors duration-300 font-sans selection:bg-cyan-500/30">
             {/* Scanline Effect Overlay (Global) */}
-            <div className="pointer-events-none fixed inset-0 z-50 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] opacity-20"></div>
+            <div className="pointer-events-none fixed inset-0 z-50 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] opacity-[0.03] dark:opacity-20 animate-scanline"></div>
 
             <Sidebar isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
 
             {/* Mobile Overlay */}
             {isMobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
+                    className="fixed inset-0 bg-black/40 dark:bg-black/60 z-40 md:hidden backdrop-blur-sm"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
@@ -25,7 +25,7 @@ export default function DashboardLayout() {
                 <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
                 <main className="flex-1 p-2 md:p-6 overflow-x-hidden">
                     {/* Main Content Area - "The Screen" */}
-                    <div className="min-h-full rounded-xl md:rounded-2xl glass-panel relative overflow-hidden backdrop-blur-xl border border-white/5 dark:border-gray-800 p-3 md:p-6">
+                    <div className="min-h-full rounded-xl md:rounded-2xl glass-panel relative overflow-hidden backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-3 md:p-6">
                         {/* Decorative Corners - Hidden or smaller on mobile to avoid overlap */}
                         <div className="hidden sm:block absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-cyan-500/50 rounded-tl-xl pointer-events-none"></div>
                         <div className="hidden sm:block absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-cyan-500/50 rounded-tr-xl pointer-events-none"></div>

@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { RefreshCw, Download, BarChart2, Clock, Zap, Monitor, LineChart, Calendar, Search } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -27,6 +27,16 @@ const normalizeTimestamp = (ts: any) => {
     return str;
 };
 
+const formatDateLabel = (ts: any) => {
+    try {
+        const date = new Date(normalizeTimestamp(ts));
+        return date.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch (e) {
+        return 'Unknown';
+    }
+};
+
+
 export default function ActivityLogViewer({
     agentId, apiUrl, token,
     isEnabled = true, onEnable,
@@ -36,7 +46,7 @@ export default function ActivityLogViewer({
     if (planLevel < requiredTier) {
         return (
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-10 flex flex-col items-center justify-center text-center h-full relative overflow-hidden">
-                <div className="absolute inset-0 bg-gray-900/10 dark:bg-black/20 backdrop-blur-[1px]"></div>
+                <div className="absolute inset-0 bg-gray-500/10 dark:bg-black/20 backdrop-blur-[1px]"></div>
                 <div className="relative z-10 flex flex-col items-center">
                     <div className="p-4 bg-amber-100 dark:bg-amber-400/10 rounded-full mb-4 ring-4 ring-amber-500/10">
                         <Zap className="w-12 h-12 text-amber-500" />
@@ -81,25 +91,46 @@ export default function ActivityLogViewer({
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [showInsights, setShowInsights] = useState(true);
-    const [startDate, setStartDate] = useState<string>(() => {
-        const d = new Date();
-        d.setDate(d.getDate() - 1);
-        return d.toISOString().split('T')[0];
-    });
-    const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [summaryMode, setSummaryMode] = useState(false);
+    const [showDetailed, setShowDetailed] = useState(false);
     const [offset, setOffset] = useState(0);
     const [hasMore, setHasMore] = useState(true);
-    const LIMIT = 50;
+    const LIMIT = 500;
+    const [stats, setStats] = useState<any>(null);
+    const [currentRange, setCurrentRange] = useState('24h');
     const { user, logout } = useAuth();
+    const observer = useRef<IntersectionObserver | null>(null);
+    const lastElementRef = useCallback((node: any) => {
+        if (loading) return;
+        if (observer.current) observer.current.disconnect();
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore) {
+                console.log("[ActivityViewer] Infinite scroll triggered at offset:", offset);
+                fetchLogs(offset + LIMIT);
+            }
+        });
+        if (node) observer.current.observe(node);
+    }, [loading, hasMore, offset]);
+
+    const fetchStats = useCallback((range: string = '24h') => {
+        if (!agentId) return;
+        fetch(`${apiUrl}/events/activity/${encodeURIComponent(agentId)}/stats?date_range=${range}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data && typeof data === 'object') setStats(data);
+            })
+            .catch(e => console.error("[ActivityViewer] Stats Error:", e));
+    }, [agentId, apiUrl, token]);
 
     const fetchLogs = useCallback((newOffset: number = 0, reset: boolean = false) => {
         if (!agentId) return;
         setLoading(true);
-        console.log(`[ActivityViewer] Fetching logs for agent: ${agentId}, offset: ${newOffset}`);
         
-        // [FIX] URL Encode AgentId to handle special characters like '$'
         let url = `${apiUrl}/events/activity/${encodeURIComponent(agentId)}`;
         const params = new URLSearchParams();
         params.append('limit', String(LIMIT));
@@ -110,11 +141,12 @@ export default function ActivityLogViewer({
             let end = endDate ? `${endDate}T23:59:59` : '';
             if (start) params.append('start_date', start);
             if (end) params.append('end_date', end);
+        } else {
+            params.append('date_range', currentRange);
         }
         
         url += `?${params.toString()}`;
 
-        console.log(`[ActivityViewer] Fetching: ${url}`);
         fetch(url, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
@@ -123,7 +155,6 @@ export default function ActivityLogViewer({
                 return res.json();
             })
             .then(data => {
-                console.log(`[ActivityViewer] Received ${Array.isArray(data) ? data.length : 'Invalid'} records`);
                 if (Array.isArray(data)) {
                     setLogs(prev => reset ? data : [...prev, ...data]);
                     setHasMore(data.length === LIMIT);
@@ -132,22 +163,25 @@ export default function ActivityLogViewer({
             })
             .catch(e => console.error(e))
             .finally(() => setLoading(false));
-    }, [agentId, logout, apiUrl, token, startDate, endDate]);
+    }, [agentId, logout, apiUrl, token, startDate, endDate, currentRange]);
 
     useEffect(() => {
         setLogs([]);
         setOffset(0);
         fetchLogs(0, true);
-        // Only auto-refresh if no date selected (Live Mode)
         if (!startDate && !endDate) {
-            const interval = setInterval(() => fetchLogs(0, true), 30000);
+            fetchStats(currentRange);
+            const interval = setInterval(() => {
+                fetchLogs(0, true);
+                fetchStats(currentRange);
+            }, 30000);
             return () => clearInterval(interval);
+        } else {
+            // we could fetch stats for custom range if backend supports it, 
+            // for now stats endpoint uses fixed ranges.
+            setStats(null); // Clear paged stats to avoid confusion
         }
-    }, [fetchLogs, startDate, endDate]);
-
-    const loadMore = () => {
-        fetchLogs(offset + LIMIT);
-    };
+    }, [fetchLogs, fetchStats, startDate, endDate, currentRange]);
 
     // Data Processing for Charts
     const { volumeData, topApps, timeMetrics } = useMemo(() => {
@@ -226,6 +260,17 @@ export default function ActivityLogViewer({
     const groupedLogs = useMemo(() => {
         if (!filteredLogs.length) return [];
 
+        if (showDetailed) {
+            return filteredLogs.map(log => ({
+                ...log,
+                ProcessName: log.processName || log.ProcessName || 'Unknown',
+                WindowTitle: log.windowTitle || log.WindowTitle || '',
+                ActivityType: log.activityType || log.ActivityType || 'Other',
+                StartTime: log.startTime || log.timestamp || log.Timestamp,
+                EndTime: log.endTime || log.timestamp || log.Timestamp
+            }));
+        }
+
         if (summaryMode) {
             // mode: Non-contiguous aggregation (Total time per App/Site)
             const summaryMap = new Map<string, any>();
@@ -276,6 +321,10 @@ export default function ActivityLogViewer({
             const proc = log.processName || log.ProcessName || 'Unknown';
             const title = log.windowTitle || log.WindowTitle || '';
             const type = log.activityType || log.ActivityType || 'Other';
+            
+            // Server-side support: use provided startTime/endTime if they exist
+            const logStart = log.startTime || log.Timestamp || log.timestamp;
+            const logEnd = log.endTime || log.Timestamp || log.timestamp;
 
             if (currentGroup &&
                 currentGroup.ProcessName === proc &&
@@ -285,8 +334,16 @@ export default function ActivityLogViewer({
                 // Contiguous Match: Merge
                 currentGroup.DurationSeconds = (currentGroup.DurationSeconds || 0) + (Number(log.durationSeconds || log.DurationSeconds) || 0);
                 currentGroup.IdleSeconds = (currentGroup.IdleSeconds || 0) + (Number(log.idleSeconds || log.IdleSeconds) || 0);
-                // Since logs are newest first, this log's timestamp is EARLIER than currentGroup.StartTime
-                currentGroup.StartTime = log.timestamp || log.Timestamp;
+                
+                // Since logs are newest first, this log's startTime is EARLIER than currentGroup.StartTime
+                // and its endTime might be LATER if it came from a different batch (unlikely but safe)
+                const existingStart = new Date(currentGroup.StartTime).getTime();
+                const newStart = new Date(logStart).getTime();
+                if (newStart < existingStart) currentGroup.StartTime = logStart;
+
+                const existingEnd = new Date(currentGroup.EndTime).getTime();
+                const newEnd = new Date(logEnd).getTime();
+                if (newEnd > existingEnd) currentGroup.EndTime = logEnd;
             } else {
                 // New Session Break
                 if (currentGroup) groups.push(currentGroup);
@@ -297,15 +354,15 @@ export default function ActivityLogViewer({
                     ActivityType: type,
                     DurationSeconds: Number(log.durationSeconds || log.DurationSeconds) || 0,
                     IdleSeconds: Number(log.idleSeconds || log.IdleSeconds) || 0,
-                    EndTime: log.timestamp || log.Timestamp,
-                    StartTime: log.timestamp || log.Timestamp
+                    EndTime: logEnd,
+                    StartTime: logStart
                 };
             }
         });
 
         if (currentGroup) groups.push(currentGroup);
         return groups;
-    }, [filteredLogs, summaryMode]);
+    }, [filteredLogs, summaryMode, showDetailed]);
 
     const APP_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'];
 
@@ -398,16 +455,10 @@ export default function ActivityLogViewer({
         return `${m}m ${s}s`;
     };
 
-    const setQuickFilter = (days: number) => {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(end.getDate() - days);
-
-        // Format to YYYY-MM-DD for the <input type="date">
-        const formatDate = (d: Date) => d.toISOString().split('T')[0];
-
-        setStartDate(formatDate(start));
-        setEndDate(formatDate(end));
+    const setQuickFilter = (range: string) => {
+        setStartDate('');
+        setEndDate('');
+        setCurrentRange(range);
     };
 
     return (
@@ -423,26 +474,32 @@ export default function ActivityLogViewer({
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full md:w-auto">
-                    <div className="flex bg-gray-200 dark:bg-gray-700/50 p-0.5 rounded-lg">
+                    <div className="flex bg-gray-100 dark:bg-gray-700/50 p-0.5 rounded-lg border border-gray-200 dark:border-gray-600">
                         <button
-                            onClick={() => setSummaryMode(false)}
-                            className={`flex-1 px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${!summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                            onClick={() => { setSummaryMode(false); setShowDetailed(false); }}
+                            className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${!summaryMode && !showDetailed ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                         >
                             Timeline
                         </button>
                         <button
-                            onClick={() => setSummaryMode(true)}
-                            className={`flex-1 px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${summaryMode ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                            onClick={() => { setSummaryMode(true); setShowDetailed(false); }}
+                            className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${summaryMode ? 'bg-white dark:bg-gray-600 text-cyan-600 dark:text-cyan-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                         >
                             Summary
+                        </button>
+                        <button
+                            onClick={() => { setShowDetailed(true); setSummaryMode(false); }}
+                            className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${showDetailed ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        >
+                            Detailed
                         </button>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => fetchLogs()}
+                            onClick={() => { setLogs([]); setOffset(0); fetchLogs(0, true); }}
                             disabled={loading}
-                            className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700/50 rounded transition-colors"
+                            className={`p-1.5 rounded transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50`}
                             title="Refresh Logs"
                         >
                             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -463,10 +520,10 @@ export default function ActivityLogViewer({
                     </div>
 
                     <div className="flex flex-col sm:flex-row bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg p-1 gap-1 shadow-inner">
-                        <div className="flex bg-gray-100 dark:bg-gray-800 rounded p-0.5">
-                            <button onClick={() => setQuickFilter(1)} className="flex-1 px-2 py-1 text-[9px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400">24H</button>
-                            <button onClick={() => setQuickFilter(7)} className="flex-1 px-2 py-1 text-[9px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400 border-l border-gray-300 dark:border-gray-700">7D</button>
-                            <button onClick={() => setQuickFilter(30)} className="flex-1 px-2 py-1 text-[9px] font-bold hover:bg-white dark:hover:bg-gray-700 rounded transition-all text-gray-600 dark:text-gray-400 border-l border-gray-300 dark:border-gray-700">30D</button>
+                        <div className="flex bg-gray-50 dark:bg-gray-800 rounded p-0.5">
+                            <button onClick={() => setQuickFilter('24h')} className={`flex-1 px-2 py-1 text-[9px] font-bold rounded transition-all ${currentRange === '24h' && !startDate ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-400'}`}>24H</button>
+                            <button onClick={() => setQuickFilter('7d')} className={`flex-1 px-2 py-1 text-[9px] font-bold rounded transition-all border-l border-gray-200 dark:border-gray-700 ${currentRange === '7d' && !startDate ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-400'}`}>7D</button>
+                            <button onClick={() => setQuickFilter('30d')} className={`flex-1 px-2 py-1 text-[9px] font-bold rounded transition-all border-l border-gray-200 dark:border-gray-700 ${currentRange === '30d' && !startDate ? 'bg-white dark:bg-gray-700 text-blue-500 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-400'}`}>30D</button>
                         </div>
                         <div className="flex items-center gap-1 px-2 py-1 border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-gray-700">
                             <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -499,20 +556,20 @@ export default function ActivityLogViewer({
 
                     {/* 1. Metric Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col shadow-sm">
-                            <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1"><Clock className="w-3 h-3" /> Total Logged</span>
-                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.total)}</span>
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col shadow-sm transition-all group hover:border-blue-500/30">
+                            <span className="text-[10px] text-gray-500 uppercase font-black flex items-center gap-1"><Clock className="w-3 h-3 text-blue-500" /> Total Logged ({startDate ? 'Selected' : currentRange.toUpperCase()})</span>
+                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-black">{formatDuration(stats ? stats.total_duration : timeMetrics.total)}</span>
                         </div>
-                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col relative overflow-hidden shadow-sm">
-                            <div className="absolute top-0 right-0 p-2 opacity-10"><Zap className="w-8 h-8 text-green-500" /></div>
-                            <span className="text-[10px] text-green-600 dark:text-green-500 uppercase font-bold flex items-center gap-1"><Zap className="w-3 h-3" /> Active Work</span>
-                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.active)}</span>
-                            <span className="text-[9px] text-gray-500">{(timeMetrics.active / (timeMetrics.total || 1) * 100).toFixed(1)}% Efficiency</span>
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col relative overflow-hidden shadow-sm transition-all group hover:border-green-500/30">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><Zap className="w-8 h-8 text-green-500" /></div>
+                            <span className="text-[10px] text-green-600 dark:text-green-500 uppercase font-black flex items-center gap-1"><Zap className="w-3 h-3" /> Active Work</span>
+                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-black">{formatDuration(stats ? stats.active_work : timeMetrics.active)}</span>
+                            <span className="text-[9px] text-gray-500 font-bold">{( (stats ? stats.active_work : timeMetrics.active) / ( (stats? stats.total_duration : timeMetrics.total) || 1) * 100).toFixed(1)}% Efficiency</span>
                         </div>
-                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col relative overflow-hidden shadow-sm">
-                            <div className="absolute top-0 right-0 p-2 opacity-10"><Monitor className="w-8 h-8 text-gray-400" /></div>
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold flex items-center gap-1"><Monitor className="w-3 h-3" /> Idle Time</span>
-                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-bold">{formatDuration(timeMetrics.idle)}</span>
+                        <div className="bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 flex flex-col relative overflow-hidden shadow-sm transition-all group hover:border-orange-500/30">
+                            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity"><Monitor className="w-8 h-8 text-orange-500" /></div>
+                            <span className="text-[10px] text-orange-600 dark:text-orange-500 uppercase font-black flex items-center gap-1"><Monitor className="w-3 h-3" /> Idle Time</span>
+                            <span className="text-lg md:text-xl font-mono text-gray-900 dark:text-white font-black">{formatDuration(stats ? stats.total_idle : timeMetrics.idle)}</span>
                         </div>
                     </div>
 
@@ -591,18 +648,43 @@ export default function ActivityLogViewer({
                         <tr><th className="p-4">Time Range</th><th className="p-4">Type</th><th className="p-4">Details</th><th className="p-4">Risk</th><th className="p-4">Duration</th></tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300 font-mono">
-                        {groupedLogs.length === 0 ? (
-                            <tr><td colSpan={5} className="p-8 text-center text-gray-500 italic">No activity matching your search.</td></tr>
+                        {loading && groupedLogs.length === 0 ? (
+                            <tr><td colSpan={5} className="p-12 text-center">
+                                <div className="flex flex-col items-center gap-3">
+                                    <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
+                                    <span className="text-gray-500 font-sans text-sm">Loading activity data...</span>
+                                </div>
+                            </td></tr>
+                        ) : groupedLogs.length === 0 ? (
+                            <tr><td colSpan={5} className="p-10 text-center">
+                                <div className="flex flex-col items-center gap-3">
+                                    <Monitor className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+                                    <div>
+                                        <p className="text-gray-600 dark:text-gray-400 font-semibold font-sans">No activity recorded</p>
+                                        <p className="text-gray-400 dark:text-gray-500 text-xs mt-1 font-sans">
+                                            No data found for the <span className="font-bold text-blue-500">{startDate ? `${startDate} — ${endDate}` : currentRange.toUpperCase()}</span> range.
+                                        </p>
+                                    </div>
+                                    {!startDate && currentRange === '24h' && (
+                                        <button onClick={() => setQuickFilter('7d')} className="mt-1 px-4 py-1.5 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 rounded-lg text-xs font-bold border border-blue-500/30 transition-all">
+                                            Try last 7 days
+                                        </button>
+                                    )}
+                                </div>
+                            </td></tr>
                         ) : (
                             groupedLogs.map((log, i) => {
                                 const startTime = new Date(normalizeTimestamp(log.StartTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                                 const endTime = new Date(normalizeTimestamp(log.EndTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                                const date = new Date(normalizeTimestamp(log.StartTime)).toLocaleDateString();
+                                const dateLabel = formatDateLabel(log.StartTime);
 
                                 return (
-                                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors border-l-4 border-l-transparent hover:border-l-blue-500">
+                                    <tr key={i} 
+                                        ref={i === groupedLogs.length - 1 ? lastElementRef : null}
+                                        className="hover:bg-blue-50 dark:hover:bg-gray-700/30 transition-colors border-l-4 border-l-transparent hover:border-l-blue-500"
+                                    >
                                         <td className="p-4 text-gray-500">
-                                            <div className="text-[10px] text-gray-400 mb-1">{date}</div>
+                                            <div className="text-[10px] text-gray-400 mb-1 font-bold">{dateLabel}</div>
                                             {summaryMode ? (
                                                 <div className="text-xs text-blue-400 font-bold">Aggregate</div>
                                             ) : (
@@ -635,20 +717,29 @@ export default function ActivityLogViewer({
 
             {/* Mobile Card List */}
             <div className="md:hidden divide-y divide-gray-200 dark:divide-gray-700">
-                {groupedLogs.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500 italic text-xs">No activity matching your search.</div>
+                {loading && groupedLogs.length === 0 ? (
+                    <div className="p-10 text-center"><div className="flex flex-col items-center gap-2"><RefreshCw className="w-6 h-6 text-blue-500 animate-spin" /><span className="text-gray-500 text-xs">Loading...</span></div></div>
+                ) : groupedLogs.length === 0 ? (
+                    <div className="p-8 text-center">
+                        <Monitor className="w-8 h-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                        <p className="text-gray-500 text-xs font-semibold">No activity in last <span className="text-blue-500">{startDate ? `${startDate}` : currentRange.toUpperCase()}</span></p>
+                        {!startDate && currentRange === '24h' && (<button onClick={() => setQuickFilter('7d')} className="mt-2 px-3 py-1 bg-blue-600/10 text-blue-500 rounded text-xs font-bold border border-blue-500/30">Try 7 days</button>)}
+                    </div>
                 ) : (
                     groupedLogs.map((log, i) => {
-                        const startTime = new Date(normalizeTimestamp(log.StartTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const endTime = new Date(normalizeTimestamp(log.EndTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const date = new Date(normalizeTimestamp(log.StartTime)).toLocaleDateString();
+                        const startTime = new Date(normalizeTimestamp(log.StartTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        const endTime = new Date(normalizeTimestamp(log.EndTime)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        const dateLabel = formatDateLabel(log.StartTime);
                         const isWeb = (log.activityType || log.ActivityType) === 'Web';
 
                         return (
-                            <div key={i} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors space-y-3">
+                            <div key={i} 
+                                ref={i === groupedLogs.length - 1 ? lastElementRef : null}
+                                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors space-y-3"
+                            >
                                 <div className="flex justify-between items-start">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] text-gray-400">{date}</span>
+                                        <span className="text-[10px] text-gray-400 font-bold uppercase">{dateLabel}</span>
                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
                                             {summaryMode ? 'Aggregate' : `${startTime} - ${endTime}`}
                                         </span>
@@ -662,7 +753,7 @@ export default function ActivityLogViewer({
                                         </span>
                                     </div>
                                 </div>
-                                <div className="bg-gray-50 dark:bg-black/30 p-2.5 rounded border border-gray-100 dark:border-gray-700/50">
+                                <div className="bg-gray-100 dark:bg-black/30 p-2.5 rounded border border-gray-100 dark:border-gray-700/50">
                                     {isWeb ? (
                                         <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 break-all hover:underline">{log.url || log.Url}</a>
                                     ) : (
@@ -685,14 +776,16 @@ export default function ActivityLogViewer({
 
             {hasMore && (
                 <div className="p-4 flex justify-center border-t border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-900/10">
-                    <button
-                        onClick={loadMore}
-                        disabled={loading}
-                        className="flex items-center gap-2 px-6 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:border-cyan-500 transition-all shadow-sm"
-                    >
-                        {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        Load Older Activities
-                    </button>
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-500 dark:text-gray-400">
+                        {loading ? (
+                            <>
+                                <RefreshCw className="w-3 h-3 animate-spin" />
+                                <span>Loading more activities...</span>
+                            </>
+                        ) : (
+                            <span>Scroll down for more</span>
+                        )}
+                    </div>
                 </div>
             )}
         </div>

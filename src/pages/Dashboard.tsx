@@ -405,11 +405,11 @@ export default function Dashboard() {
                     </div>
                     <div className="h-[350px] w-full bg-gray-50 dark:bg-gray-950/50 rounded-xl border border-gray-200 dark:border-gray-800/50 relative overflow-hidden">
                         {isFeatureLocked('network') && (
-                            <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                            <div className="absolute inset-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 transition-colors">
                                 <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
                                     <Lock className="w-10 h-10 text-purple-500" />
                                 </div>
-                                <h3 className="text-xl font-bold text-white mb-2">Enterprise Visualization</h3>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Enterprise Visualization</h3>
                                 <p className="text-gray-400 max-w-xs mb-6 text-xs leading-relaxed">
                                     Real-time <b>Network Topology</b> mapping is available on <b>Enterprise Plan</b>.
                                 </p>

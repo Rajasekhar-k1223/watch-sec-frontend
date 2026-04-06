@@ -77,9 +77,9 @@ const BandwidthStatus: React.FC<BandwidthStatusProps> = ({ agentId, socket }) =>
                 {getStatusIcon()}
 
                 {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 border border-gray-700 text-white text-xs rounded shadow-xl opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity pointer-events-none z-50">
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 text-xs rounded shadow-xl opacity-0 group-hover:opacity-100 whitespace-nowrap transition-opacity pointer-events-none z-50">
                     <span className="font-bold">{stats.status.toUpperCase()}</span>
-                    {stats.reason && <span className="block text-gray-400 text-[10px]">{stats.reason}</span>}
+                    {stats.reason && <span className="block text-gray-500 dark:text-gray-400 text-[10px]">{stats.reason}</span>}
                 </div>
             </div>
 

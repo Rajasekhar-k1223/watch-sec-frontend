@@ -8,6 +8,7 @@ import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, C
 import { API_URL, SOCKET_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import toast from 'react-hot-toast';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
@@ -26,6 +27,7 @@ interface AgentReport {
 
 export default function LiveMonitor() {
     const { token, user } = useAuth();
+    const { theme } = useTheme();
     const [searchParams, setSearchParams] = useSearchParams();
     const selectedAgentId = searchParams.get('agentId');
 
@@ -68,8 +70,10 @@ export default function LiveMonitor() {
             const term = new Terminal({
                 cursorBlink: true,
                 theme: {
-                    background: '#000000',
-                    foreground: '#00ff00',
+                    background: theme === 'dark' ? '#000000' : '#f8fafc',
+                    foreground: theme === 'dark' ? '#00ff00' : '#0f172a',
+                    cursor: theme === 'dark' ? '#00ff00' : '#0f172a',
+                    selectionBackground: 'rgba(59, 130, 246, 0.3)',
                 },
                 fontSize: 14,
                 fontFamily: 'Menlo, Monaco, "Courier New", monospace'
@@ -434,26 +438,26 @@ export default function LiveMonitor() {
 
                     {activeTab === 'files' ? (
                         <div className="lg:col-span-2 flex flex-col gap-4">
-                            <div className="bg-gray-100 dark:bg-black/40 border border-gray-700 rounded-xl p-4 flex-1 flex flex-col min-h-0 min-w-0">
+                            <div className="bg-white dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex-1 flex flex-col min-h-0 min-w-0">
                                 <div className="flex items-center gap-2 mb-4 font-mono text-sm overflow-hidden whitespace-nowrap">
                                     <span className="text-gray-500">Path:</span>
                                     <span className="text-blue-400 truncate">{currentPath || '/'}</span>
                                     <button onClick={() => {
                                         const parent = currentPath.split(/[\\\/]/).slice(0, -1).join('/');
                                         handleListFiles(parent || '/');
-                                    }} className="ml-auto px-2 py-1 bg-gray-700 rounded hover:bg-gray-600 text-xs">Up</button>
+                                    }} className="ml-auto px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 border border-gray-200 dark:border-transparent shadow-sm text-gray-900 dark:text-white text-xs transition-all">Up</button>
                                 </div>
                                 
                                 <div className="flex-1 overflow-y-auto min-w-0">
                                     <table className="w-full text-left text-sm">
-                                        <thead className="text-gray-500 border-b border-gray-800">
+                                        <thead className="text-gray-500 border-b border-gray-200 dark:border-gray-800">
                                             <tr>
                                                 <th className="pb-2">Name</th>
                                                 <th className="pb-2">Size</th>
                                                 <th className="pb-2 text-right">Actions</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-800">
+                                        <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
                                             {isFilesLoading ? (
                                                 <tr><td colSpan={3} className="py-10 text-center animate-pulse">Scanning Agent...</td></tr>
                                             ) : fileList.map((file, i) => (
@@ -490,7 +494,7 @@ export default function LiveMonitor() {
                         <div className="lg:col-span-2 flex flex-col gap-4">
                             <div 
                                 ref={terminalRef}
-                                className="flex-1 bg-black border border-gray-700 rounded-xl p-4 shadow-2xl min-h-0 overflow-hidden"
+                                className="flex-1 bg-white dark:bg-black border border-gray-200 dark:border-gray-700 rounded-xl p-4 shadow-2xl min-h-0 overflow-hidden"
                             />
                         </div>
                     ) : activeTab === 'stream' ? (
@@ -499,7 +503,7 @@ export default function LiveMonitor() {
                             <div className="lg:col-span-2 flex flex-col gap-6">
                                 {/* Live Screen */}
                                 <div 
-                                    className="bg-black border border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video group outline-none"
+                                    className="bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-2xl relative aspect-video group outline-none"
                                     tabIndex={0}
                                     onKeyDown={handleKeyDown}
                                 >
@@ -513,7 +517,7 @@ export default function LiveMonitor() {
                                     ) : (
                                         <img
                                             ref={imgRef}
-                                            className={`w-full h-full object-contain bg-black ${isStreamActive ? 'cursor-none' : ''}`}
+                                            className={`w-full h-full object-contain bg-gray-100 dark:bg-black ${isStreamActive ? 'cursor-none' : ''}`}
                                             alt="Live Stream"
                                             onMouseMove={handleMouseMove}
                                             onMouseDown={handleClick}
@@ -522,7 +526,7 @@ export default function LiveMonitor() {
                                     )}
                                     {/* Controls Overlay */}
                                     <div className="absolute top-4 right-4 flex gap-2 z-10">
-                                        <div className={`text-xs px-2 py-1 rounded shadow text-white flex items-center gap-2 ${screens[selectedAgentId] ? 'bg-red-600 animate-pulse' : 'bg-gray-600'}`}>
+                                        <div className={`text-xs px-2 py-1 rounded shadow text-white flex items-center gap-2 ${screens[selectedAgentId] ? 'bg-red-600 animate-pulse' : 'bg-gray-500 dark:bg-gray-600'}`}>
                                             {screens[selectedAgentId] ? 'LIVE' : 'IDLE'}
                                         </div>
                                     </div>
@@ -531,14 +535,14 @@ export default function LiveMonitor() {
                                         <button
                                             onClick={handleStartStream}
                                             disabled={isStreamActive}
-                                            className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${isStreamActive ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-500 shadow-lg'}`}
+                                            className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${isStreamActive ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-500 shadow-lg'}`}
                                         >
                                             <Play size={14} fill={!isStreamActive ? "currentColor" : "none"} /> Connect
                                         </button>
                                         <button
                                             onClick={handleStopStream}
                                             disabled={!isStreamActive}
-                                            className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${!isStreamActive ? 'bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 shadow-lg'}`}
+                                            className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${!isStreamActive ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 shadow-lg'}`}
                                         >
                                             <Square size={14} fill={isStreamActive ? "currentColor" : "none"} /> Disconnect
                                         </button>
@@ -632,7 +636,7 @@ export default function LiveMonitor() {
 
                     {/* RIGHT COL: Event Log */}
                     <div className="glass-panel border-gray-200 dark:border-gray-700/50 rounded-xl p-0 flex flex-col h-full lg:h-auto overflow-hidden shadow-lg">
-                        <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50/10 dark:bg-black/20">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700/50 bg-gray-50 dark:bg-black/20">
                             <div className="flex justify-between items-center mb-4">
                                 <h3 className="font-bold flex items-center gap-2 text-gray-900 dark:text-white">
                                     <ShieldAlert size={18} className="text-red-400" /> Event Feed
