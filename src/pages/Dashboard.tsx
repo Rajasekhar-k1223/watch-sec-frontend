@@ -40,9 +40,10 @@ interface DashboardStats {
     agents: { total: number; online: number; offline: number };
     resources: { avgCpu: number; avgMem: number; trend: { time: string; cpu: number; mem: number }[] };
     threats: {
+        total: number;
         total24h: number;
         byType: { type: string; count: number }[];
-        trend: { hour: number; count: number }[];
+        trend: { time: string; count: number }[];
     };
     recentLogs: LogEntry[];
     network: {
@@ -56,6 +57,10 @@ interface DashboardStats {
 
 // Threat Colors for Pie Chart
 const THREAT_COLORS = ['#EF4444', '#F59E0B', '#6366F1', '#10B981'];
+
+// Format raw threat type keys into readable labels
+const formatThreatType = (type: string) =>
+    type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 // Helper for consistent date parsing (SQL -> ISO UTC -> Local)
 const normalizeTimestamp = (ts: any) => {
@@ -200,12 +205,14 @@ export default function Dashboard() {
         return planLevel < req;
     };
 
-    // Prepare Pie Data
+    // Prepare Pie Data with clean labels
     const pieData = stats?.threats.byType.map((t, i) => ({
-        name: t.type,
+        name: formatThreatType(t.type),
         value: t.count,
         color: THREAT_COLORS[i % THREAT_COLORS.length]
     })) || [];
+
+    const totalThreats = stats?.threats.total24h ?? stats?.threats.total ?? 0;
 
     return (
         <div className="p-3 md:p-8 max-w-[1600px] mx-auto space-y-4 md:space-y-8 animate-in fade-in duration-500 text-gray-900 dark:text-white">
@@ -266,10 +273,10 @@ export default function Dashboard() {
                         </div>
                         <span className="flex items-center gap-1 text-xs font-semibold bg-red-500/10 text-red-400 px-2.5 py-1 rounded-full border border-red-500/20">
                             <ArrowRight className="w-3 h-3 rotate-45" />
-                            +{stats?.threats.total24h || 0} New
+                            +{totalThreats} New
                         </span>
                     </div>
-                    <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.threats.total24h || 0}</div>
+                    <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{totalThreats}</div>
                     <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
                 </div>
 
@@ -285,10 +292,12 @@ export default function Dashboard() {
                         </span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.network.inboundMbps || 0}</div>
-                        <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
+                        <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+                            {stats?.network.activeConnections ?? stats?.agents.online ?? 0}
+                        </div>
+                        <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Online</span>
                     </div>
-                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
+                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Connections</div>
                 </div>
 
                 {/* Productivity / Custom Card */}
@@ -382,9 +391,9 @@ export default function Dashboard() {
                                 <Legend verticalAlign="bottom" height={36} iconType="circle" />
                             </PieChart>
                         </ResponsiveContainer>
-                        {/* Center Text Overlays */}
+                        {/* Center Text Overlay */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.threats.total24h || 0}</div>
+                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{totalThreats}</div>
                             <div className="text-xs text-gray-500 uppercase">Total</div>
                         </div>
                     </div>
