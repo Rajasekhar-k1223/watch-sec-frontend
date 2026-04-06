@@ -293,11 +293,11 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-baseline gap-1">
                         <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                            {stats?.network.activeConnections ?? stats?.agents.online ?? 0}
+                            {stats?.network.inboundMbps ?? 0}
                         </div>
-                        <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Online</span>
+                        <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
                     </div>
-                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Connections</div>
+                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
                 </div>
 
                 {/* Productivity / Custom Card */}
