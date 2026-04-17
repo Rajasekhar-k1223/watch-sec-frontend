@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera, MapPin, Battery } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -10,6 +10,7 @@ import MailLogViewer from '../components/MailLogViewer';
 import FeaturePolicyManager from '../components/FeaturePolicyManager';
 import ShadowVault from '../components/ShadowVault';
 import AgentSecurityLedger from '../components/AgentSecurityLedger'; // [NEW]
+import AgentAppsList from '../components/AgentAppsList'; // [NEW]
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -56,7 +57,12 @@ interface AgentReport {
     updateStatus?: string;
     updateFailureReason?: string;
     lastUpdateAttempt?: string;
-    policyId?: number; // [NEW]
+    policyId?: number;
+    latitude?: number;
+    longitude?: number;
+    country?: string;
+    publicIp?: string;
+    localIp?: string;
 }
 
 interface DashStats {
@@ -328,7 +334,12 @@ export default function Agents() {
                         mailMonitorEnabled: a.mailMonitorEnabled ?? a.MailMonitorEnabled ?? false,
                         speechMonitorEnabled: a.speechMonitorEnabled ?? a.SpeechMonitorEnabled ?? false,
                         vulnerabilityIntelligenceEnabled: a.vulnerabilityIntelligenceEnabled ?? a.VulnerabilityIntelligenceEnabled ?? false,
-                        policyId: a.policyId ?? a.PolicyId // [NEW]
+                        policyId: a.policyId ?? a.PolicyId,
+                        latitude: a.latitude ?? a.Latitude ?? undefined,
+                        longitude: a.longitude ?? a.Longitude ?? undefined,
+                        country: a.country || a.Country || undefined,
+                        publicIp: a.publicIp || a.PublicIp || undefined,
+                        localIp: a.localIp || a.LocalIp || undefined,
                     };
                 });
 
@@ -423,6 +434,29 @@ export default function Agents() {
             clearTimeout(updateTimeouts.current[agentId]);
         }
     };
+
+    // [v1.8.42] Patch Now: Administrator Override
+    const handlePatchNow = async (agentId: string) => {
+        if (!window.confirm("FORCE immediate patch? This will bypass any maintenance windows.\n\nProceed?")) return;
+        
+        try {
+            const res = await fetch(`${API_URL}/agents/${agentId}/patch-now`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (res.ok) {
+                toast.success("Forced Patch Triggered! Agent will update on next heartbeat.");
+                fetchAgents();
+            } else {
+                const data = await res.json();
+                toast.error(`Failed to trigger patch: ${data.detail || 'Unknown error'}`);
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Network error triggering patch.");
+        }
+    };
     // ... 
     // [NEW] Toggle USB
 
@@ -431,7 +465,7 @@ export default function Agents() {
 
 
     const [showDeployModal, setShowDeployModal] = useState(false);
-    const [deployOS, setDeployOS] = useState<'windows' | 'linux-x64' | 'linux-arm64' | 'mac'>('windows');
+    const [deployOS, setDeployOS] = useState<'windows' | 'linux-x64' | 'linux-arm64'>('windows');
 
     // const [showOtpModal, setShowOtpModal] = useState(false);
     // const [otpToken, setOtpToken] = useState<string | null>(null);
@@ -558,6 +592,46 @@ export default function Agents() {
         }
     };
 
+    // [Bulk Selection]
+    const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+
+    const toggleSelectAgent = (agentId: string) => {
+        setSelectedAgents(prev => {
+            const next = new Set(prev);
+            if (next.has(agentId)) next.delete(agentId);
+            else next.add(agentId);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedAgents.size === filteredAgents.length && filteredAgents.length > 0) {
+            setSelectedAgents(new Set());
+        } else {
+            setSelectedAgents(new Set(filteredAgents.map((a: AgentReport) => a.agentId)));
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedAgents.size === 0) return;
+        if (!confirm(`Are you sure you want to delete ${selectedAgents.size} agent(s)? This cannot be undone.`)) return;
+        const ids = Array.from(selectedAgents);
+        let failed = 0;
+        for (const id of ids) {
+            try {
+                const res = await fetch(`${API_URL}/agents/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!res.ok) failed++;
+            } catch { failed++; }
+        }
+        setSelectedAgents(new Set());
+        fetchAgents();
+        if (failed > 0) toast.error(`${failed} agent(s) failed to delete.`);
+        else toast.success(`${ids.length} agent(s) deleted.`);
+    };
+
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | 'specs' | 'apps' | 'vault' | 'policy' | 'speech' | 'vuln' | null>(null);
     const [isInteractive, setIsInteractive] = useState(false);
@@ -568,7 +642,7 @@ export default function Agents() {
     const [logOffset, setLogOffset] = useState(0);
     const [hasMoreLogs, setHasMoreLogs] = useState(true);
     const LOG_LIMIT = 50;
-    
+
     // Function to fetch logs - moved out of useEffect for scoping
     const fetchData = async (newOffset: number, reset: boolean = false) => {
         if (!selectedAgentId || !token) return;
@@ -650,7 +724,7 @@ export default function Agents() {
     const [isStreaming, setIsStreaming] = useState(false);
     const isStreamingRef = useRef(false);
     useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
-    
+
     const [streamQuality, setStreamQuality] = useState('moderate');
     const [socketStatus, setSocketStatus] = useState<string>('Disconnected');
     const socketRef = useRef<any>(null);
@@ -754,7 +828,7 @@ export default function Agents() {
         const handleFrame = (agentId: any, base64?: any) => {
             let actualAgentId = agentId;
             let actualBase64 = base64;
-            
+
             // If data came as a single object {agentId, image}
             if (agentId && typeof agentId === 'object' && agentId.agentId) {
                 actualAgentId = agentId.agentId;
@@ -764,7 +838,7 @@ export default function Agents() {
             if (isStreamingRef.current && selectedAgentId && actualAgentId && (typeof actualAgentId === 'string') && (actualAgentId.toLowerCase() === selectedAgentId.toLowerCase()) && actualBase64) {
                 const prefix = actualBase64.startsWith('data:image') ? '' : 'data:image/jpeg;base64,';
                 const fullBase64 = prefix + actualBase64;
-                
+
                 // Update Image for Display
                 setLiveScreen(fullBase64);
 
@@ -963,7 +1037,7 @@ export default function Agents() {
             };
             const settings = qualityMap[streamQuality] || qualityMap.moderate;
             console.log("[Stream] Starting stream with settings:", { agentId: selectedAgentId, ...settings });
-            socketRef.current.emit('start_stream', { 
+            socketRef.current.emit('start_stream', {
                 agentId: selectedAgentId,
                 ...settings
             });
@@ -1142,10 +1216,24 @@ export default function Agents() {
                             onChange={(e) => setAgentSearch(e.target.value)}
                         />
                     </div>
-                    <div className="flex items-center justify-between w-full md:w-auto gap-4">
+                    <div className="flex items-center justify-between w-full md:w-auto gap-3">
                         <div className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">
                             {filteredAgents.length} Agents
                         </div>
+                        {selectedAgents.size > 0 && (
+                            <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg px-3 py-1.5">
+                                <span className="text-xs font-bold text-red-600 dark:text-red-400">{selectedAgents.size} selected</span>
+                                <button
+                                    onClick={handleBulkDelete}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-md transition-colors"
+                                >
+                                    <Trash2 size={12} /> Delete
+                                </button>
+                                <button onClick={() => setSelectedAgents(new Set())} className="text-red-400 hover:text-red-600 transition-colors" title="Clear selection">
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        )}
                         <button onClick={() => fetchAgents()} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Refresh Fleet">
                             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                         </button>
@@ -1172,14 +1260,13 @@ export default function Agents() {
                                     { id: 'windows', label: 'Windows', icon: '🪟' },
                                     { id: 'linux-x64', label: 'Linux x64', icon: '🐧' },
                                     { id: 'linux-arm64', label: 'Linux ARM64', icon: '🐧' },
-                                    { id: 'mac', label: 'macOS', icon: '🍎' },
+
                                 ] as const).map(({ id, label, icon }) => (
                                     <button key={id} onClick={() => setDeployOS(id)}
-                                        className={`py-2 px-3 rounded-lg border font-bold flex items-center justify-center gap-1.5 text-sm transition-all ${
-                                            deployOS === id
-                                                ? 'bg-blue-50 dark:bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400'
-                                                : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                        }`}>
+                                        className={`py-2 px-3 rounded-lg border font-bold flex items-center justify-center gap-1.5 text-sm transition-all ${deployOS === id
+                                            ? 'bg-blue-50 dark:bg-blue-600/10 border-blue-500 text-blue-600 dark:text-blue-400'
+                                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                            }`}>
                                         <span>{icon}</span> {label}
                                     </button>
                                 ))}
@@ -1213,19 +1300,7 @@ export default function Agents() {
                                         </button>
                                     </>
                                 )}
-                                {deployOS === 'mac' && (
-                                    <>
-                                        <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as Administrator)</p>
-                                        <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=mac" | sudo bash`}
-                                        </div>
-                                        <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey}&os_type=mac" | sudo bash`).then(() => toast.success('Copied!'))}
-                                            className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
-                                            <FileText size={14} />
-                                        </button>
-                                    </>
-                                )}
+
                             </div>
 
                             {/* Requirement notes */}
@@ -1238,7 +1313,7 @@ export default function Agents() {
                                         </span>
                                     )}
                                     {(deployOS === 'linux-x64' || deployOS === 'linux-arm64') && <span>The command downloads and installs the agent as a <strong>systemd service</strong> that starts automatically on boot. Requires root or sudo access.</span>}
-                                    {deployOS === 'mac' && <span>The command downloads and installs the agent as a <strong>LaunchDaemon</strong> that starts automatically at login. Requires sudo access.</span>}
+
                                 </div>
                             </div>
 
@@ -1276,11 +1351,32 @@ export default function Agents() {
                 <div className="hidden lg:block overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
-                            <tr><th className="p-4">Agent ID</th><th className="p-4">Hostname</th><th className="p-4">Status</th><th className="p-4">Resources</th><th className="p-4">Last Seen</th><th className="p-4">Actions</th></tr>
+                            <tr>
+                                <th className="p-4 w-10">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
+                                        checked={filteredAgents.length > 0 && selectedAgents.size === filteredAgents.length}
+                                        ref={el => { if (el) el.indeterminate = selectedAgents.size > 0 && selectedAgents.size < filteredAgents.length; }}
+                                        onChange={toggleSelectAll}
+                                        title="Select all"
+                                    />
+                                </th>
+                                <th className="p-4">Agent ID</th><th className="p-4">Hostname</th><th className="p-4">Status</th><th className="p-4">Power</th><th className="p-4">Location</th><th className="p-4">Resources</th><th className="p-4">Last Seen</th><th className="p-4 text-right pr-8">Actions</th>
+                            </tr>
                         </thead>
                         <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
-                            {loading ? <tr><td colSpan={6} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : filteredAgents.map((agent: AgentReport) => (
-                                <tr key={agent.agentId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                            {loading ? <tr><td colSpan={8} className="p-8 text-center text-gray-500">Loading agents...</td></tr> : filteredAgents.map((agent: AgentReport) => (
+                                <tr key={agent.agentId} className={`hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group ${selectedAgents.has(agent.agentId) ? 'bg-blue-50/50 dark:bg-blue-500/5' : ''}`}>
+                                    <td className="p-4 w-10">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
+                                            checked={selectedAgents.has(agent.agentId)}
+                                            onChange={() => toggleSelectAgent(agent.agentId)}
+                                            onClick={e => e.stopPropagation()}
+                                        />
+                                    </td>
                                     <td className="p-4 font-bold text-gray-900 dark:text-white">
                                         <div className="flex items-center gap-2">
                                             <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -1327,6 +1423,71 @@ export default function Agents() {
                                         </div>
                                     </td>
                                     <td className="p-4">
+                                        <div className="flex flex-col items-center justify-center min-w-[70px]">
+                                            {(() => {
+                                                try {
+                                                    const pwr = agent.powerStatusJson ? JSON.parse(agent.powerStatusJson) : null;
+                                                    if (!pwr) return <span className="text-gray-400 text-[10px]">N/A</span>;
+
+                                                    const isLow = pwr.battery_percent < 20 && !pwr.power_plugged;
+
+                                                    return (
+                                                        <div className="flex flex-col items-center gap-1 group relative cursor-help" title={pwr.power_plugged ? "AC Power Connected" : `Battery: ${pwr.time_left_min > 0 ? pwr.time_left_min + 'm remaining' : 'Discharging'}`}>
+                                                            {pwr.power_plugged ? (
+                                                                <Zap size={14} className="text-yellow-400 animate-pulse drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]" />
+                                                            ) : (
+                                                                <div className={`w-6 h-3.5 border-2 rounded-sm relative flex items-center p-0.5 ${isLow ? 'border-red-500 animate-bounce' : 'border-gray-400 dark:border-gray-600'}`}>
+                                                                    <div className={`h-full rounded-xs transition-all ${isLow ? 'bg-red-500' : 'bg-green-500'}`} style={{ width: `${pwr.battery_percent}%` }}></div>
+                                                                    <div className={`absolute -right-1 top-0.5 w-1 h-1.5 rounded-r-xs ${isLow ? 'bg-red-500' : 'bg-gray-400 dark:bg-gray-600'}`}></div>
+                                                                </div>
+                                                            )}
+                                                            <span className={`text-[10px] font-black ${isLow ? 'text-red-500' : pwr.power_plugged ? 'text-yellow-500' : 'text-gray-500'} font-mono`}>
+                                                                {pwr.battery_percent}%
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                } catch (e) { return <span className="text-gray-400 text-[10px]">ERR</span>; }
+                                            })()}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-1.5 text-xs font-mono text-blue-600 dark:text-blue-400">
+                                                <Wifi size={12} />
+                                                {agent.publicIp || 'Unknown IP'} {agent.localIp && <span className="text-gray-400">({agent.localIp})</span>}
+                                            </div>
+                                            {agent.latitude && agent.latitude !== 0 ? (
+                                                <>
+                                                    <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                                        <MapPin size={12} className="text-red-500" />
+                                                        {agent.country || 'Unknown'}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 ml-4">
+                                                        <span className="text-[10px] text-gray-500 font-mono">
+                                                            {agent.latitude?.toFixed(4)}, {agent.longitude?.toFixed(4)}
+                                                        </span>
+                                                        {agent.locationTrackingEnabled && (
+                                                            <span className="text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-bold uppercase tracking-wider">
+                                                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> GPS
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="flex flex-col gap-0.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">IP-Based Location</span>
+                                                        {agent.locationTrackingEnabled && (
+                                                            <span className="text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-bold uppercase tracking-wider">
+                                                                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> GPS
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
                                         <div className="text-xs space-y-1">
                                             <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
                                             <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">MEM:</span> <span className="text-gray-700 dark:text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
@@ -1353,18 +1514,59 @@ export default function Agents() {
                         <div className="p-8 text-center text-gray-500 text-sm">Loading agents...</div>
                     ) : (
                         filteredAgents.map((agent: AgentReport) => (
-                            <div key={agent.agentId} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                            <div key={agent.agentId} className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors ${selectedAgents.has(agent.agentId) ? 'bg-blue-50/50 dark:bg-blue-500/5' : ''}`}>
                                 <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <Server className="w-4 h-4 text-blue-500" />
-                                            <span className="font-bold text-gray-900 dark:text-white text-sm">{agent.agentId}</span>
+                                    <div className="flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 mt-0.5 rounded accent-blue-500 cursor-pointer flex-shrink-0"
+                                            checked={selectedAgents.has(agent.agentId)}
+                                            onChange={() => toggleSelectAgent(agent.agentId)}
+                                        />
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <Server className="w-4 h-4 text-blue-500" />
+                                                <span className="font-bold text-gray-900 dark:text-white text-sm">{agent.agentId}</span>
+                                            </div>
+                                            <div className="text-[10px] text-gray-500 font-mono mt-0.5">{agent.hostname || 'Unknown Host'}</div>
+                                            <div className="flex flex-col gap-1 mt-1">
+                                                <div className="flex items-center gap-1 text-[10px] text-blue-500 font-mono">
+                                                    <Wifi size={10} />
+                                                    {agent.publicIp || 'Fetching IP...'} {agent.localIp && <span className="text-gray-400">({agent.localIp})</span>}
+                                                </div>
+                                                {agent.latitude && agent.latitude !== 0 && (
+                                                    <div className="flex items-center gap-1 text-[10px] text-gray-600 dark:text-gray-400">
+                                                        <MapPin size={10} className="text-red-400" />
+                                                        {agent.country || 'Unknown'} ({agent.latitude?.toFixed(2)}, {agent.longitude?.toFixed(2)})
+                                                    </div>
+                                                )}
+                                                {agent.locationTrackingEnabled && (
+                                                    <div className="flex items-center">
+                                                        <span className="text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-bold uppercase tracking-wider w-fit">
+                                                            <span className="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span> GPS Active
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="text-[10px] text-gray-500 font-mono mt-0.5">{agent.hostname || 'Unknown Host'}</div>
                                     </div>
-                                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${agent.status === 'Online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                                        {agent.status.toUpperCase()}
+                                    <div className="flex flex-col items-end gap-1.5">
+                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${agent.status === 'Online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                            {agent.status.toUpperCase()}
+                                        </div>
+                                        {(() => {
+                                            try {
+                                                const pwr = agent.powerStatusJson ? JSON.parse(agent.powerStatusJson) : null;
+                                                if (!pwr) return null;
+                                                return (
+                                                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${pwr.power_plugged ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : pwr.battery_percent < 20 ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700'}`}>
+                                                        {pwr.power_plugged ? <Zap size={10} className="animate-pulse" /> : <Battery size={10} />}
+                                                        {pwr.battery_percent}%
+                                                    </div>
+                                                );
+                                            } catch (e) { return null; }
+                                        })()}
                                     </div>
                                 </div>
 
@@ -1381,6 +1583,12 @@ export default function Agents() {
                                     <div className="space-y-1">
                                         <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">Memory</span>
                                         <div className="text-xs font-mono text-gray-700 dark:text-gray-300">{agent.memoryUsage.toFixed(0)} MB</div>
+                                    </div>
+                                    <div className="space-y-1 col-span-2">
+                                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">Last Seen</span>
+                                        <div className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                                            {agent.timestamp ? new Date(agent.timestamp).toLocaleString() : 'Never'}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1428,11 +1636,12 @@ export default function Agents() {
                                 {(() => {
                                     const agent = agents.find(a => a.agentId === selectedAgentId);
                                     if (!agent) return null;
+                                    const isPatchNow = agent.updateStatus === "pending_manual_push";
 
-                                    if (agent.version !== agent.targetVersion) {
+                                    if (updateProgressMap[agent.agentId] || isPatchNow) {
                                         return (
-                                            <div className="px-2 md:px-3 py-1 bg-amber-600/20 text-amber-400 rounded border border-amber-600/50 text-[10px] md:text-xs font-bold flex items-center gap-1 animate-pulse">
-                                                <RefreshCw size={10} className="animate-spin" /> {agent.targetVersion}
+                                            <div className="px-2 md:px-3 py-1 bg-amber-600/20 text-amber-500 rounded border border-amber-600/50 text-[10px] md:text-xs font-bold flex items-center gap-1">
+                                                <RefreshCw size={10} className="animate-spin" /> {isPatchNow ? "Bypassing Window..." : "Updating..."} {agent.targetVersion}
                                             </div>
                                         );
                                     }
@@ -1446,9 +1655,16 @@ export default function Agents() {
                                     }
 
                                     return (
-                                        <button onClick={() => handleUpdateAgent(agent.agentId)} className="px-2 md:px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20">
-                                            <Download size={10} /> Update
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleUpdateAgent(agent.agentId)} className="px-2 md:px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20">
+                                                <Download size={10} /> Update (Scheduled)
+                                            </button>
+                                            {(user?.role === 'SuperAdmin' || user?.role === 'TenantAdmin') && (
+                                                <button onClick={() => handlePatchNow(agent.agentId)} className="px-2 md:px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-red-900/20" title="Bypass Maintenance Window">
+                                                    <Zap size={10} /> Patch Now
+                                                </button>
+                                            )}
+                                        </div>
                                     );
                                 })()}
                                 {viewMode === 'logs' && (
@@ -1477,350 +1693,155 @@ export default function Agents() {
                         </div>
                         {viewMode === 'logs' && (
                             <div className="flex-1 overflow-hidden p-3 md:p-6 bg-white dark:bg-gray-900/50 flex flex-col">
-                                    <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-                                        <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                                            {/* [NEW] Type Dropdown */}
-                                            <div className="relative flex-1 md:flex-none">
-                                                <select
-                                                    value={eventTypeFilter}
-                                                    onChange={(e) => setEventTypeFilter(e.target.value)}
-                                                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-[10px] md:text-xs text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none appearance-none pr-6 cursor-pointer"
-                                                >
-                                                    {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
-                                                </select>
-                                                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
-                                            </div>
-
-                                            {/* Search Input */}
-                                            <div className="relative flex-1 md:flex-none">
-                                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Filter..."
-                                                    className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded pl-7 pr-2 py-1.5 text-[10px] md:text-xs text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none md:w-48"
-                                                    value={logFilter}
-                                                    onChange={(e) => setLogFilter(e.target.value)}
-                                                />
-                                            </div>
-
-                                            {modalStartDate && (
-                                                <span className="hidden md:inline-block text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider shadow-sm">
-                                                    Showing: {modalStartDate.split('-').reverse().join('-')} to {modalEndDate.split('-').reverse().join('-')}
-                                                </span>
-                                            )}
+                                <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
+                                    <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                                        {/* [NEW] Type Dropdown */}
+                                        <div className="relative flex-1 md:flex-none">
+                                            <select
+                                                value={eventTypeFilter}
+                                                onChange={(e) => setEventTypeFilter(e.target.value)}
+                                                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded px-2 py-1.5 text-[10px] md:text-xs text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none appearance-none pr-6 cursor-pointer"
+                                            >
+                                                {eventTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                                            </select>
+                                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
                                         </div>
 
-                                        <div className="flex bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner overflow-x-auto">
-                                            <div className="flex bg-gray-200 dark:bg-gray-900/50 rounded p-0.5 shrink-0">
-                                                <button onClick={() => setModalQuickFilter(1)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>24H</button>
-                                                <button onClick={() => setModalQuickFilter(7)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>7D</button>
-                                                <button onClick={() => setModalQuickFilter(30)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>30D</button>
-                                            </div>
-                                            <Calendar size={12} className="text-gray-500 ml-1 shrink-0" />
+                                        {/* Search Input */}
+                                        <div className="relative flex-1 md:flex-none">
+                                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
                                             <input
-                                                type="date"
-                                                value={modalStartDate}
-                                                onChange={(e) => setModalStartDate(e.target.value)}
-                                                className="bg-transparent text-[9px] md:text-[10px] text-gray-400 outline-none w-20 md:w-24 shrink-0"
-                                            />
-                                            <span className="text-gray-600 dark:text-gray-500 text-[10px]">-</span>
-                                            <input
-                                                type="date"
-                                                value={modalEndDate}
-                                                onChange={(e) => setModalEndDate(e.target.value)}
-                                                className="bg-transparent text-[9px] md:text-[10px] text-gray-400 outline-none w-20 md:w-24 shrink-0"
+                                                type="text"
+                                                placeholder="Filter..."
+                                                className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded pl-7 pr-2 py-1.5 text-[10px] md:text-xs text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 outline-none md:w-48"
+                                                value={logFilter}
+                                                onChange={(e) => setLogFilter(e.target.value)}
                                             />
                                         </div>
-                                    </div>
-                                    {showGraphs && events.length > 0 && (
-                                        <div className="mb-4 grid grid-cols-2 gap-4 h-48">
-                                            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
-                                                <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Activity className="w-3 h-3 text-cyan-400" /> Event Distribution </div>
-                                                <div className="flex-1 w-full text-xs">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <BarChart data={Object.entries(events.reduce((acc: any, curr: any) => { acc[curr.type] = (acc[curr.type] || 0) + 1; return acc; }, {})).map(([name, count]) => ({ name, count })).slice(0, 10)}>
-                                                            <XAxis dataKey="name" stroke="#6b7280" tick={{ fontSize: 10 }} />
-                                                            <YAxis stroke="#6b7280" tick={{ fontSize: 10 }} />
-                                                            <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
-                                                            <Bar dataKey="count" fill="#3b82f6" />
-                                                        </BarChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-                                            </div>
-                                            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
-                                                <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Cpu className="w-3 h-3 text-purple-400" /> System Performance </div>
-                                                <div className="flex-1 w-full text-xs">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
-                                                            <XAxis dataKey="timestamp" hide />
-                                                            <YAxis domain={[0, 100]} stroke="#6b7280" tick={{ fontSize: 10 }} />
-                                                            <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
-                                                            <Line type="monotone" name="CPU" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                                                            <Line type="monotone" name="Memory" dataKey="mem" stroke="#10b981" strokeWidth={2} dot={false} />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex flex-col">
-                                        <div className="overflow-y-auto flex-1">
-                                            <table className="w-full text-left text-sm">
-                                                <thead className="bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs sticky top-0">
-                                                    <tr><th className="p-4 w-48">Timestamp</th><th className="p-4 w-48">Event Type</th><th className="p-4">Details</th></tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300 font-mono text-[11px]">
-                                                    {filteredEvents.length === 0 ? <tr><td colSpan={3} className="p-8 text-center text-gray-500 italic">No logs recorded (or no match).</td></tr> : filteredEvents.map((evt, i) => (
-                                                        <tr key={i} className="hover:bg-gray-700/30">
-                                                            <td className="p-4 text-gray-500">{new Date(evt.timestamp).toLocaleString()}</td>
-                                                            <td className="p-4 font-bold"> <span className="text-blue-400">{evt.type}</span> </td>
-                                                            <td className="p-4 break-all">{evt.details}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                             </table>
-                                            {hasMoreLogs && (
-                                                <div className="p-4 flex justify-center border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
-                                                    <button
-                                                        onClick={loadMoreLogs}
-                                                        className="px-6 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
-                                                    >
-                                                        Load Older Entries
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
-                            {viewMode === 'monitor' && (
-                                <div className={`flex-1 ${isScreenMaximized ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-3'} gap-0 overflow-hidden min-h-0`}>
-                                    {!isScreenMaximized && (
-                                        <div className="flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 col-span-1 overflow-hidden min-h-0">
-                                            <div className="p-3 bg-gray-100 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2"> <List className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">Recent Activity</span> </div>
-                                            <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
-                                                <div className="mb-4 bg-gray-100 dark:bg-black/40 p-2 rounded border border-gray-200 dark:border-gray-700 h-32">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
-                                                            <YAxis hide domain={[0, 100]} />
-                                                            <Line type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} isAnimationActive={false} />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-                                                {events.map((evt, i) => (
-                                                    <div key={i} className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700/50 hover:border-gray-400 dark:hover:border-gray-600">
-                                                        <div className="flex justify-between text-xs text-gray-500 mb-1"> <span>{new Date(normalizeTimestamp(evt.timestamp)).toLocaleTimeString()}</span> <span className="font-bold text-blue-500">{evt.type}</span> </div>
-                                                        <p className="text-gray-700 dark:text-gray-300 break-all line-clamp-2" title={evt.details}>{evt.details}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                    <div ref={monitorContainerRef} className={`flex flex-col bg-gray-50 dark:bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0 relative`}>
-                                        {isFeatureLocked('live_stream') && (
-                                            <div className="absolute inset-0 z-[60] bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
-                                                <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
-                                                    <Lock className="w-12 h-12 text-purple-500" />
-                                                </div>
-                                                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
-                                                <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
-                                                    Real-time High-FPS screen monitoring and remote control is an <b>Enterprise-only</b> capability.
-                                                </p>
-                                                <button
-                                                    onClick={() => setShowCapabilities(true)}
-                                                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2 group"
-                                                >
-                                                    <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade to Enterprise
-                                                </button>
-                                            </div>
+                                        {modalStartDate && (
+                                            <span className="hidden md:inline-block text-[10px] bg-blue-500/10 text-blue-400 px-3 py-1 rounded border border-blue-500/20 font-bold uppercase tracking-wider shadow-sm">
+                                                Showing: {modalStartDate.split('-').reverse().join('-')} to {modalEndDate.split('-').reverse().join('-')}
+                                            </span>
                                         )}
-                                        <div className={`p-3 bg-gray-100 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-white/50 dark:bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className={`w-2 h-2 rounded-full ${isInteractive ? 'bg-purple-500 animate-pulse' : 'bg-blue-500'}`}></div>
-                                                <span className="text-[10px] md:text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest">{isInteractive ? 'Interactive Control' : 'Passive Monitoring'}</span>
-                                            </div>
-                                            <div className="ml-auto flex items-center gap-3">
-                                                <button 
-                                                    onClick={() => setIsInteractive(!isInteractive)}
-                                                    className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all ${isInteractive ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-                                                >
-                                                    <MousePointer className="w-3 h-3" /> {isInteractive ? 'Control ON' : 'Remote Control'}
-                                                </button>
-
-                                                <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
-
-                                                <div className="flex items-center gap-2">
-                                                    <select
-                                                        value={streamQuality}
-                                                        onChange={(e) => setStreamQuality(e.target.value)}
-                                                        className="px-2 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 outline-none"
-                                                    >
-                                                        <option value="fluid">Fluid (Low)</option>
-                                                        <option value="moderate">Moderate</option>
-                                                        <option value="hd">HD (High)</option>
-                                                    </select>
-
-                                                    {isStreaming ? (
-                                                        <button onClick={handleStopStream} className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Stop Stream </button>
-                                                    ) : (
-                                                        <button onClick={handleStartStream} className="px-3 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-500 border border-green-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <Server className="w-3 h-3" /> Start Stream </button>
-                                                    )}
-                                                </div>
-                                                {isStreaming && !isInteractive && (
-                                                    <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`px-3 py-1 border rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-700/50 text-gray-300 border-gray-600'}`}>
-                                                        {isRecording ? <StopCircle className="w-3 h-3 animate-pulse" /> : <Video className="w-3 h-3" />} {isRecording ? 'Rec ON' : 'Record'}
-                                                    </button>
-                                                )}
-                                                <button onClick={handleToggleFullscreen} className="text-gray-400 hover:text-white transition-colors"> {isScreenMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} </button>
-                                            </div>
-                                        </div>
-                                        <div className="flex-1 relative overflow-hidden bg-gray-50 dark:bg-black min-h-0">
-                                            {/* Hidden Canvas for Recording JPEG Stream */}
-                                            <canvas ref={hiddenCanvasRef} className="hidden" />
-                                            {isInteractive ? (
-                                                <RemoteDesktop agentId={selectedAgentId!} token={token!} />
-                                            ) : (
-                                                liveScreen ? (
-                                                    liveScreen.length > 500 ? (
-                                                        <img 
-                                                            src={liveScreen.startsWith('data:image') ? liveScreen : `data:image/jpeg;base64,${liveScreen}`} 
-                                                            className="absolute inset-0 w-full h-full object-contain z-10"
-                                                            alt="Live Stream"
-                                                        />
-                                                    ) : (
-                                                        <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain z-10" autoPlay playsInline muted />
-                                                    )
-                                                ) : (
-                                                    <div className="text-center text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 h-full flex flex-col justify-center items-center">
-                                                        <div className="w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                                                        <h3 className="text-gray-900 dark:text-white font-bold mb-2">Waiting for video stream...</h3>
-                                                        <div className="text-xs font-mono text-left inline-block bg-white dark:bg-black/50 p-3 rounded border border-gray-200 dark:border-gray-800 space-y-1">
-                                                            <p className="text-gray-400">Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
-                                                            <p className="text-gray-400">Socket: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
-                                                            <p className="text-gray-400">Streaming: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
-                                                        </div>
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
                                     </div>
-                                </div>
-                            )}
 
-                            {viewMode === 'screenshots' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                    <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} token={token} onUpdate={fetchAgents} />
-                                </div>
-                            )}
-
-                            {viewMode === 'activity' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                    <ActivityLogViewer
-                                        agentId={selectedAgentId}
-                                        apiUrl={API_URL}
-                                        token={token}
-                                        isEnabled={agents.find(a => a.agentId === selectedAgentId)?.activityMonitorEnabled ?? true}
-                                        onEnable={async () => toggleAgentSetting(selectedAgentId!, 'ActivityMonitorEnabled', true)}
-                                        planLevel={planLevel}
-                                        requiredTier={FEATURE_TIERS['activity']}
-                                    />
-                                </div>
-                            )}
-
-                            {viewMode === 'mail' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
-                                    {isFeatureLocked('mail') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
-                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
-                                                <Lock className="w-12 h-12 text-purple-500" />
-                                            </div>
-                                            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
-                                            <p className="text-gray-400 max-w-xs mb-8 text-sm">
-                                                Advanced Email Monitoring and Data Loss Prevention requires <b>Enterprise Plan</b>.
-                                            </p>
-                                            <button
-                                                onClick={() => setShowCapabilities(true)}
-                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
-                                            >
-                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
-                                            </button>
+                                    <div className="flex bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-1 items-center gap-1 shadow-inner overflow-x-auto">
+                                        <div className="flex bg-gray-200 dark:bg-gray-900/50 rounded p-0.5 shrink-0">
+                                            <button onClick={() => setModalQuickFilter(1)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>24H</button>
+                                            <button onClick={() => setModalQuickFilter(7)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>7D</button>
+                                            <button onClick={() => setModalQuickFilter(30)} className={`text-[9px] md:text-[10px] px-2 py-1 rounded transition-colors font-bold ${modalStartDate === new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0] ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-200'}`}>30D</button>
                                         </div>
-                                    )}
-                                    <MailLogViewer agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
-                                </div>
-                            )}
-
-                            {viewMode === 'speech' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
-                                    {isFeatureLocked('speech') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
-                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
-                                                <Lock className="w-12 h-12 text-purple-500" />
-                                            </div>
-                                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
-                                            <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
-                                                Real-time **Speech Monitoring** and Audio Transcription is an **Enterprise-only** capability.
-                                            </p>
-                                            <button
-                                                onClick={() => setShowCapabilities(true)}
-                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
-                                            >
-                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
-                                            </button>
-                                        </div>
-                                    )}
-                                    <SpeechLogViewer agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
-                                </div>
-                            )}
-
-
-
-                            {viewMode === 'vuln' && (
-                                <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
-                                    {isFeatureLocked('vuln') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
-                                            <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
-                                                <Lock className="w-12 h-12 text-purple-500" />
-                                            </div>
-                                            <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
-                                            <p className="text-gray-400 max-w-xs mb-8 text-sm">
-                                                Vulnerability Intelligence and CVE matching is an <b>Enterprise-only</b> capability.
-                                            </p>
-                                            <button
-                                                onClick={() => setShowCapabilities(true)}
-                                                className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
-                                            >
-                                                <Zap className="w-4 h-4" /> Upgrade to Enterprise
-                                            </button>
-                                        </div>
-                                    )}
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                                                <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                                                Agent Vulnerability Ledger
-                                            </h3>
-                                        </div>
-                                        <AgentSecurityLedger
-                                            agentId={selectedAgentId!}
-                                            apiUrl={API_URL}
-                                            token={token!}
+                                        <Calendar size={12} className="text-gray-500 ml-1 shrink-0" />
+                                        <input
+                                            type="date"
+                                            value={modalStartDate}
+                                            onChange={(e) => setModalStartDate(e.target.value)}
+                                            className="bg-transparent text-[9px] md:text-[10px] text-gray-400 outline-none w-20 md:w-24 shrink-0"
+                                        />
+                                        <span className="text-gray-600 dark:text-gray-500 text-[10px]">-</span>
+                                        <input
+                                            type="date"
+                                            value={modalEndDate}
+                                            onChange={(e) => setModalEndDate(e.target.value)}
+                                            className="bg-transparent text-[9px] md:text-[10px] text-gray-400 outline-none w-20 md:w-24 shrink-0"
                                         />
                                     </div>
                                 </div>
-                            )}
+                                {showGraphs && events.length > 0 && (
+                                    <div className="mb-4 grid grid-cols-2 gap-4 h-48">
+                                        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
+                                            <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Activity className="w-3 h-3 text-cyan-400" /> Event Distribution </div>
+                                            <div className="flex-1 w-full text-xs">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={Object.entries(events.reduce((acc: any, curr: any) => { acc[curr.type] = (acc[curr.type] || 0) + 1; return acc; }, {})).map(([name, count]) => ({ name, count })).slice(0, 10)}>
+                                                        <XAxis dataKey="name" stroke="#6b7280" tick={{ fontSize: 10 }} />
+                                                        <YAxis stroke="#6b7280" tick={{ fontSize: 10 }} />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
+                                                        <Bar dataKey="count" fill="#3b82f6" />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                        <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
+                                            <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Cpu className="w-3 h-3 text-purple-400" /> System Performance </div>
+                                            <div className="flex-1 w-full text-xs">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
+                                                        <XAxis dataKey="timestamp" hide />
+                                                        <YAxis domain={[0, 100]} stroke="#6b7280" tick={{ fontSize: 10 }} />
+                                                        <Tooltip contentStyle={{ backgroundColor: '#111827', fontSize: '10px' }} />
+                                                        <Line type="monotone" name="CPU" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} />
+                                                        <Line type="monotone" name="Memory" dataKey="mem" stroke="#10b981" strokeWidth={2} dot={false} />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex-1 flex flex-col">
+                                    <div className="overflow-y-auto flex-1">
+                                        <table className="w-full text-left text-sm">
+                                            <thead className="bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs sticky top-0">
+                                                <tr><th className="p-4 w-48">Timestamp</th><th className="p-4 w-48">Event Type</th><th className="p-4">Details</th></tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-gray-700 dark:text-gray-300 font-mono text-[11px]">
+                                                {filteredEvents.length === 0 ? <tr><td colSpan={3} className="p-8 text-center text-gray-500 italic">No logs recorded (or no match).</td></tr> : filteredEvents.map((evt, i) => (
+                                                    <tr key={i} className="hover:bg-gray-700/30">
+                                                        <td className="p-4 text-gray-500">{new Date(evt.timestamp).toLocaleString()}</td>
+                                                        <td className="p-4 font-bold"> <span className="text-blue-400">{evt.type}</span> </td>
+                                                        <td className="p-4 break-all">{evt.details}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {hasMoreLogs && (
+                                            <div className="p-4 flex justify-center border-t border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                                                <button
+                                                    onClick={loadMoreLogs}
+                                                    className="px-6 py-2 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 rounded-lg text-xs font-bold uppercase tracking-wider transition-all"
+                                                >
+                                                    Load Older Entries
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
-                            {viewMode === 'vault' && (
-                                <div className="flex-1 overflow-hidden relative">
-                                    {isFeatureLocked('shadow') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                        {viewMode === 'monitor' && (
+                            <div className={`flex-1 ${isScreenMaximized ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-3'} gap-0 overflow-hidden min-h-0`}>
+                                {!isScreenMaximized && (
+                                    <div className="flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 col-span-1 overflow-hidden min-h-0">
+                                        <div className="p-3 bg-gray-100 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2"> <List className="w-4 h-4 text-gray-400" /> <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">Recent Activity</span> </div>
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-sm">
+                                            <div className="mb-4 bg-gray-100 dark:bg-black/40 p-2 rounded border border-gray-200 dark:border-gray-700 h-32">
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <LineChart data={events.filter(e => e.isMetric).slice(0, 50).reverse()}>
+                                                        <YAxis hide domain={[0, 100]} />
+                                                        <Line type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} dot={false} isAnimationActive={false} />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                            {events.map((evt, i) => (
+                                                <div key={i} className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700/50 hover:border-gray-400 dark:hover:border-gray-600">
+                                                    <div className="flex justify-between text-xs text-gray-500 mb-1"> <span>{new Date(normalizeTimestamp(evt.timestamp)).toLocaleTimeString()}</span> <span className="font-bold text-blue-500">{evt.type}</span> </div>
+                                                    <p className="text-gray-700 dark:text-gray-300 break-all line-clamp-2" title={evt.details}>{evt.details}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div ref={monitorContainerRef} className={`flex flex-col bg-gray-50 dark:bg-black ${isScreenMaximized ? 'fixed inset-0 z-50' : 'col-span-2'} overflow-hidden min-h-0 relative`}>
+                                    {isFeatureLocked('live_stream') && (
+                                        <div className="absolute inset-0 z-[60] bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
                                             <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
                                                 <Lock className="w-12 h-12 text-purple-500" />
                                             </div>
                                             <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
                                             <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
-                                                Secure Shadow Vault and File Integrity Monitoring are <b>Enterprise-only</b> capabilities.
+                                                Real-time High-FPS screen monitoring and remote control is an <b>Enterprise-only</b> capability.
                                             </p>
                                             <button
                                                 onClick={() => setShowCapabilities(true)}
@@ -1830,178 +1851,369 @@ export default function Agents() {
                                             </button>
                                         </div>
                                     )}
-                                    <ShadowVault
-                                        agentId={selectedAgentId!}
-                                        token={token!}
-                                        apiUrl={API_URL}
-                                    />
-                                </div>
-                            )}
-
-                            {viewMode === 'apps' && (
-                                <div className="flex-1 overflow-hidden relative">
-                                    {isFeatureLocked('app_blocker') && (
-                                        <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
-                                            <div className="p-4 bg-blue-500/10 rounded-full mb-4 ring-4 ring-blue-500/20">
-                                                <Lock className="w-12 h-12 text-blue-500" />
-                                            </div>
-                                            <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Professional Feature</h2>
-                                            <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
-                                                Application Blocking and Process Enforcement are <b>Professional Plan</b> capabilities.
-                                            </p>
-                                            <button
-                                                onClick={() => setShowCapabilities(true)}
-                                                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl shadow-xl shadow-blue-500/20 transition-all flex items-center gap-2 group"
-                                            >
-                                                <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade to Professional
-                                            </button>
+                                    <div className={`p-3 bg-gray-100 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800 flex items-center gap-2 ${isScreenMaximized ? 'absolute top-0 left-0 right-0 z-10 bg-white/50 dark:bg-black/50 backdrop-blur-sm transition-opacity opacity-0 hover:opacity-100' : ''}`}>
+                                        <div className="flex items-center gap-1.5">
+                                            <div className={`w-2 h-2 rounded-full ${isInteractive ? 'bg-purple-500 animate-pulse' : 'bg-blue-500'}`}></div>
+                                            <span className="text-[10px] md:text-xs font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest">{isInteractive ? 'Interactive Control' : 'Passive Monitoring'}</span>
                                         </div>
-                                    )}
-                                    {/* Placeholder for Apps Component if it existed, or text */}
-                                    <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
-                                        <div className="text-center text-gray-400 mt-20">
-                                            <p>This module allows you to block specific applications from running on the agent.</p>
-                                            <p className="text-xs mt-2 opacity-50">Please upgrade to configure blocked apps.</p>
+                                        <div className="ml-auto flex items-center gap-3">
+                                            <button
+                                                onClick={() => setIsInteractive(!isInteractive)}
+                                                className={`px-3 py-1 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 transition-all ${isInteractive ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30' : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
+                                            >
+                                                <MousePointer className="w-3 h-3" /> {isInteractive ? 'Control ON' : 'Remote Control'}
+                                            </button>
+
+                                            <div className="w-px h-4 bg-gray-300 dark:bg-gray-700 mx-1"></div>
+
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    value={streamQuality}
+                                                    onChange={(e) => setStreamQuality(e.target.value)}
+                                                    className="px-2 py-1 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 outline-none"
+                                                >
+                                                    <option value="fluid">Fluid (Low)</option>
+                                                    <option value="moderate">Moderate</option>
+                                                    <option value="hd">HD (High)</option>
+                                                </select>
+
+                                                {isStreaming ? (
+                                                    <button onClick={handleStopStream} className="px-3 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-500 border border-red-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div> Stop Stream </button>
+                                                ) : (
+                                                    <button onClick={handleStartStream} className="px-3 py-1 bg-green-600/20 hover:bg-green-600/40 text-green-500 border border-green-600/50 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2"> <Server className="w-3 h-3" /> Start Stream </button>
+                                                )}
+                                            </div>
+                                            {isStreaming && !isInteractive && (
+                                                <button onClick={isRecording ? handleStopRecording : handleStartRecording} className={`px-3 py-1 border rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isRecording ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-gray-700/50 text-gray-300 border-gray-600'}`}>
+                                                    {isRecording ? <StopCircle className="w-3 h-3 animate-pulse" /> : <Video className="w-3 h-3" />} {isRecording ? 'Rec ON' : 'Record'}
+                                                </button>
+                                            )}
+                                            <button onClick={handleToggleFullscreen} className="text-gray-400 hover:text-white transition-colors"> {isScreenMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} </button>
                                         </div>
                                     </div>
+                                    <div className="flex-1 relative overflow-hidden bg-gray-50 dark:bg-black min-h-0">
+                                        {/* Hidden Canvas for Recording JPEG Stream */}
+                                        <canvas ref={hiddenCanvasRef} className="hidden" />
+                                        {isInteractive ? (
+                                            <RemoteDesktop agentId={selectedAgentId!} token={token!} />
+                                        ) : (
+                                            liveScreen ? (
+                                                liveScreen.length > 500 ? (
+                                                    <img
+                                                        src={liveScreen.startsWith('data:image') ? liveScreen : `data:image/jpeg;base64,${liveScreen}`}
+                                                        className="absolute inset-0 w-full h-full object-contain z-10"
+                                                        alt="Live Stream"
+                                                    />
+                                                ) : (
+                                                    <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain z-10" autoPlay playsInline muted />
+                                                )
+                                            ) : (
+                                                <div className="text-center text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 h-full flex flex-col justify-center items-center">
+                                                    <div className="w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
+                                                    <h3 className="text-gray-900 dark:text-white font-bold mb-2">Waiting for video stream...</h3>
+                                                    <div className="text-xs font-mono text-left inline-block bg-white dark:bg-black/50 p-3 rounded border border-gray-200 dark:border-gray-800 space-y-1">
+                                                        <p className="text-gray-400">Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
+                                                        <p className="text-gray-400">Socket: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
+                                                        <p className="text-gray-400">Streaming: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {viewMode === 'policy' && (
-                                <FeaturePolicyManager
-                                    agent={agents.find(a => a.agentId === selectedAgentId)}
+                        {viewMode === 'screenshots' && (
+                            <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                <ScreenshotsGallery agentId={selectedAgentId} apiUrl={API_URL} token={token} onUpdate={fetchAgents} />
+                            </div>
+                        )}
+
+                        {viewMode === 'activity' && (
+                            <div className="flex-1 overflow-y-auto p-6 bg-gray-900/50 font-sans">
+                                <ActivityLogViewer
+                                    agentId={selectedAgentId}
+                                    apiUrl={API_URL}
+                                    token={token}
+                                    isEnabled={agents.find(a => a.agentId === selectedAgentId)?.activityMonitorEnabled ?? true}
+                                    onEnable={async () => toggleAgentSetting(selectedAgentId!, 'ActivityMonitorEnabled', true)}
+                                    planLevel={planLevel}
+                                    requiredTier={FEATURE_TIERS['activity']}
+                                />
+                            </div>
+                        )}
+
+                        {viewMode === 'mail' && (
+                            <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
+                                {isFeatureLocked('mail') && (
+                                    <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                            <Lock className="w-12 h-12 text-purple-500" />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
+                                        <p className="text-gray-400 max-w-xs mb-8 text-sm">
+                                            Advanced Email Monitoring and Data Loss Prevention requires <b>Enterprise Plan</b>.
+                                        </p>
+                                        <button
+                                            onClick={() => setShowCapabilities(true)}
+                                            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
+                                        >
+                                            <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                                        </button>
+                                    </div>
+                                )}
+                                <MailLogViewer agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
+                            </div>
+                        )}
+
+                        {viewMode === 'speech' && (
+                            <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
+                                {isFeatureLocked('speech') && (
+                                    <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                            <Lock className="w-12 h-12 text-purple-500" />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
+                                        <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
+                                            Real-time **Speech Monitoring** and Audio Transcription is an **Enterprise-only** capability.
+                                        </p>
+                                        <button
+                                            onClick={() => setShowCapabilities(true)}
+                                            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
+                                        >
+                                            <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                                        </button>
+                                    </div>
+                                )}
+                                <SpeechLogViewer agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
+                            </div>
+                        )}
+
+
+
+                        {viewMode === 'vuln' && (
+                            <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-gray-900/50 font-sans relative">
+                                {isFeatureLocked('vuln') && (
+                                    <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                            <Lock className="w-12 h-12 text-purple-500" />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white mb-2">Enterprise Feature</h2>
+                                        <p className="text-gray-400 max-w-xs mb-8 text-sm">
+                                            Vulnerability Intelligence and CVE matching is an <b>Enterprise-only</b> capability.
+                                        </p>
+                                        <button
+                                            onClick={() => setShowCapabilities(true)}
+                                            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2"
+                                        >
+                                            <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                                            Agent Vulnerability Ledger
+                                        </h3>
+                                    </div>
+                                    <AgentSecurityLedger
+                                        agentId={selectedAgentId!}
+                                        apiUrl={API_URL}
+                                        token={token!}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {viewMode === 'vault' && (
+                            <div className="flex-1 overflow-hidden relative">
+                                {isFeatureLocked('shadow') && (
+                                    <div className="absolute inset-0 z-50 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                            <Lock className="w-12 h-12 text-purple-500" />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Enterprise Feature</h2>
+                                        <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
+                                            Secure Shadow Vault and File Integrity Monitoring are <b>Enterprise-only</b> capabilities.
+                                        </p>
+                                        <button
+                                            onClick={() => setShowCapabilities(true)}
+                                            className="px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-xl shadow-purple-500/20 transition-all flex items-center gap-2 group"
+                                        >
+                                            <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade to Enterprise
+                                        </button>
+                                    </div>
+                                )}
+                                <ShadowVault
+                                    agentId={selectedAgentId!}
                                     token={token!}
                                     apiUrl={API_URL}
-                                    onUpdate={fetchAgents}
-                                    policies={policies} // [NEW]
                                 />
-                            )}
+                            </div>
+                        )}
 
-                            {viewMode === 'specs' && (
-                                <div className="flex-1 overflow-y-auto p-8 bg-gray-900/50 font-sans">
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-4xl mx-auto shadow-lg">
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-4">
-                                            <Cpu className="w-5 h-5 text-blue-500" /> System Specifications
-                                        </h3>
-                                        {(() => {
-                                            const currentAgent = agents.find(a => a.agentId === selectedAgentId);
-                                            let hw = null;
-                                            try {
-                                                if (currentAgent?.hardwareJson) hw = JSON.parse(currentAgent.hardwareJson);
-                                            } catch (e) { console.error("JSON Parse Error", e); }
+                        {viewMode === 'apps' && (
+                            <div className="flex-1 overflow-hidden relative">
+                                {isFeatureLocked('app_blocker') && (
+                                    <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
+                                        <div className="p-4 bg-blue-500/10 rounded-full mb-4 ring-4 ring-blue-500/20">
+                                            <Lock className="w-12 h-12 text-blue-500" />
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Professional Feature</h2>
+                                        <p className="text-gray-400 max-w-xs mb-8 text-sm leading-relaxed">
+                                            Application Blocking and Process Enforcement are <b>Professional Plan</b> capabilities.
+                                        </p>
+                                        <button
+                                            onClick={() => setShowCapabilities(true)}
+                                            className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl shadow-xl shadow-blue-500/20 transition-all flex items-center gap-2 group"
+                                        >
+                                            <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade to Professional
+                                        </button>
+                                    </div>
+                                )}
+                                <div className="flex-1 overflow-hidden relative">
+                                    <AgentAppsList agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
+                                </div>
+                            </div>
+                        )}
 
-                                            // Handle case where parsing fails or null
-                                            if (!hw && currentAgent?.hardwareJson?.includes('{')) {
-                                                // Fallback or retry?
-                                            }
+                        {viewMode === 'policy' && (
+                            <FeaturePolicyManager
+                                agent={agents.find(a => a.agentId === selectedAgentId)}
+                                token={token!}
+                                apiUrl={API_URL}
+                                onUpdate={fetchAgents}
+                                policies={policies} // [NEW]
+                            />
+                        )}
 
-                                            if (!hw) return <div className="text-gray-500 italic text-center py-8">No hardware data available for this agent. Ensure agent version is up to date (Monitorix v2.1+).</div>;
+                        {viewMode === 'specs' && (
+                            <div className="flex-1 overflow-y-auto p-8 bg-gray-900/50 font-sans">
+                                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-4xl mx-auto shadow-lg">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-4">
+                                        <Cpu className="w-5 h-5 text-blue-500" /> System Specifications
+                                    </h3>
+                                    {(() => {
+                                        const currentAgent = agents.find(a => a.agentId === selectedAgentId);
+                                        let hw = null;
+                                        try {
+                                            if (currentAgent?.hardwareJson) hw = JSON.parse(currentAgent.hardwareJson);
+                                        } catch (e) { console.error("JSON Parse Error", e); }
 
-                                            return (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                                    <div className="space-y-6">
-                                                        <div>
-                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Processor</label>
-                                                            <div className="text-gray-900 dark:text-white text-lg font-medium">{hw.CpuModel || 'Unknown'}</div>
-                                                            <div className="text-sm text-gray-400 mt-1 flex gap-4">
-                                                                <span>Cores: <b className="text-gray-300">{hw.CpuCores}</b></span>
-                                                                <span>Threads: <b className="text-gray-300">{hw.CpuThreads}</b></span>
-                                                            </div>
+                                        // Handle case where parsing fails or null
+                                        if (!hw && currentAgent?.hardwareJson?.includes('{')) {
+                                            // Fallback or retry?
+                                        }
+
+                                        if (!hw) return <div className="text-gray-500 italic text-center py-8">No hardware data available for this agent. Ensure agent version is up to date (Monitorix v2.1+).</div>;
+
+                                        return (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <div className="space-y-6">
+                                                    <div>
+                                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Processor</label>
+                                                        <div className="text-gray-900 dark:text-white text-lg font-medium">{hw.CpuModel || 'Unknown'}</div>
+                                                        <div className="text-sm text-gray-400 mt-1 flex gap-4">
+                                                            <span>Cores: <b className="text-gray-300">{hw.CpuCores}</b></span>
+                                                            <span>Threads: <b className="text-gray-300">{hw.CpuThreads}</b></span>
                                                         </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Memory (RAM)</label>
-                                                            <div className="flex items-end gap-2">
-                                                                <span className="text-2xl font-bold text-green-400">{hw.RamTotalGB} GB</span>
-                                                                <span className="text-sm text-gray-500 mb-1">Total</span>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Memory (RAM)</label>
+                                                        <div className="flex items-end gap-2">
+                                                            <span className="text-2xl font-bold text-green-400">{hw.RamTotalGB} GB</span>
+                                                            <span className="text-sm text-gray-500 mb-1">Total</span>
+                                                        </div>
+                                                        <div className="w-full bg-gray-100 dark:bg-gray-700 h-2 rounded-full mt-2 overflow-hidden">
+                                                            <div className="bg-green-500 h-full" style={{ width: `${hw.RamPercent}%` }}></div>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                                            <span>Used: {hw.RamUsedGB} GB</span>
+                                                            <span>Free: {hw.RamAvailableGB} GB</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-6">
+                                                    <div>
+                                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Storage (C: / Root)</label>
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="relative w-24 h-24 flex items-center justify-center">
+                                                                <div className="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
+                                                                <div className="absolute inset-0 border-4 border-blue-500 rounded-full" style={{ clipPath: `polygon(0 0, 100% 0, 100% 100%, 0 100%)`, transform: `rotate(${(1 - (hw.DiskFreeGB / hw.DiskTotalGB)) * 360}deg)` }}></div>
+                                                                {/* Simple visualization, SVG would be better but keeping it text-based for safety */}
+                                                                <div className="text-center">
+                                                                    <div className="text-xl font-bold text-white">{hw.DiskTotalGB}</div>
+                                                                    <div className="text-[10px] text-gray-500">GB Total</div>
+                                                                </div>
                                                             </div>
-                                                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-2 rounded-full mt-2 overflow-hidden">
-                                                                <div className="bg-green-500 h-full" style={{ width: `${hw.RamPercent}%` }}></div>
-                                                            </div>
-                                                            <div className="flex justify-between text-xs text-gray-400 mt-1">
-                                                                <span>Used: {hw.RamUsedGB} GB</span>
-                                                                <span>Free: {hw.RamAvailableGB} GB</span>
+                                                            <div className="space-y-2 text-sm text-gray-300">
+                                                                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Used: {(hw.DiskTotalGB - hw.DiskFreeGB).toFixed(2)} GB</div>
+                                                                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div> Free: {hw.DiskFreeGB} GB</div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="space-y-6">
-                                                        <div>
-                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">Storage (C: / Root)</label>
-                                                            <div className="flex items-center gap-4">
-                                                                <div className="relative w-24 h-24 flex items-center justify-center">
-                                                                    <div className="absolute inset-0 border-4 border-gray-700 rounded-full"></div>
-                                                                    <div className="absolute inset-0 border-4 border-blue-500 rounded-full" style={{ clipPath: `polygon(0 0, 100% 0, 100% 100%, 0 100%)`, transform: `rotate(${(1 - (hw.DiskFreeGB / hw.DiskTotalGB)) * 360}deg)` }}></div>
-                                                                    {/* Simple visualization, SVG would be better but keeping it text-based for safety */}
-                                                                    <div className="text-center">
-                                                                        <div className="text-xl font-bold text-white">{hw.DiskTotalGB}</div>
-                                                                        <div className="text-[10px] text-gray-500">GB Total</div>
-                                                                    </div>
-                                                                </div>
-                                                                <div className="space-y-2 text-sm text-gray-300">
-                                                                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Used: {(hw.DiskTotalGB - hw.DiskFreeGB).toFixed(2)} GB</div>
-                                                                    <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div> Free: {hw.DiskFreeGB} GB</div>
-                                                                </div>
+                                                    <div>
+                                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-1">System</label>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded text-sm border border-gray-200 dark:border-transparent">
+                                                                <span className="text-gray-500 dark:text-gray-400 block text-xs">Hostname</span>
+                                                                <span className="font-mono text-gray-900 dark:text-white font-bold">{currentAgent?.hostname}</span>
+                                                            </div>
+                                                            <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded text-sm border border-gray-200 dark:border-transparent">
+                                                                <span className="text-gray-500 dark:text-gray-400 block text-xs">Agent ID</span>
+                                                                <span className="font-mono text-gray-900 dark:text-white truncate font-bold" title={currentAgent?.agentId}>{currentAgent?.agentId}</span>
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <label className="text-xs font-bold text-gray-500 uppercase block mb-1">System</label>
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded text-sm border border-gray-200 dark:border-transparent">
-                                                                    <span className="text-gray-500 dark:text-gray-400 block text-xs">Hostname</span>
-                                                                    <span className="font-mono text-gray-900 dark:text-white font-bold">{currentAgent?.hostname}</span>
-                                                                </div>
-                                                                <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded text-sm border border-gray-200 dark:border-transparent">
-                                                                    <span className="text-gray-500 dark:text-gray-400 block text-xs">Agent ID</span>
-                                                                    <span className="font-mono text-gray-900 dark:text-white truncate font-bold" title={currentAgent?.agentId}>{currentAgent?.agentId}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                    </div>
 
-                                                        {/* [NEW] Battery Analysis Section */}
-                                                        {(() => {
-                                                            try {
-                                                                const pwr = currentAgent?.powerStatusJson ? JSON.parse(currentAgent.powerStatusJson) : null;
-                                                                if (!pwr) return null;
-                                                                return (
-                                                                    <div className="mt-6 border-t border-gray-700 pt-6">
-                                                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-3">Power & Battery Analysis</label>
-                                                                        <div className="bg-gray-100 dark:bg-gray-700/30 p-4 rounded-lg flex items-center justify-between border border-gray-200 dark:border-transparent">
-                                                                            <div className="flex items-center gap-4">
-                                                                                <div className={`p-3 rounded-full ${pwr.power_plugged ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-500'}`}>
-                                                                                    {pwr.power_plugged ? <Zap size={24} /> : <Monitor size={24} />}
-                                                                                </div>
-                                                                                <div>
-                                                                                    <div className="text-gray-900 dark:text-white font-bold text-xl">{pwr.battery_percent}%</div>
-                                                                                    <div className="text-xs text-gray-400 uppercase tracking-tighter">
-                                                                                        {pwr.power_plugged ? 'AC Power Connected' : 'Running on Battery'}
-                                                                                    </div>
-                                                                                </div>
+                                                    {/* [NEW] Battery Analysis Section */}
+                                                    {(() => {
+                                                        try {
+                                                            const pwr = currentAgent?.powerStatusJson ? JSON.parse(currentAgent.powerStatusJson) : null;
+                                                            if (!pwr) return null;
+                                                            return (
+                                                                <div className="mt-6 border-t border-gray-700 pt-6">
+                                                                    <label className="text-xs font-bold text-gray-500 uppercase block mb-3">Power & Battery Analysis</label>
+                                                                    <div className="bg-gray-100 dark:bg-gray-700/30 p-4 rounded-lg flex items-center justify-between border border-gray-200 dark:border-transparent">
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className={`p-3 rounded-full ${pwr.power_plugged ? 'bg-yellow-500/20 text-yellow-500' : 'bg-blue-500/20 text-blue-500'}`}>
+                                                                                {pwr.power_plugged ? <Zap size={24} /> : <Monitor size={24} />}
                                                                             </div>
-                                                                            <div className="text-right">
-                                                                                <div className="text-gray-400 text-xs mb-1">Estimated Time Remaining</div>
-                                                                                <div className="text-white font-mono">
-                                                                                    {pwr.time_left_min > 0 ? `${Math.floor(pwr.time_left_min / 60)}h ${pwr.time_left_min % 60}m` : (pwr.power_plugged ? 'Calculating...' : 'Unlimited')}
+                                                                            <div>
+                                                                                <div className="text-gray-900 dark:text-white font-bold text-xl">{pwr.battery_percent}%</div>
+                                                                                <div className="text-xs text-gray-400 uppercase tracking-tighter">
+                                                                                    {pwr.power_plugged ? 'AC Power Connected' : 'Running on Battery'}
                                                                                 </div>
                                                                             </div>
                                                                         </div>
+                                                                        <div className="text-right">
+                                                                            <div className="text-gray-400 text-xs mb-1">Estimated Time Remaining</div>
+                                                                            <div className="text-white font-mono">
+                                                                                {pwr.time_left_min > 0 ? `${Math.floor(pwr.time_left_min / 60)}h ${pwr.time_left_min % 60}m` : (pwr.power_plugged ? 'Calculating...' : 'Unlimited')}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                );
-                                                            } catch (e) { return null; }
-                                                        })()}
-                                                    </div>
+                                                                </div>
+                                                            );
+                                                        } catch (e) { return null; }
+                                                    })()}
                                                 </div>
-                                            );
-                                        })()}
-                                    </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
-                            )}
-
-                            <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end">
-                                <button onClick={closeModal} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-colors">Close Viewer</button>
                             </div>
+                        )}
+
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-end">
+                            <button onClick={closeModal} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-500/20 transition-colors">Close Viewer</button>
                         </div>
-                    </div>,
-                    document.body
-                )
+                    </div>
+                </div>,
+                document.body
+            )
             }
         </div >
     );

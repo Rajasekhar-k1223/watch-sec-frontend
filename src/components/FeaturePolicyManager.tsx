@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import {
     Activity, Key, Clipboard, ShieldAlert, Globe, Printer,
     Ghost, Video, Terminal, Mail, Camera, MapPin, Usb, Wifi, FileText, CheckCircle, Info, Mic, AlertCircle, Clock, Rocket, Lock, Shield
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Feature {
     id: string;
@@ -38,10 +38,12 @@ interface TrialStatus {
 }
 
 export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, policies = [] }: FeaturePolicyManagerProps) {
+    const { user } = useAuth();
     const [toggling, setToggling] = useState<string | null>(null);
     const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null);
     const [trialCountdowns, setTrialCountdowns] = useState<Record<string, number>>({});
     const [startingTrial, setStartingTrial] = useState<string | null>(null);
+    const isAdmin = user?.role === 'SuperAdmin' || user?.role === 'TenantAdmin';
 
     const features: Feature[] = [
         {
@@ -114,7 +116,7 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
             id: 'location', name: 'GPS/Location Tracking', domain: 'Asset', icon: <MapPin className="w-4 h-4" />,
             description: 'Device geolocation via IP and WiFi triangulation.',
             permission: 'User/Loc',
-            osSupport: { win: true, linux: true, mac: true }, dbKey: 'locationTrackingEnabled'
+            osSupport: { win: true, linux: true, mac: true }, dbKey: 'GeolocationEnabled'
         },
         {
             id: 'usb', name: 'USB Blocking', domain: 'Security', icon: <Usb className="w-4 h-4" />,
@@ -338,7 +340,6 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
         <div className="flex gap-1 justify-center">
             <span className={`text-[10px] px-1 rounded ${support.win ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-gray-800 text-gray-600 border border-gray-700'}`}>W</span>
             <span className={`text-[10px] px-1 rounded ${support.linux ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' : 'bg-gray-800 text-gray-600 border border-gray-700'}`}>L</span>
-            <span className={`text-[10px] px-1 rounded ${support.mac ? 'bg-gray-400/10 text-gray-300 border border-gray-400/20' : 'bg-gray-800 text-gray-600 border border-gray-700'}`}>M</span>
         </div>
     );
 
@@ -470,8 +471,8 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                                 {canStartTrial(feat.id) ? (
                                                     <button
                                                         onClick={() => startTrial(FEATURE_NAME_MAP[feat.id])}
-                                                        disabled={startingTrial === FEATURE_NAME_MAP[feat.id]}
-                                                        className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-wait flex items-center gap-1.5 ml-auto"
+                                                        disabled={startingTrial === FEATURE_NAME_MAP[feat.id] || !isAdmin}
+                                                        className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold rounded-lg hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed flex items-center gap-1.5 ml-auto"
                                                     >
                                                         <Rocket className="w-3.5 h-3.5" />
                                                         {startingTrial === FEATURE_NAME_MAP[feat.id] ? 'Starting...' : 'Start 1-Hour Trial'}
@@ -485,8 +486,8 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                                 ) : (
                                                     <button
                                                         onClick={() => handleToggle(feat.id, isEnabled)}
-                                                        disabled={isLoading}
-                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                        disabled={isLoading || !isAdmin}
+                                                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${isEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : !isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                                     >
                                                         <span
                                                             className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`}
@@ -521,24 +522,23 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                                 </span>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
                                             {canStartTrial(feat.id) ? (
                                                 <button
                                                     onClick={() => startTrial(FEATURE_NAME_MAP[feat.id])}
-                                                    className="px-2 py-1 bg-blue-600 text-[10px] font-bold text-white rounded shadow-md hover:bg-blue-700 transition-colors"
+                                                    disabled={startingTrial === FEATURE_NAME_MAP[feat.id] || !isAdmin}
+                                                    className="px-2 py-1 bg-blue-600 text-[10px] font-bold text-white rounded shadow-md hover:bg-blue-700 transition-colors disabled:grayscale disabled:opacity-50"
                                                 >
                                                     Trial
                                                 </button>
                                             ) : (
                                                 <button
                                                     onClick={() => handleToggle(feat.id, isEnabled)}
-                                                    disabled={isLoading}
-                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${isEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                                    disabled={isLoading || !isAdmin}
+                                                    className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${isEnabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} ${isLoading ? 'opacity-50 cursor-wait' : !isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                                 >
                                                     <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                                 </button>
                                             )}
-                                        </div>
                                     </div>
                                     <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{feat.description}</p>
                                     <div className="flex justify-between items-center text-[10px]">
@@ -590,7 +590,6 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                     <th className="p-3 font-bold">Technical Capability Description</th>
                                     <th className="p-3 font-bold text-center">Windows</th>
                                     <th className="p-3 font-bold text-center">Linux</th>
-                                    <th className="p-3 font-bold text-center">macOS</th>
                                     <th className="p-3 font-bold text-center">Action / Permissions</th>
                                     <th className="p-3 font-bold text-right">Switch Control</th>
                                 </tr>
@@ -614,9 +613,6 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                             {feat.osSupport.linux ? <CheckCircle className="w-3 h-3 text-orange-500 mx-auto" /> : <span className="text-gray-200 dark:text-gray-800">●</span>}
                                         </td>
                                         <td className="p-3 text-center">
-                                            {feat.osSupport.mac ? <CheckCircle className="w-3 h-3 text-gray-300 mx-auto" /> : <span className="text-gray-200 dark:text-gray-800">●</span>}
-                                        </td>
-                                        <td className="p-3 text-center">
                                             <span className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20 text-[8px] font-bold">
                                                 {feat.permission}
                                             </span>
@@ -624,13 +620,11 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
                                         <td className="p-3 text-right">
                                             <button
                                                 onClick={() => handleToggle(feat.id, agent[feat.dbKey])}
-                                                disabled={toggling === feat.id}
-                                                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${agent[feat.dbKey] ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-                                                    }`}
+                                                disabled={toggling === feat.id || !isAdmin}
+                                                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors focus:outline-none ${agent[feat.dbKey] ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} ${toggling === feat.id ? 'opacity-50 cursor-wait' : !isAdmin ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                                             >
                                                 <span
-                                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${agent[feat.dbKey] ? 'translate-x-6' : 'translate-x-1'
-                                                        }`}
+                                                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${agent[feat.dbKey] ? 'translate-x-6' : 'translate-x-1'}`}
                                                 />
                                             </button>
                                         </td>

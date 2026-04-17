@@ -3,12 +3,16 @@ import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts';
-import { Activity, Server, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, ArrowRight, Globe, Zap, Lock } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { API_URL, SOCKET_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
-import WorldMap from '../components/WorldMap';
 import { NetworkTopology } from '../components/NetworkGraph';
+import WorldMap from '../components/WorldMap';
+import toast from 'react-hot-toast';
+import { 
+    Activity, Server, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, 
+    ArrowRight, Globe, Zap, Lock, Battery, Cpu
+} from 'lucide-react';
 
 // [NEW] Feature Matrix for UI Enforcement
 const PLAN_LEVELS: Record<string, number> = {
@@ -52,15 +56,12 @@ interface DashboardStats {
         activeConnections: number;
     };
     riskyAssets: { agentId: string; threatCount: number }[];
-    productivity: { globalScore: number };
+    productivity: { 
+        globalScore: number;
+        breakdown?: { name: string; value: number; color: string }[];
+    };
 }
 
-// Threat Colors for Pie Chart
-const THREAT_COLORS = ['#EF4444', '#F59E0B', '#6366F1', '#10B981'];
-
-// Format raw threat type keys into readable labels
-const formatThreatType = (type: string) =>
-    type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 // Helper for consistent date parsing (SQL -> ISO UTC -> Local)
 const normalizeTimestamp = (ts: any) => {
@@ -144,18 +145,35 @@ export default function Dashboard() {
         });
 
         const handleNewLog = (data: any) => {
+            const isHighRisk = data.severity === 'critical' || data.severity === 'high' || data.RiskLevel === 'High';
+            
             const newLog: LogEntry = {
-                type: data.category || data.title || data.type || "Security", // Adapt to agent event format
+                type: data.category || data.title || data.type || "Security",
                 details: data.details || "Unknown Event",
                 timestamp: normalizeTimestamp(data.timestamp || data.Timestamp),
                 agentId: data.agentId || data.agent_id
             };
+            
             setLogs(prev => [newLog, ...prev].slice(0, 100));
+
+            // [NEW] Intelligent Toasts for High Risk
+            if (isHighRisk) {
+                toast.error(`High Risk Detected: ${newLog.details}`, {
+                    duration: 5000,
+                    icon: '⚠️',
+                    style: {
+                        background: '#7f1d1d',
+                        color: '#fef2f2',
+                        fontWeight: 'bold',
+                        border: '1px solid #991b1b'
+                    }
+                });
+            }
 
             setStats(prev => {
                 if (!prev) return null;
                 const next = { ...prev };
-                if (data.severity === 'critical' || data.severity === 'high') {
+                if (isHighRisk) {
                     next.threats.total24h++;
                 }
                 return next;
@@ -205,12 +223,6 @@ export default function Dashboard() {
         return planLevel < req;
     };
 
-    // Prepare Pie Data with clean labels
-    const pieData = stats?.threats.byType.map((t, i) => ({
-        name: formatThreatType(t.type),
-        value: t.count,
-        color: THREAT_COLORS[i % THREAT_COLORS.length]
-    })) || [];
 
     const totalThreats = stats?.threats.total24h ?? stats?.threats.total ?? 0;
 
@@ -243,6 +255,48 @@ export default function Dashboard() {
                             {h === 24 ? '24H' : (h / 24) + 'D'}
                         </button>
                     ))}
+                </div>
+            </div>
+
+            {/* [NEW] Fleet Health Quick Summary */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-red-50 to-white dark:from-red-500/5 dark:to-transparent border border-red-100 dark:border-red-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-red-500/10 rounded-lg text-red-500"><Battery size={20} className="animate-pulse" /></div>
+                        <div>
+                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Low Battery Warnings</div>
+                            <div className="text-xl font-black text-red-600 dark:text-red-400">
+                                {mapAgents.filter(a => {
+                                    try {
+                                        const p = a.powerStatusJson ? JSON.parse(a.powerStatusJson) : null;
+                                        return p && p.battery_percent < 20 && !p.power_plugged;
+                                    } catch { return false; }
+                                }).length} Agents
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gradient-to-br from-amber-50 to-white dark:from-amber-500/5 dark:to-transparent border border-amber-100 dark:border-amber-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500"><Cpu size={20} /></div>
+                        <div>
+                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">High Resource Usage</div>
+                            <div className="text-xl font-black text-amber-600 dark:text-amber-400">
+                                {mapAgents.filter(a => a.cpuUsage > 85).length} Agents
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-500/5 dark:to-transparent border border-purple-100 dark:border-purple-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500"><ShieldAlert size={20} /></div>
+                        <div>
+                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Recent Violations</div>
+                            <div className="text-xl font-black text-purple-600 dark:text-purple-400">
+                                {logs.filter(l => l.type.includes('Alert') || l.type.includes('High')).length} Logged
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -293,7 +347,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-baseline gap-1">
                         <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                            {stats?.network.inboundMbps ?? 0}
+                            {stats?.network.inboundMbps ? stats.network.inboundMbps.toFixed(2) : "0.00"}
                         </div>
                         <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
                     </div>
@@ -365,46 +419,55 @@ export default function Dashboard() {
                     </div>
                 </div>
 
-                {/* Pie Chart: Threats by Type */}
+                {/* Pie Chart: Productivity Split */}
                 <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-lg">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                        <ShieldAlert className="w-5 h-5 text-red-400" />
-                        Threat Distribution
+                        <Zap className="w-5 h-5 text-emerald-400" />
+                        Time Analysis
                     </h2>
                     <div className="h-[250px] relative">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <PieChart>
-                                <Pie
-                                    data={pieData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={80}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
-                                    {pieData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.2)" />
-                                    ))}
-                                </Pie>
-                                <Tooltip />
-                                <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                            </PieChart>
-                        </ResponsiveContainer>
-                        {/* Center Text Overlay */}
+                        {stats?.productivity.breakdown && stats.productivity.breakdown.length > 0 ? (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie
+                                        data={stats.productivity.breakdown}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={60}
+                                        outerRadius={80}
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                    >
+                                        {stats.productivity.breakdown.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip 
+                                        contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#fff', fontSize: '12px' }}
+                                    />
+                                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-500 text-xs italic">
+                                Insufficient data for time analysis.
+                            </div>
+                        )}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                            <div className="text-3xl font-bold text-gray-900 dark:text-white">{totalThreats}</div>
-                            <div className="text-xs text-gray-500 uppercase">Total</div>
+                            <div className="text-2xl font-black text-gray-900 dark:text-white">{stats?.productivity.globalScore}%</div>
+                            <div className="text-[10px] text-gray-500 uppercase font-black">Score</div>
                         </div>
                     </div>
                 </div>
             </div>
 
             {/* Bottom Section: Map & Topology & Logs */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="flex flex-col gap-6 w-full">
 
-                {/* Network Topology */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 relative overflow-hidden group shadow-lg min-h-[400px]">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                    {/* Network Topology */}
+                    <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 relative overflow-hidden group shadow-lg h-[400px] flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <Network className="w-5 h-5 text-blue-400" />
@@ -412,7 +475,7 @@ export default function Dashboard() {
                         </h2>
                         <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">LIVE SCAN</span>
                     </div>
-                    <div className="h-[350px] w-full bg-gray-50 dark:bg-gray-950/50 rounded-xl border border-gray-200 dark:border-gray-800/50 relative overflow-hidden">
+                    <div className="flex-1 w-full bg-gray-50 dark:bg-gray-950/50 rounded-xl border border-gray-200 dark:border-gray-800/50 relative overflow-hidden min-h-0">
                         {isFeatureLocked('network') && (
                             <div className="absolute inset-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 transition-colors">
                                 <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
@@ -435,7 +498,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Live Logs */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col h-[400px] shadow-lg">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col h-[400px] shadow-lg">
                     <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-yellow-500" />
                         Live Security Feed
@@ -467,20 +530,14 @@ export default function Dashboard() {
                         )}
                     </div>
                 </div>
-            </div>
 
-            {/* World Map Overlay/Modal OR Bottom Component? Let's hide it for now to reduce clutter or put at very bottom */}
-            <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 min-h-[400px]">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Global Threat Map</h2>
-                    <div className="flex items-center gap-4 text-xs font-medium text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></span> Active Endpoint</div>
-                        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]"></span> Threat Detected</div>
-                    </div>
                 </div>
-                <div className="h-[400px] w-full rounded-xl overflow-hidden relative border border-gray-200 dark:border-gray-800/50">
+
+                {/* Global Threat Map */}
+                <div className="w-full h-[500px]">
                     <WorldMap agents={mapAgents} />
                 </div>
+
             </div>
 
         </div>

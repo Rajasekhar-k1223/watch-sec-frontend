@@ -136,7 +136,6 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                     <th className="p-4 font-bold">Technical Capability Description</th>
                                     <th className="p-4 font-bold text-center">Windows</th>
                                     <th className="p-4 font-bold text-center">Linux</th>
-                                    <th className="p-4 font-bold text-center">macOS</th>
                                     <th className="p-4 font-bold text-center">Sub/Tier</th>
                                     <th className="p-4 font-bold text-right">Unit Price</th>
                                     <th className="p-4 font-bold text-right">Protection Layer</th>
@@ -172,9 +171,6 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                         </td>
                                         <td className="p-4 text-center">
                                             {feat.linux ? <CheckCircle className="w-4 h-4 text-orange-600 dark:text-orange-500 mx-auto" /> : <X className="w-4 h-4 text-gray-400 dark:text-gray-800 mx-auto" />}
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            {feat.mac ? <CheckCircle className="w-4 h-4 text-gray-400 dark:text-gray-300 mx-auto" /> : <X className="w-4 h-4 text-gray-400 dark:text-gray-800 mx-auto" />}
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className={`px-2 py-1 rounded border font-bold text-[9px] uppercase tracking-wider ${feat.tier === 'Starter' ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700' :
@@ -256,7 +252,6 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                     <div className="flex gap-1.5">
                                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.win ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : 'opacity-20'}`}>WIN</span>
                                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.linux ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'opacity-20'}`}>LIN</span>
-                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.mac ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400' : 'opacity-20'}`}>MAC</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-xs font-mono font-bold text-gray-900 dark:text-white">${feat.price}</span>

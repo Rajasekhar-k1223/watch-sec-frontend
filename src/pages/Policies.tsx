@@ -13,12 +13,13 @@ interface Policy {
     blockedAppsJson?: string;
     blockedWebsitesJson?: string;
     remediationJson: string;
-    bandwidthJson?: string; // [NEW]
-    screenshotInterval?: number; // [NEW]
+    bandwidthJson?: string;
+    screenshotInterval?: number;
+    GeolocationEnabled?: boolean; // [NEW] v1.8.27
 }
 
 export default function Policies() {
-    const { token } = useAuth();
+    const { user, token } = useAuth();
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,7 +33,8 @@ export default function Policies() {
         blockedWebsitesJson: '[]',
         remediationJson: '[]',
         bandwidthJson: '{}',
-        screenshotInterval: 60
+        screenshotInterval: 60,
+        GeolocationEnabled: true // Default to ON
     });
 
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
@@ -89,7 +91,8 @@ export default function Policies() {
             blockedWebsitesJson: '[]',
             remediationJson: '[]',
             bandwidthJson: '{}',
-            screenshotInterval: 60
+            screenshotInterval: 60,
+            GeolocationEnabled: true
         });
     };
 
@@ -307,6 +310,24 @@ export default function Policies() {
                                     />
                                     <label htmlFor="chkScreenshot" className="text-sm text-gray-600 dark:text-gray-300">Enable Agent Screenshots</label>
                                 </div>
+
+                                <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/50 mt-2">
+                                    <input
+                                        type="checkbox"
+                                        id="chkGeolocation"
+                                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-purple-600 focus:ring-purple-500 disabled:opacity-50"
+                                        checked={newPolicy.GeolocationEnabled}
+                                        disabled={user?.role !== 'SuperAdmin' && user?.role !== 'TenantAdmin'}
+                                        onChange={e => setNewPolicy({ ...newPolicy, GeolocationEnabled: e.target.checked })}
+                                    />
+                                    <div className="flex flex-col">
+                                        <label htmlFor="chkGeolocation" className="text-sm text-gray-600 dark:text-gray-300 font-bold">
+                                            Enable Geolocation Tracking
+                                            {(user?.role !== 'SuperAdmin' && user?.role !== 'TenantAdmin') && <span className="ml-2 text-[8px] text-red-400 uppercase">(Admin Only)</span>}
+                                        </label>
+                                        <p className="text-[10px] text-gray-500">Collects GPS/IP-based location data from agents.</p>
+                                    </div>
+                                </div>
                                 {newPolicy.actions.includes('Screenshot') && (
                                     <div className="mt-2 pl-6 space-y-2">
                                         <div className="flex justify-between items-center text-[10px] uppercase font-bold text-gray-500">
@@ -440,6 +461,7 @@ export default function Policies() {
                                                             <option value="KillProcess">Kill Process</option>
                                                             <option value="LockSession">Lock Session</option>
                                                             <option value="SecurityPopup">Show Warning</option>
+                                                            <option value="IsolateNetwork">Isolate Network</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -467,6 +489,6 @@ export default function Policies() {
                     </div>
                 )
             }
-        </div >
+        </div>
     );
 }

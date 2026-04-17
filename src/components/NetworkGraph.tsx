@@ -91,7 +91,8 @@ export const NetworkTopology = () => {
             setTimeout(() => {
                 if (graphRef.current) {
                     graphRef.current.zoomToFit(400);
-                    graphRef.current.d3Force('charge')?.strength(-100); // Repel
+                    graphRef.current.d3Force('charge')?.strength(-250); // Repel stronger
+                    graphRef.current.d3Force('link')?.distance(80); // Distance between nodes
                 }
             }, 500);
 
@@ -156,7 +157,7 @@ export const NetworkTopology = () => {
     }, [theme]);
 
     return (
-        <div ref={containerRef} className="w-full h-[600px] bg-white dark:bg-gray-950 rounded-xl overflow-hidden relative border border-gray-200 dark:border-gray-800 shadow-2xl transition-colors">
+        <div ref={containerRef} className="w-full h-full bg-white dark:bg-gray-950 rounded-xl overflow-hidden relative border border-gray-200 dark:border-gray-800 shadow-2xl transition-colors">
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-20">
                     <Loader2 className="animate-spin text-blue-500 w-8 h-8" />

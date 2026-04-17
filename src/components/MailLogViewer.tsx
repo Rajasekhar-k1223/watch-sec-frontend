@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Mail } from 'lucide-react';
+import { Mail, Download } from 'lucide-react';
 import { useCallback } from 'react';
 
 interface Props {
@@ -55,6 +55,29 @@ export default function MailLogViewer({ agentId, apiUrl, token }: Props) {
         const formatDate = (d: Date) => d.toISOString().split('T')[0];
         setStartDate(formatDate(start));
         setEndDate(formatDate(end));
+    };
+
+    const handleDownload = async (attachment: any) => {
+        if (!token) return;
+        try {
+            const res = await fetch(`${apiUrl}/mail/attachment/${attachment.Id}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Download failed');
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = attachment.FileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            import('react-hot-toast').then(t => t.default.success("Attachment downloaded."));
+        } catch (e) {
+            console.error(e);
+            import('react-hot-toast').then(t => t.default.error("Failed to download attachment."));
+        }
     };
 
     return (
@@ -123,8 +146,20 @@ export default function MailLogViewer({ agentId, apiUrl, token }: Props) {
                                         <div className="text-[10px] text-gray-400 dark:text-gray-500">→ {m.Recipient}</div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <div className="text-blue-400 text-xs truncate max-w-md">{m.Subject}</div>
-                                        {m.HasAttachments && <span className="text-[8px] bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded text-blue-300 mt-1 inline-block uppercase font-black">Encrypted Attachment</span>}
+                                        <div className="text-blue-400 text-xs truncate max-w-md" title={m.Subject}>{m.Subject || <span className="italic text-gray-500">No Subject</span>}</div>
+                                        {m.Attachments && m.Attachments.length > 0 && (
+                                            <div className="flex flex-wrap gap-1 mt-1.5">
+                                                {m.Attachments.map((att: any) => (
+                                                    <button 
+                                                        key={att.Id} onClick={() => handleDownload(att)} 
+                                                        className="flex items-center gap-1 text-[9px] bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 px-2 py-0.5 rounded text-blue-300 transition-colors uppercase font-black"
+                                                        title={`Download ${att.FileName}`}
+                                                    >
+                                                        <Download size={10} /> {att.FileName} ({(att.Size / 1024).toFixed(1)} KB)
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${m.RiskLevel === 'High' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 'bg-green-500/10 text-green-500 border border-green-500/20'}`}>
@@ -157,8 +192,20 @@ export default function MailLogViewer({ agentId, apiUrl, token }: Props) {
                                 <div className="text-[10px] text-gray-400 dark:text-gray-500 break-all">→ {m.Recipient}</div>
                             </div>
                             <div className="bg-gray-50 dark:bg-black/20 p-3 rounded-xl border border-gray-100 dark:border-white/5">
-                                <div className="text-blue-500 dark:text-blue-300 text-xs font-bold leading-relaxed">{m.Subject}</div>
-                                {m.HasAttachments && <div className="text-[8px] text-blue-500 font-black uppercase mt-2">Clip Attachment Detected</div>}
+                                        <div className="text-blue-500 dark:text-blue-300 text-xs font-bold leading-relaxed">{m.Subject || <span className="italic text-gray-500">No Subject</span>}</div>
+                                        {m.Attachments && m.Attachments.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mt-3">
+                                                {m.Attachments.map((att: any) => (
+                                                    <button 
+                                                        key={att.Id} onClick={() => handleDownload(att)}
+                                                        className="flex items-center gap-1.5 w-full justify-between text-[10px] bg-blue-500/10 border border-blue-500/20 p-2 rounded-lg text-blue-400 hover:bg-blue-500/20 transition-colors font-black uppercase"
+                                                    >
+                                                        <span className="truncate">{att.FileName}</span>
+                                                        <Download size={12} className="shrink-0" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                             </div>
                         </div>
                     ))
