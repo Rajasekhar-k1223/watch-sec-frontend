@@ -169,7 +169,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 >
                     <Menu size={20} />
                 </button>
-                <div className="relative w-full md:w-96 group" ref={searchRef}>
+                <div className="relative flex-1 max-w-[180px] sm:max-w-none md:w-96 group" ref={searchRef}>
                     <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${showSearch ? 'text-cyan-500' : 'text-gray-500'}`} />
                     <input
                         ref={inputRef}

@@ -61,13 +61,15 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <Toaster position="top-right" toastOptions={{
-          style: {
-            background: '#fff',
-            color: '#1f2937',
-            border: '1px solid #e5e7eb'
-          }
-        }} />
+        <Toaster position="top-right"
+          containerStyle={{ zIndex: 10001 }}
+          toastOptions={{
+            style: {
+              background: '#fff',
+              color: '#1f2937',
+              border: '1px solid #e5e7eb'
+            }
+          }} />
         <BrowserRouter>
           <AnalyticsTracker />
           <Routes>

@@ -162,9 +162,13 @@ export default function Agents() {
     const [selectedDate, setSelectedDate] = useState(''); // Default to empty for rolling 24h
     const [agentSearch, setAgentSearch] = useState('');
 
-    const [latestVersion, setLatestVersion] = useState("v1.8.19"); // Default fallback
+    const [latestVersion, setLatestVersion] = useState("v1.8.54"); // Default fallback
     const [updateProgressMap, setUpdateProgressMap] = useState<Record<string, number>>({});
     const updateTimeouts = useRef<Record<string, any>>({});
+
+    // [v1.8.60] Update Hub & Batch State
+    const [showUpdateHub, setShowUpdateHub] = useState(false);
+    const [isProcessingBatch, setIsProcessingBatch] = useState(false);
 
 
 
@@ -231,23 +235,35 @@ export default function Agents() {
     useEffect(() => {
         // [NEW] Fetch Tenant Plan
         if (token && user?.tenantId) {
-            // [FIX] Cache bust and Capitalized 'Plan' property
             fetch(`${API_URL}/billing/?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } })
                 .then(res => res.json())
                 .then(data => {
-                    const p = data.Plan || data.plan || "Starter"; // Try both to be safe
-                    console.log("[Agents] Plan Fetched:", p);
+                    const p = data.Plan || data.plan || "Starter";
                     setPlanLevel(PLAN_LEVELS[p.toLowerCase()] || 1);
                 })
                 .catch(e => console.error("Failed to fetch plan", e));
         }
 
         fetchAgents();
-        fetchPolicies(); // [NEW]
+        fetchPolicies();
         fetchStats(selectedDate);
-        const interval = setInterval(() => { fetchAgents(); fetchStats(selectedDate); }, 10000);
+
+        const interval = setInterval(() => { 
+            fetchAgents(); 
+            fetchStats(selectedDate);
+        }, 10000);
         return () => clearInterval(interval);
-    }, [fetchStats, selectedDate, token, user?.tenantId]);
+    }, [token, user?.tenantId, fetchStats, selectedDate]);
+
+    // [v1.8.60] Scroll Lock for Update Hub
+    useEffect(() => {
+        if (showUpdateHub) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [showUpdateHub]);
 
     // [NEW] Fetch Policies for Dropdown
     const fetchPolicies = async () => {
@@ -455,6 +471,52 @@ export default function Agents() {
         } catch (e) {
             console.error(e);
             toast.error("Network error triggering patch.");
+        }
+    };
+
+    // [v1.8.60] Update Hub Logic
+    const hasGlobalUpdate = useMemo(() => {
+        return agents.some(a => a.version !== latestVersion);
+    }, [agents, latestVersion]);
+
+    const handleBatchPatch = async (batchSize = 10, delay = 60) => {
+        const outOfDateIds = agents
+            .filter(a => a.version !== latestVersion)
+            .map(a => a.agentId);
+
+        if (outOfDateIds.length === 0) {
+            toast("All agents are already up to date.");
+            return;
+        }
+
+        if (!window.confirm(`Staggered Update: This will patch ${outOfDateIds.length} agents in batches of ${batchSize} every ${delay} seconds to protect your server. Proceed?`)) return;
+
+        setIsProcessingBatch(true);
+        try {
+            const res = await fetch(`${API_URL}/agents/patch-batch`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    agent_ids: outOfDateIds,
+                    batch_size: batchSize,
+                    delay: delay
+                })
+            });
+            if (res.ok) {
+                toast.success("Rolling update started in background.");
+                fetchAgents();
+                setShowUpdateHub(false);
+            } else {
+                toast.error("Failed to start batch update.");
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Connection error during batch trigger.");
+        } finally {
+            setIsProcessingBatch(false);
         }
     };
     // ... 
@@ -904,6 +966,9 @@ export default function Agents() {
                     cpuUsage: updatedAgent.cpuUsage ?? next[index].cpuUsage,
                     memoryUsage: updatedAgent.memoryUsage ?? next[index].memoryUsage,
                     powerStatusJson: updatedAgent.powerStatusJson ?? next[index].powerStatusJson,
+                    latitude: updatedAgent.latitude ?? next[index].latitude,
+                    longitude: updatedAgent.longitude ?? next[index].longitude,
+                    country: updatedAgent.country ?? next[index].country,
                     timestamp: normalizeTimestamp(updatedAgent.timestamp || next[index].timestamp)
                 };
                 return next;
@@ -941,6 +1006,21 @@ export default function Agents() {
                     return next;
                 });
             }
+        });
+
+        // [v1.8.56] Real-time Activity Streaming
+        socket.on("new_client_activity", (data: any) => {
+             // Only update if this is the agent currently being viewed in the modal
+             if (selectedAgentId?.toString() === data.AgentId?.toString()) {
+                 const newActivity = {
+                     type: data.ActivityType || 'Activity',
+                     details: `${data.ProcessName || ''} - ${data.WindowTitle || data.Url || ''}`.trim(),
+                     timestamp: normalizeTimestamp(data.Timestamp),
+                     RiskLevel: data.RiskLevel,
+                     Category: data.Category
+                 };
+                 setEvents(prev => [newActivity, ...prev].slice(0, 500)); // Keep a healthy limit
+             }
         });
 
         socket.on("webrtc_offer", async (data: any) => {
@@ -1113,6 +1193,27 @@ export default function Agents() {
                         )}
                     </div>
                 </div>
+
+                {/* Software Update Management - [v1.8.60] */}
+                {hasGlobalUpdate && user?.role === 'TenantAdmin' && (
+                    <div className="bg-gradient-to-r from-blue-600/20 to-indigo-600/10 border border-blue-500/30 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6 shadow-lg shadow-blue-900/10 backdrop-blur-md animate-in fade-in slide-in-from-top duration-500">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-blue-600/20 p-2 rounded-lg text-blue-500 animate-pulse">
+                                <RefreshCw size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-900 dark:text-white">New Software Update Available</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">Version <b>{latestVersion}</b> is ready for deployment. Staggered batch patching recommended.</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setShowUpdateHub(true)}
+                            className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                        >
+                            Open Update Center
+                        </button>
+                    </div>
+                )}
 
                 {/* Fleet Analytics Section */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -1399,17 +1500,23 @@ export default function Agents() {
                                             ) : (
                                                 <div className="flex gap-1">
                                                     <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20" title="Current Version">
-                                                        {agent.version}
+                                                        {agent.version || 'v1.0.0'}
                                                     </span>
-                                                    {agent.version !== agent.targetVersion ? (
-                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 animate-pulse flex items-center gap-1" title="Target Version">
-                                                            <RefreshCw size={8} className="animate-spin" /> {agent.targetVersion}
+                                                    {agent.updateStatus === "dispatching_update" || agent.updateStatus === "pending_manual_push" ? (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-500 border border-blue-500/40 animate-pulse flex items-center gap-1 font-bold">
+                                                            <RefreshCw size={8} className="animate-spin" /> QUEUED
                                                         </span>
                                                     ) : (
-                                                        agent.version === latestVersion && (
-                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20 flex items-center gap-0.5" title="System Up-to-Date">
-                                                                <Check size={8} /> OK
+                                                        agent.version !== agent.targetVersion ? (
+                                                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 animate-pulse flex items-center gap-1" title="Target Version">
+                                                                <RefreshCw size={8} className="animate-spin" /> {agent.targetVersion || 'v1.0.0'}
                                                             </span>
+                                                        ) : (
+                                                            agent.version === latestVersion && (
+                                                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-100 dark:border-green-500/20 flex items-center gap-0.5" title="System Up-to-Date">
+                                                                    <Check size={8} /> OK
+                                                                </span>
+                                                            )
                                                         )
                                                     )}
                                                 </div>
@@ -1458,13 +1565,13 @@ export default function Agents() {
                                             </div>
                                             {agent.latitude && agent.latitude !== 0 ? (
                                                 <>
-                                                    <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-800 dark:text-gray-200">
-                                                        <MapPin size={12} className="text-red-500" />
-                                                        {agent.country || 'Unknown'}
+                                                    <div className="flex items-center gap-1.5 text-sm font-bold text-gray-900 dark:text-gray-100">
+                                                        <MapPin size={12} className="text-red-500 animate-pulse" />
+                                                        {agent.country || 'Detected'}
                                                     </div>
                                                     <div className="flex items-center gap-2 ml-4">
-                                                        <span className="text-[10px] text-gray-500 font-mono">
-                                                            {agent.latitude?.toFixed(4)}, {agent.longitude?.toFixed(4)}
+                                                        <span className="text-[10px] text-gray-500 font-mono bg-gray-50 dark:bg-gray-800 px-1 rounded border border-gray-100 dark:border-gray-700">
+                                                            {agent.latitude?.toFixed(6)}, {agent.longitude?.toFixed(6)}
                                                         </span>
                                                         {agent.locationTrackingEnabled && (
                                                             <span className="text-[9px] flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-500/20 font-bold uppercase tracking-wider">
@@ -2092,8 +2199,35 @@ export default function Agents() {
                         {viewMode === 'specs' && (
                             <div className="flex-1 overflow-y-auto p-8 bg-gray-900/50 font-sans">
                                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 max-w-4xl mx-auto shadow-lg">
-                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-4">
-                                        <Cpu className="w-5 h-5 text-blue-500" /> System Specifications
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center justify-between gap-2 border-b border-gray-200 dark:border-gray-700 pb-4">
+                                        <div className="flex items-center gap-2">
+                                            <Cpu className="w-5 h-5 text-blue-500" /> System Specifications
+                                        </div>
+                                        {(() => {
+                                            const currentAgent = agents.find(a => a.agentId === selectedAgentId);
+                                            if (!currentAgent || currentAgent.version === latestVersion) return null;
+                                            
+                                            const isPending = currentAgent.updateStatus === "dispatching_update" || currentAgent.updateStatus === "pending_manual_push";
+                                            
+                                            return (
+                                                <div className={`flex items-center gap-3 px-3 py-1.5 rounded-lg border ${isPending ? 'bg-blue-500/10 border-blue-500/30' : 'bg-amber-500/10 border-amber-500/30'} animate-in fade-in slide-in-from-right duration-500`}>
+                                                    <div className="flex flex-col">
+                                                        <span className={`text-[10px] font-black uppercase tracking-tighter ${isPending ? 'text-blue-400' : 'text-amber-500'}`}>
+                                                            {isPending ? 'Update Queued' : 'Software Update Available'}
+                                                        </span>
+                                                        <span className="text-[9px] text-gray-500 font-mono">Target: {latestVersion}</span>
+                                                    </div>
+                                                    {!isPending && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handlePatchNow(currentAgent.agentId); }}
+                                                            className="bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg shadow-amber-500/20 active:scale-95 transition-all flex items-center gap-1"
+                                                        >
+                                                            <RefreshCw size={10} strokeWidth={3} /> Upgrade
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                     </h3>
                                     {(() => {
                                         const currentAgent = agents.find(a => a.agentId === selectedAgentId);
@@ -2215,6 +2349,115 @@ export default function Agents() {
                 document.body
             )
             }
+
+            {/* Software Update Hub Modal - [v1.8.60] */}
+            {showUpdateHub && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div 
+                        className="bg-white dark:bg-gray-900 w-full max-w-xl rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-blue-600/10 p-2 rounded-lg text-blue-500">
+                                    <Download size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Software Update Hub</h2>
+                                    <p className="text-xs text-gray-500">Centralized Deployment & Security Auditing</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowUpdateHub(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Security Audit Section */}
+                            <div className="space-y-3">
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Security & Compliance Audit</h3>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <div className="text-sm font-bold text-gray-900 dark:text-white">Windows Standalone Binary (x64)</div>
+                                            <div className="text-[10px] text-gray-500 font-mono mt-1">Version: {latestVersion} | Format: .EXE</div>
+                                        </div>
+                                        <a 
+                                            href={`${fullApiUrl}/downloads/latest-binary`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 transition-all flex items-center gap-2"
+                                        >
+                                            <Download size={12} /> Download for Audit
+                                        </a>
+                                    </div>
+                                    <div className="bg-black/5 dark:bg-black/20 p-2 rounded border border-black/5 dark:border-white/5">
+                                        <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1 font-mono">Forensics Checksum (SHA256)</label>
+                                        <div className="text-[9px] font-mono text-blue-500 break-all select-all italic">
+                                            Handshake Signature Verification Active 🛡️
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Deployment Strategy Section */}
+                            <div className="space-y-3">
+                                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Global Deployment Strategy</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <button 
+                                        onClick={() => handleBatchPatch(2, 30)}
+                                        disabled={isProcessingBatch}
+                                        className="flex flex-col items-center justify-center p-3 bg-purple-600/5 hover:bg-purple-600/10 border border-purple-600/20 rounded-xl transition-all group"
+                                    >
+                                        <ShieldCheck className="w-6 h-6 text-purple-500 mb-1 group-hover:scale-110 transition-transform" />
+                                        <div className="text-[10px] font-bold text-gray-900 dark:text-white text-center">Precision</div>
+                                        <div className="text-[8px] text-gray-500 mt-0.5">2 Agents / 30s</div>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleBatchPatch(3, 45)}
+                                        disabled={isProcessingBatch}
+                                        className="flex flex-col items-center justify-center p-3 bg-indigo-600/5 hover:bg-indigo-600/10 border border-indigo-600/20 rounded-xl transition-all group"
+                                    >
+                                        <RefreshCw className={`w-6 h-6 text-indigo-500 mb-1 ${isProcessingBatch ? 'animate-spin' : 'group-hover:rotate-180 transition-transform'}`} />
+                                        <div className="text-[10px] font-bold text-gray-900 dark:text-white text-center">Small Group</div>
+                                        <div className="text-[8px] text-gray-500 mt-0.5">3 Agents / 45s</div>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleBatchPatch(10, 60)}
+                                        disabled={isProcessingBatch}
+                                        className="flex flex-col items-center justify-center p-3 bg-blue-600/5 hover:bg-blue-600/10 border border-blue-600/20 rounded-xl transition-all group"
+                                    >
+                                        <Server className="w-6 h-6 text-blue-500 mb-1 group-hover:scale-110 transition-transform" />
+                                        <div className="text-[10px] font-bold text-gray-900 dark:text-white text-center">Staggered</div>
+                                        <div className="text-[8px] text-gray-500 mt-0.5">10 Agents / Min</div>
+                                    </button>
+                                    <button 
+                                        onClick={() => handleBatchPatch(50, 30)}
+                                        disabled={isProcessingBatch}
+                                        className="flex flex-col items-center justify-center p-3 bg-amber-600/5 hover:bg-amber-600/10 border border-amber-600/20 rounded-xl transition-all group"
+                                    >
+                                        <Zap className="w-6 h-6 text-amber-500 mb-1 group-hover:scale-110 transition-transform" />
+                                        <div className="text-[10px] font-bold text-gray-900 dark:text-white text-center">Accelerated</div>
+                                        <div className="text-[8px] text-gray-500 mt-0.5">50 Agents / 30s</div>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
+                            <div className="text-[10px] text-gray-500 max-w-[60%] italic">
+                                Rolling updates prevent server saturation. All agents will report back as they complete extraction.
+                            </div>
+                            <button 
+                                onClick={() => setShowUpdateHub(false)}
+                                className="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-bold transition-all"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

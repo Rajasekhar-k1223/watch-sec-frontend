@@ -4,6 +4,7 @@ interface User {
     id: number;
     username: string;
     role: string;
+    Role?: string; // [FIX] Migration bridge for backend parity
     tenantId: number | null;
     plan: string;
 }

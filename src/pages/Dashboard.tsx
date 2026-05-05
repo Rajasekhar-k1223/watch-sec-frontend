@@ -121,6 +121,7 @@ export default function Dashboard() {
                         setPlanLevel(PLAN_LEVELS[pName.toLowerCase()] || 1);
                     }
                 }
+
             } catch { }
         };
 
@@ -258,6 +259,8 @@ export default function Dashboard() {
                 </div>
             </div>
 
+
+
             {/* [NEW] Fleet Health Quick Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gradient-to-br from-red-50 to-white dark:from-red-500/5 dark:to-transparent border border-red-100 dark:border-red-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
@@ -301,9 +304,9 @@ export default function Dashboard() {
             </div>
 
             {/* Top Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {/* Agents Card */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg hover:shadow-blue-500/10">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg hover:shadow-blue-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400 border border-blue-500/20">
@@ -314,12 +317,12 @@ export default function Dashboard() {
                             {stats?.agents.online || 0} Online
                         </span>
                     </div>
-                    <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
-                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Endpoints</div>
+                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
+                    <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Endpoints</div>
                 </div>
 
                 {/* Threats Card */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg hover:shadow-red-500/10">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg hover:shadow-red-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-red-500/20 rounded-xl text-red-400 border border-red-500/20">
@@ -330,12 +333,12 @@ export default function Dashboard() {
                             +{totalThreats} New
                         </span>
                     </div>
-                    <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{totalThreats}</div>
-                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
+                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{totalThreats}</div>
+                    <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
                 </div>
 
                 {/* Network Card */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all shadow-lg hover:shadow-purple-500/10">
+                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all shadow-lg hover:shadow-purple-500/10">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-purple-500/20 rounded-xl text-purple-400 border border-purple-500/20">
@@ -346,12 +349,12 @@ export default function Dashboard() {
                         </span>
                     </div>
                     <div className="flex items-baseline gap-1">
-                        <div className="text-2xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+                        <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
                             {stats?.network.inboundMbps ? stats.network.inboundMbps.toFixed(2) : "0.00"}
                         </div>
                         <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
                     </div>
-                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
+                    <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
                 </div>
 
                 {/* Productivity / Custom Card */}
