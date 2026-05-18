@@ -14,14 +14,28 @@ interface Message {
 
 export default function AiCopilot() {
     const navigate = useNavigate();
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            sender: 'copilot',
-            text: "Hello! I am the Monitorix AI Security Copilot. I analyze real-time fleet telemetry, identify anomalous execution signatures, correlate compliance posture, and suggest active remediation steps. How can I help you coordinate fleet defense today?",
-            timestamp: new Date(),
-            suggestedActions: ["Show me high-risk agents", "Any new DLP alerts?", "Run a threat summary"]
+    const [messages, setMessages] = useState<Message[]>(() => {
+        try {
+            const cached = localStorage.getItem('monitorix_copilot_chats');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                return parsed.map((m: any) => ({
+                    ...m,
+                    timestamp: new Date(m.timestamp)
+                }));
+            }
+        } catch (e) {
+            console.error("Failed to load cached copilot chats:", e);
         }
-    ]);
+        return [
+            {
+                sender: 'copilot',
+                text: "Hello! I am the Monitorix AI Security Copilot. I analyze real-time fleet telemetry, identify anomalous execution signatures, correlate compliance posture, and suggest active remediation steps. How can I help you coordinate fleet defense today?",
+                timestamp: new Date(),
+                suggestedActions: ["Show me high-risk agents", "Any new DLP alerts?", "Run a threat summary"]
+            }
+        ];
+    });
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -30,6 +44,15 @@ export default function AiCopilot() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, loading]);
+
+    // Persist chats in LocalStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem('monitorix_copilot_chats', JSON.stringify(messages));
+        } catch (e) {
+            console.error("Failed to save copilot chats:", e);
+        }
+    }, [messages]);
 
     const handleSend = async (queryText: string) => {
         if (!queryText.trim() || loading) return;
@@ -134,6 +157,25 @@ export default function AiCopilot() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                if (window.confirm("Are you sure you want to clear your conversation history?")) {
+                                    localStorage.removeItem('monitorix_copilot_chats');
+                                    setMessages([
+                                        {
+                                            sender: 'copilot',
+                                            text: "Hello! I am the Monitorix AI Security Copilot. I analyze real-time fleet telemetry, identify anomalous execution signatures, correlate compliance posture, and suggest active remediation steps. How can I help you coordinate fleet defense today?",
+                                            timestamp: new Date(),
+                                            suggestedActions: ["Show me high-risk agents", "Any new DLP alerts?", "Run a threat summary"]
+                                        }
+                                    ]);
+                                    toast.success("Conversation history cleared.");
+                                }
+                            }}
+                            className="text-[9px] font-black bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-500 px-2.5 py-1.5 rounded-xl border border-rose-500/20 uppercase tracking-widest transition-all cursor-pointer mr-2"
+                        >
+                            Clear History
+                        </button>
                         <span className="text-[8px] font-black bg-blue-500/10 text-blue-500 px-2 py-1 rounded border border-blue-500/20 uppercase tracking-widest">
                             LLM Engine Online
                         </span>
