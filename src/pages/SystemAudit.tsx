@@ -183,7 +183,13 @@ export default function SystemAudit() {
                         ))}
                         {filteredLogs.length === 0 && (
                             <tr>
-                                <td colSpan={4} className="text-center py-12 text-gray-500 italic">No audit records found.</td>
+                                <td colSpan={4} className="text-center py-16">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <ShieldCheck className="w-10 h-10 text-emerald-400" />
+                                        <p className="text-sm font-semibold text-gray-600 dark:text-gray-400">No audit records found</p>
+                                        <p className="text-xs text-gray-400">Try adjusting the date range or filters.</p>
+                                    </div>
+                                </td>
                             </tr>
                         )}
                     </tbody>

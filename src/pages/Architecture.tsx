@@ -424,32 +424,38 @@ const Architecture = () => {
         <div>
 
             {/* 3D ISOMETRIC WORKSPACE */}
-            <div className={`relative w-full max-w-[1800px] h-[800px] bg-white dark:bg-[#020408] border transition-all duration-1000 rounded-[60px] shadow-[0_50px_100px_rgba(0,0,0,0.2)] dark:shadow-[0_50px_100px_rgba(0,0,0,0.5)] ring-1 ring-black/5 dark:ring-white/10 flex items-center justify-center perspective-[2000px] pr-40 ${connState === 'critical' ? 'border-red-500/30' : connState === 'interrupted' ? 'border-amber-500/30' : 'border-gray-200 dark:border-white/10'}`}>
+            <div className={`relative w-full max-w-[1800px] h-[800px] bg-white dark:bg-[#020617] border transition-all duration-1000 rounded-[60px] shadow-2xl ring-1 ring-black/5 dark:ring-white/10 flex items-center justify-center perspective-[2000px] pr-40 ${connState === 'critical' ? 'border-red-500/30' : connState === 'interrupted' ? 'border-amber-500/30' : 'border-slate-200 dark:border-slate-800'}`}>
 
                 {/* INTERNAL HEADER - Integrated inside 3D Container */}
-                <div className="absolute top-0 left-0 w-full p-10 z-50 flex justify-between items-start pointer-events-auto">
+                <div className="absolute top-0 left-0 w-full p-12 z-50 flex justify-between items-start pointer-events-auto">
                     <div>
-                        <h1 className="text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-600 uppercase">
-                            Isometric Intelligence v8.3.51
+                        <div className="flex items-center gap-2 mb-4">
+                             <div className="p-1.5 bg-blue-500/20 rounded-lg text-blue-500 ring-1 ring-blue-500/30">
+                                <Globe size={18} />
+                             </div>
+                             <span className="text-[10px] font-black tracking-[0.3em] uppercase text-blue-500/80">Autonomous Twin Protocol</span>
+                        </div>
+                        <h1 className="text-6xl font-black tracking-tighter">
+                            <span className="text-gradient">Fleet Architecture</span>
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium flex items-center gap-4 text-sm uppercase tracking-[0.3em]">
-                            <Activity className="w-5 h-5 text-cyan-500" />
-                            {isLive ? 'Real-time Production 3D Twin' : 'Simulated Diagnostic Prototype'}
+                        <p className="text-slate-500 dark:text-slate-400 mt-4 text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-4">
+                            <Activity className="w-5 h-5 text-blue-500 animate-pulse" />
+                            {isLive ? 'Real-time Production Instance' : 'Diagnostic Simulation Active'}
                         </p>
                     </div>
 
-                    <div className="flex bg-white/5 border border-white/10 rounded-2xl p-2 shadow-2xl">
+                    <div className="flex bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-2 shadow-2xl backdrop-blur-xl">
                         <button
                             onClick={() => setIsLive(true)}
-                            className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${isLive ? 'bg-cyan-500 text-black shadow-[0_0_30px_rgba(6,182,212,0.4)]' : 'text-gray-500 hover:text-white'}`}
+                            className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${isLive ? 'bg-blue-600 text-white shadow-2xl shadow-blue-500/40 scale-105' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                            <Radio className={`w-4 h-4 ${isLive ? 'animate-pulse' : ''}`} /> Live Data
+                            <Radio className={`w-4 h-4 ${isLive ? 'animate-pulse' : ''}`} /> LIVE HUB
                         </button>
                         <button
                             onClick={() => setIsLive(false)}
-                            className={`px-8 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${!isLive ? 'bg-indigo-600 text-white shadow-[0_0_30px_rgba(79,70,229,0.4)]' : 'text-gray-500 hover:text-white'}`}
+                            className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${!isLive ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl scale-105' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                            <CircleDashed className="w-4 h-4" /> Simulation
+                            <CircleDashed className="w-4 h-4" /> LOCAL TWIN
                         </button>
                     </div>
                 </div>

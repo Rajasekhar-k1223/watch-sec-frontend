@@ -21,10 +21,12 @@ import Policies from './pages/Policies';
 import Reports from './pages/Reports';
 import Productivity from './pages/Productivity';
 import EmployeePulse from './pages/EmployeePulse';
+import HumanIntelligence from './pages/HumanIntelligence';
 import Register from './pages/Register';
 import Landing from './pages/Landing';
-import BandwidthSettings from './pages/BandwidthSettings';
+import NetworkAnalytics from './pages/NetworkAnalytics';
 import Architecture from './pages/Architecture';
+import AiCopilot from './pages/AiCopilot';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -100,9 +102,11 @@ function App() {
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/my-dashboard" element={<EmployeeDashboard />} />
                 <Route path="/productivity" element={<Productivity />} />
+                <Route path="/human-intelligence" element={<HumanIntelligence />} />
                 <Route path="/employee-pulse" element={<EmployeePulse />} />
-                <Route path="/bandwidth" element={<BandwidthSettings />} />
+                <Route path="/bandwidth" element={<NetworkAnalytics />} />
                 <Route path="/architecture" element={<Architecture />} />
+                <Route path="/ai-copilot" element={<AiCopilot />} />
               </Route>
             </Route>
           </Routes>

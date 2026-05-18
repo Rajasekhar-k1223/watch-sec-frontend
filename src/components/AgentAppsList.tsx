@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Package, Search, AppWindow, HardDrive, RefreshCw } from 'lucide-react';
+import { Package, Search, AppWindow, HardDrive, RefreshCw, Zap } from 'lucide-react';
 
 interface SoftwareItem {
     Name: string;
     Version: string;
     Publisher?: string;
     InstallDate?: string;
+    Type?: string;
+    LastSeen?: string;
 }
 
 interface Props {
@@ -97,23 +99,33 @@ export default function AgentAppsList({ agentId, apiUrl, token }: Props) {
                                 <div key={i} className="p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                     <div className="flex items-start gap-3">
                                         <div className="mt-1 flex-shrink-0">
-                                            <Package className="w-5 h-5 text-gray-400" />
+                                            {app.Type === 'Python' ? (
+                                                <div className="p-1.5 bg-emerald-500/10 rounded">
+                                                    <Zap className="w-4 h-4 text-emerald-500" />
+                                                </div>
+                                            ) : (
+                                                <div className="p-1.5 bg-blue-500/10 rounded">
+                                                    <Package className="w-4 h-4 text-blue-500" />
+                                                </div>
+                                            )}
                                         </div>
                                         <div>
                                             <div className="font-bold text-gray-900 dark:text-white text-sm">{app.Name}</div>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <span className="text-[10px] font-mono bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-500/20">
+                                                <span className="text-[10px] font-mono bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-800">
                                                     v{app.Version}
                                                 </span>
-                                                {app.Publisher && <span className="text-[10px] text-gray-500 truncate max-w-[150px]">{app.Publisher}</span>}
+                                                <span className={`text-[9px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${
+                                                    app.Type === 'Python' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'
+                                                }`}>
+                                                    {app.Type || 'OS'}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
-                                    {app.InstallDate && (
-                                        <div className="text-[10px] font-mono text-gray-400">
-                                            {app.InstallDate}
-                                        </div>
-                                    )}
+                                    <div className="text-[10px] font-mono text-gray-400">
+                                        {app.LastSeen ? new Date(app.LastSeen).toLocaleDateString() : 'N/A'}
+                                    </div>
                                 </div>
                             ))}
                         </div>

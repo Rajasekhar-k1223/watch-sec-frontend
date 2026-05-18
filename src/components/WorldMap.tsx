@@ -20,20 +20,27 @@ export default function WorldMap({ agents }: WorldMapProps) {
 
     // Create custom icons dynamically
     const createCustomIcon = (status: string) => {
-        const isOnline = status.toLowerCase() === 'running' || status.toLowerCase() === 'online';
-        const colorClass = isOnline ? 'bg-green-500' : 'bg-red-500';
-        const pulseClass = isOnline ? 'animate-pulse' : 'animate-ping'; // Ping for Offline/Threat? Or Pulse for Online? 
-        // Let's say: Online = Stable Dot, Offline = Red Dot, Threat = Ping? 
-        // For now: Simple Green/Red dots with shadow
+        const statusLower = status.toLowerCase();
+        const isOnline = statusLower === 'running' || statusLower === 'online';
+        const isThreat = statusLower.includes('threat') || statusLower.includes('attack') || statusLower.includes('alert');
+        
+        let colorClass = isOnline ? 'bg-green-500' : 'bg-red-500';
+        let pulseClass = isOnline ? 'animate-pulse' : 'animate-ping';
+        
+        if (isThreat) {
+            colorClass = 'bg-red-600';
+            pulseClass = 'animate-ping scale-150 opacity-100'; // High-intensity pulse
+        }
 
         return divIcon({
             className: 'custom-marker',
             html: `<div class="relative w-4 h-4">
                       <div class="absolute inset-0 rounded-full ${colorClass} opacity-75 ${pulseClass}"></div>
                       <div class="absolute inset-0 rounded-full ${colorClass} border-2 border-white shadow-lg"></div>
+                      ${isThreat ? '<div class="absolute -inset-2 rounded-full border-2 border-red-500 animate-ping opacity-50"></div>' : ''}
                    </div>`,
             iconSize: [16, 16],
-            iconAnchor: [8, 8], // Center
+            iconAnchor: [8, 8],
             popupAnchor: [0, -10]
         });
     };

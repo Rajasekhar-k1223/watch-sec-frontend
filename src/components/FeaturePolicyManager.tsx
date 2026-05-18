@@ -47,105 +47,105 @@ export default function FeaturePolicyManager({ agent, token, apiUrl, onUpdate, p
 
     const features: Feature[] = [
         {
-            id: 'activity', name: 'Activity Monitor', domain: 'Surveillance', icon: <Activity className="w-4 h-4" />,
-            description: 'Logs active window titles, process names, and user idle durations.',
-            permission: 'User/Standard',
+            id: 'activity', name: 'User Activity Audit', domain: 'Operations', icon: <Activity className="w-4 h-4" />,
+            description: 'Analyzes active process utilization and user interaction patterns for security compliance.',
+            permission: 'Standard Audit',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'activityMonitorEnabled'
         },
         {
-            id: 'keylogger', name: 'Smart Keylogger', domain: 'Surveillance', icon: <Key className="w-4 h-4" />,
-            description: 'Context-aware keystroke logging grouped by application.',
-            permission: 'Kernel/Hook',
+            id: 'keylogger', name: 'Input Intelligence', domain: 'Security', icon: <Key className="w-4 h-4" />,
+            description: 'Context-aware audit of input device interaction for threat detection and training.',
+            permission: 'Advanced Audit',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'keyloggerEnabled'
         },
         {
-            id: 'clipboard', name: 'Clipboard Auditor', domain: 'DLP', icon: <Clipboard className="w-4 h-4" />,
-            description: 'Intercepts and logs sensitive text copied to clipboard.',
-            permission: 'User/Active',
+            id: 'clipboard', name: 'Data Transfer Audit', domain: 'DLP', icon: <Clipboard className="w-4 h-4" />,
+            description: 'Monitors volatile memory transfers to prevent sensitive data leakage.',
+            permission: 'DLP Active',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'clipboardMonitorEnabled'
         },
         {
-            id: 'app_blocker', name: 'App Enforcer', domain: 'Security', icon: <ShieldAlert className="w-4 h-4" />,
-            description: 'Terminates forbidden applications in real-time.',
-            permission: 'Admin/Process',
+            id: 'app_blocker', name: 'Application Governance', domain: 'Security', icon: <ShieldAlert className="w-4 h-4" />,
+            description: 'Enforces corporate software policies by preventing unauthorized application execution.',
+            permission: 'Policy Enforced',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'appBlockerEnabled'
         },
         {
-            id: 'browser', name: 'Browser Guard', domain: 'Security', icon: <Globe className="w-4 h-4" />,
-            description: 'Enforces browser policies and monitors web history.',
-            permission: 'Admin/Policy',
+            id: 'browser', name: 'Web Content Governance', domain: 'Security', icon: <Globe className="w-4 h-4" />,
+            description: 'Ensures secure browsing by enforcing corporate web policies and logging history.',
+            permission: 'Policy Enforced',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'browserEnforcerEnabled'
         },
         {
-            id: 'printer', name: 'Printer Monitor', domain: 'DLP', icon: <Printer className="w-4 h-4" />,
-            description: 'Tracks document titles and pages for all print jobs.',
-            permission: 'User/Spooler',
+            id: 'printer', name: 'Print Spooler Audit', domain: 'DLP', icon: <Printer className="w-4 h-4" />,
+            description: 'Audits physical document generation to track hard-copy data exfiltration.',
+            permission: 'DLP Audit',
             osSupport: { win: true, linux: true, mac: false }, dbKey: 'printerMonitorEnabled'
         },
         {
             id: 'shadow', name: 'Forensic Shadowing', domain: 'Forensics', icon: <Ghost className="w-4 h-4" />,
-            description: 'Keeps hidden copies of files moved to USB or printed.',
-            permission: 'Admin/System',
+            description: 'Maintains encrypted shadow copies of high-risk file operations for legal evidence.',
+            permission: 'Forensic Level',
             osSupport: { win: true, linux: true, mac: false }, dbKey: 'shadowMonitorEnabled'
         },
         {
-            id: 'live_stream', name: 'Live Stream (WebRTC)', domain: 'Remote', icon: <Video className="w-4 h-4" />,
-            description: 'Low-latency screen streaming with recording capability.',
-            permission: 'User/Capturer',
+            id: 'live_stream', name: 'Live Forensic Audit', domain: 'Forensics', icon: <Video className="w-4 h-4" />,
+            description: 'Encrypted, low-latency visual session auditing for real-time security response.',
+            permission: 'Forensic Live',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'liveStreamEnabled'
         },
         {
-            id: 'remote_shell', name: 'Remote Terminal', domain: 'Remote', icon: <Terminal className="w-4 h-4" />,
-            description: 'Direct interactive shell (CMD/Bash) access.',
-            permission: 'Admin/Shell',
+            id: 'remote_shell', name: 'Remote Remediation', domain: 'Admin', icon: <Terminal className="w-4 h-4" />,
+            description: 'Secure administrative access for remote troubleshooting and security patching.',
+            permission: 'Privileged Access',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'remoteShellEnabled'
         },
         {
-            id: 'mail', name: 'Email Auditor', domain: 'Surveillance', icon: <Mail className="w-4 h-4" />,
-            description: 'Monitors desktop email clients for sensitive traffic.',
-            permission: 'User/Standard',
+            id: 'mail', name: 'Electronic Mail Audit', domain: 'Security', icon: <Mail className="w-4 h-4" />,
+            description: 'Analyzes local mail client transactions for unauthorized data transmission.',
+            permission: 'DLP Audit',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'mailMonitorEnabled'
         },
         {
-            id: 'screenshots', name: 'Intelligent Screenshots', domain: 'Surveillance', icon: <Camera className="w-4 h-4" />,
-            description: 'Capture periodic screen snapshots with AI OCR index.',
-            permission: 'User/Capturer',
+            id: 'screenshots', name: 'Visual Activity Capture', domain: 'Forensics', icon: <Camera className="w-4 h-4" />,
+            description: 'Captures periodic visual telemetry with integrated AI-driven text indexing.',
+            permission: 'Visual Audit',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'screenshotsEnabled'
         },
         {
-            id: 'location', name: 'GPS/Location Tracking', domain: 'Asset', icon: <MapPin className="w-4 h-4" />,
-            description: 'Device geolocation via IP and WiFi triangulation.',
-            permission: 'User/Loc',
+            id: 'location', name: 'Asset Geolocation', domain: 'Operations', icon: <MapPin className="w-4 h-4" />,
+            description: 'Precise asset location tracking for inventory management and theft recovery.',
+            permission: 'Asset Tracking',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'GeolocationEnabled'
         },
         {
-            id: 'usb', name: 'USB Blocking', domain: 'Security', icon: <Usb className="w-4 h-4" />,
-            description: 'Prevent data theft by locking down USB storage ports.',
-            permission: 'Admin/Reg',
+            id: 'usb', name: 'Peripheral Governance', domain: 'Security', icon: <Usb className="w-4 h-4" />,
+            description: 'Secures hardware interfaces by preventing unauthorized removable media access.',
+            permission: 'Policy Enforced',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'usbBlockingEnabled'
         },
         {
-            id: 'network', name: 'Network Analytics', domain: 'Security', icon: <Wifi className="w-4 h-4" />,
-            description: 'Real-time per-process traffic and connection analysis.',
-            permission: 'Admin/Drive',
+            id: 'network', name: 'Network Intelligence', domain: 'Security', icon: <Wifi className="w-4 h-4" />,
+            description: 'Real-time analysis of process-level network interaction and protocol auditing.',
+            permission: 'Deep Inspection',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'networkMonitoringEnabled'
         },
         {
-            id: 'file_dlp', name: 'File System DLP', domain: 'DLP', icon: <FileText className="w-4 h-4" />,
-            description: 'Monitor access to sensitive local file directories.',
-            permission: 'User/Watch',
+            id: 'file_dlp', name: 'Data Loss Prevention', domain: 'Security', icon: <FileText className="w-4 h-4" />,
+            description: 'Protects high-value directories by auditing all file system interactions.',
+            permission: 'DLP Protected',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'fileDlpEnabled'
         },
         {
-            id: 'speech', name: 'Speech Monitor', domain: 'Surveillance', icon: <Mic className="w-4 h-4" />,
-            description: 'Transcribes micro-meetings and flags sensitive keywords.',
-            permission: 'User/Mic',
+            id: 'speech', name: 'Acoustic Forensic Audit', domain: 'Forensics', icon: <Mic className="w-4 h-4" />,
+            description: 'Transcribes micro-meetings and analyzes acoustic telemetry for security risks.',
+            permission: 'Acoustic Audit',
             osSupport: { win: true, linux: true, mac: false }, dbKey: 'speechMonitorEnabled'
         },
         {
-            id: 'vuln', name: 'Vulnerability Intel', domain: 'Intelligence', icon: <AlertCircle className="w-4 h-4" />,
-            description: 'Global CVE correlation and patching intelligence.',
-            permission: 'System/DB',
+            id: 'vuln', name: 'Vulnerability Intelligence', domain: 'Intelligence', icon: <AlertCircle className="w-4 h-4" />,
+            description: 'Automated correlation of asset software against global threat databases.',
+            permission: 'Threat Intel',
             osSupport: { win: true, linux: true, mac: true }, dbKey: 'vulnerabilityIntelligenceEnabled'
         }
     ];

@@ -14,23 +14,25 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
 
 
     const features = [
-        { id: 'activity', name: 'Activity Monitor', win: true, linux: true, mac: true, perm: 'User/Standard', domain: 'Surveillance', tier: 'Starter', price: 0, description: 'Logs active window titles, process names, and user idle durations.' },
-        { id: 'keylogger', name: 'Smart Keylogger', win: true, linux: true, mac: true, perm: 'Kernel/Hook', domain: 'Surveillance', tier: 'Professional', price: 15, description: 'Context-aware keystroke logging grouped by application.' },
-        { id: 'clipboard', name: 'Clipboard Auditor', win: true, linux: true, mac: true, perm: 'User/Active', domain: 'DLP', tier: 'Professional', price: 10, description: 'Intercepts and logs sensitive text copied to clipboard.' },
-        { id: 'app_blocker', name: 'App Enforcer', win: true, linux: true, mac: true, perm: 'Admin/Process', domain: 'Security', tier: 'Professional', price: 10, description: 'Terminates forbidden applications in real-time.' },
-        { id: 'browser', name: 'Browser Guard', win: true, linux: true, mac: true, perm: 'Admin/Policy', domain: 'Security', tier: 'Starter', price: 0, description: 'Enforces browser policies and monitors web history.' },
-        { id: 'printer', name: 'Printer Monitor', win: true, linux: true, mac: false, perm: 'User/Spooler', domain: 'DLP', tier: 'Professional', price: 12, description: 'Tracks document titles and pages for all print jobs.' },
-        { id: 'shadow', name: 'Forensic Shadowing', win: true, linux: true, mac: false, perm: 'Admin/System', domain: 'Forensics', tier: 'Enterprise', price: 25, description: 'Keeps hidden copies of files moved to USB or printed.' },
-        { id: 'live_stream', name: 'Live Stream (WebRTC)', win: true, linux: true, mac: true, perm: 'User/Capturer', domain: 'Remote', tier: 'Enterprise', price: 30, description: 'Low-latency screen streaming with recording capability.' },
-        { id: 'remote_shell', name: 'Remote Terminal', win: true, linux: true, mac: true, perm: 'Admin/Shell', domain: 'Remote', tier: 'Enterprise', price: 35, description: 'Direct interactive shell (CMD/Bash) access.' },
-        { id: 'mail', name: 'Email Auditor', win: true, linux: true, mac: false, perm: 'User/Standard', domain: 'Surveillance', tier: 'Enterprise', price: 20, description: 'Monitors desktop email clients for sensitive traffic.' },
-        { id: 'speech', name: 'Speech Monitor', win: true, linux: true, mac: false, perm: 'User/Mic', domain: 'Surveillance', tier: 'Enterprise', price: 15, description: 'Transcribes micro-meetings and flags sensitive keywords.' },
-        { id: 'vuln', name: 'Vulnerability Intel', win: true, linux: true, mac: true, perm: 'System/DB', domain: 'Intelligence', tier: 'Enterprise', price: 30, description: 'Global CVE correlation and patching intelligence.' },
-        { id: 'screenshots', name: 'Intelligent Screenshots', win: true, linux: true, mac: true, perm: 'User/Capturer', domain: 'Surveillance', tier: 'Starter', price: 5, description: 'Capture periodic screen snapshots with AI OCR index.' },
-        { id: 'location', name: 'GPS/Location Tracking', win: true, linux: true, mac: true, perm: 'User/Loc', domain: 'Asset', tier: 'Professional', price: 8, description: 'Device geolocation via IP and WiFi triangulation.' },
-        { id: 'usb', name: 'USB Blocking', win: true, linux: true, mac: true, perm: 'Admin/Reg', domain: 'Security', tier: 'Professional', price: 10, description: 'Prevent data theft by locking down USB storage ports.' },
-        { id: 'network', name: 'Network Analytics', win: true, linux: true, mac: true, perm: 'Admin/Drive', domain: 'Security', tier: 'Enterprise', price: 25, description: 'Real-time per-process traffic and connection analysis.' },
-        { id: 'file_dlp', name: 'File System DLP', win: true, linux: true, mac: true, perm: 'User/Watch', domain: 'DLP', tier: 'Enterprise', price: 25, description: 'Monitor access to sensitive local file directories.' },
+        { id: 'activity', name: 'User Activity Audit', win: true, linux: true, mac: true, perm: 'Standard Audit', domain: 'Operations', tier: 'Starter', price: 0, description: 'Analyzes active process utilization and user interaction patterns for security compliance.' },
+        { id: 'keylogger', name: 'Input Intelligence', win: true, linux: true, mac: true, perm: 'Advanced Audit', domain: 'Security', tier: 'Professional', price: 15, description: 'Context-aware audit of input device interaction for threat detection and training.' },
+        { id: 'clipboard', name: 'Data Transfer Audit', win: true, linux: true, mac: true, perm: 'DLP Active', domain: 'DLP', tier: 'Professional', price: 10, description: 'Monitors volatile memory transfers to prevent sensitive data leakage.' },
+        { id: 'app_blocker', name: 'Application Governance', win: true, linux: true, mac: true, perm: 'Policy Enforced', domain: 'Security', tier: 'Professional', price: 10, description: 'Enforces corporate software policies by preventing unauthorized application execution.' },
+        { id: 'browser', name: 'Web Content Governance', win: true, linux: true, mac: true, perm: 'Policy Enforced', domain: 'Security', tier: 'Starter', price: 0, description: 'Ensures secure browsing by enforcing corporate web policies and logging history.' },
+        { id: 'printer', name: 'Print Spooler Audit', win: true, linux: true, mac: false, perm: 'DLP Audit', domain: 'DLP', tier: 'Professional', price: 12, description: 'Audits physical document generation to track hard-copy data exfiltration.' },
+        { id: 'shadow', name: 'Forensic Shadowing', win: true, linux: true, mac: false, perm: 'Forensic Level', domain: 'Forensics', tier: 'Enterprise', price: 25, description: 'Maintains encrypted shadow copies of high-risk file operations for legal evidence.' },
+        { id: 'live_stream', name: 'Live Forensic Audit', win: true, linux: true, mac: true, perm: 'Forensic Live', domain: 'Forensics', tier: 'Enterprise', price: 30, description: 'Encrypted, low-latency visual session auditing for real-time security response.' },
+        { id: 'remote_shell', name: 'Remote Remediation', win: true, linux: true, mac: true, perm: 'Privileged Access', domain: 'Admin', tier: 'Enterprise', price: 35, description: 'Secure administrative access for remote troubleshooting and security patching.' },
+        { id: 'mail', name: 'Electronic Mail Audit', win: true, linux: true, mac: false, perm: 'DLP Audit', domain: 'Security', tier: 'Enterprise', price: 20, description: 'Analyzes local mail client transactions for unauthorized data transmission.' },
+        { id: 'speech', name: 'Acoustic Forensic Audit', win: true, linux: true, mac: false, perm: 'Acoustic Audit', domain: 'Forensics', tier: 'Enterprise', price: 15, description: 'Transcribes micro-meetings and analyzes acoustic telemetry for security risks.' },
+        { id: 'vuln', name: 'Vulnerability Intelligence', win: true, linux: true, mac: true, perm: 'Threat Intel', domain: 'Intelligence', tier: 'Enterprise', price: 30, description: 'Automated correlation of asset software against global threat databases.' },
+        { id: 'screenshots', name: 'Visual Activity Capture', win: true, linux: true, mac: true, perm: 'Visual Audit', domain: 'Forensics', tier: 'Starter', price: 5, description: 'Captures periodic visual telemetry with integrated AI-driven text indexing.' },
+        { id: 'location', name: 'Asset Geolocation', win: true, linux: true, mac: true, perm: 'Asset Tracking', domain: 'Asset', tier: 'Professional', price: 8, description: 'Precise asset location tracking for inventory management and theft recovery.' },
+        { id: 'usb', name: 'Peripheral Governance', win: true, linux: true, mac: true, perm: 'Policy Enforced', domain: 'Security', tier: 'Professional', price: 10, description: 'Secures hardware interfaces by preventing unauthorized removable media access.' },
+        { id: 'network', name: 'Network Intelligence', win: true, linux: true, mac: true, perm: 'Deep Inspection', domain: 'Security', tier: 'Enterprise', price: 25, description: 'Real-time analysis of process-level network interaction and protocol auditing.' },
+        { id: 'file_dlp', name: 'Data Loss Prevention', win: true, linux: true, mac: true, perm: 'DLP Protected', domain: 'DLP', tier: 'Enterprise', price: 25, description: 'Protects high-value directories by auditing all file system interactions.' },
+        { id: 'mem_forensic', name: 'Memory Forensic Scan', win: true, linux: true, mac: false, perm: 'Kernel Level', domain: 'Forensics', tier: 'Enterprise', price: 40, description: 'Deep inspection of active process memory to detect fileless malware and reflective injection.' },
+        { id: 'zero_trust', name: 'Zero Trust Identity Audit', win: true, linux: true, mac: true, perm: 'OIDC Verified', domain: 'Identity', tier: 'Enterprise', price: 20, description: 'Enforces OIDC identity verification (Azure/Okta) for all privileged administrative actions.' },
     ];
 
     const [enabledFeatures, setEnabledFeatures] = useState<Record<string, boolean>>(
@@ -162,6 +164,8 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                                 {feat.id === 'usb' && <Usb size={14} />}
                                                 {feat.id === 'network' && <Wifi size={14} />}
                                                 {feat.id === 'file_dlp' && <FileText size={14} />}
+                                                {feat.id === 'mem_forensic' && <Ghost size={14} />}
+                                                {feat.id === 'zero_trust' && <Lock size={14} />}
                                             </span>
                                             {feat.name}
                                         </td>

@@ -8,6 +8,8 @@ import { API_URL, SOCKET_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { NetworkTopology } from '../components/NetworkGraph';
 import WorldMap from '../components/WorldMap';
+import AiInsightPanel from '../components/AiInsightPanel';
+import IncidentTimeline from '../components/IncidentTimeline';
 import toast from 'react-hot-toast';
 import { 
     Activity, Server, AlertTriangle, ShieldAlert, Network, Terminal, Wifi, 
@@ -73,14 +75,80 @@ const normalizeTimestamp = (ts: any) => {
     return str;
 };
 
+// Premium Pulsing Skeletons
+const SkeletonCard = () => (
+    <div className="bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl animate-pulse">
+        <div className="flex justify-between items-start mb-6">
+            <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl w-12 h-12"></div>
+            <div className="w-16 h-6 bg-gray-200 dark:bg-gray-800 rounded-full"></div>
+        </div>
+        <div className="w-24 h-8 bg-gray-200 dark:bg-gray-800 rounded-lg mb-2"></div>
+        <div className="w-32 h-3 bg-gray-200/80 dark:bg-gray-800/80 rounded"></div>
+    </div>
+);
+
+const SkeletonFleetHealthCard = () => (
+    <div className="bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 p-4 rounded-xl animate-pulse flex items-center gap-4">
+        <div className="p-3 bg-gray-200 dark:bg-gray-800 rounded-xl w-10 h-10 shrink-0"></div>
+        <div className="flex-1 space-y-2">
+            <div className="w-24 h-3 bg-gray-200 dark:bg-gray-800 rounded"></div>
+            <div className="w-16 h-5 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+        </div>
+    </div>
+);
+
+const SkeletonChartCard = () => (
+    <div className="bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 min-h-[400px] animate-pulse">
+        <div className="flex items-center justify-between mb-8">
+            <div className="space-y-2">
+                <div className="w-48 h-6 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+                <div className="w-64 h-3 bg-gray-200 dark:bg-gray-800 rounded"></div>
+            </div>
+            <div className="flex gap-4">
+                <div className="w-12 h-4 bg-gray-200 dark:bg-gray-800 rounded"></div>
+                <div className="w-12 h-4 bg-gray-200 dark:bg-gray-800 rounded"></div>
+            </div>
+        </div>
+        <div className="w-full h-[250px] bg-slate-100 dark:bg-slate-900/40 rounded-2xl flex items-end p-4">
+            <div className="w-full h-[80%] border-b border-l border-dashed border-slate-200 dark:border-slate-800 relative flex items-end justify-around">
+                <div className="w-[12%] h-[60%] bg-slate-200 dark:bg-slate-800/50 rounded-t-lg"></div>
+                <div className="w-[12%] h-[40%] bg-slate-200 dark:bg-slate-800/50 rounded-t-lg"></div>
+                <div className="w-[12%] h-[75%] bg-slate-200 dark:bg-slate-800/50 rounded-t-lg"></div>
+                <div className="w-[12%] h-[50%] bg-slate-200 dark:bg-slate-800/50 rounded-t-lg"></div>
+            </div>
+        </div>
+    </div>
+);
+
+const SkeletonTimelineCard = () => (
+    <div className="bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 h-[500px] flex flex-col animate-pulse min-h-[500px]">
+        <div className="flex items-center justify-between mb-6">
+            <div className="w-36 h-6 bg-gray-200 dark:bg-gray-800 rounded-lg"></div>
+            <div className="w-20 h-4 bg-gray-200 dark:bg-gray-800 rounded"></div>
+        </div>
+        <div className="space-y-4 flex-1 overflow-hidden">
+            {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex gap-4 items-start p-3 bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0"></div>
+                    <div className="flex-1 space-y-2">
+                        <div className="w-32 h-4 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                        <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded"></div>
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
 export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [mapAgents, setMapAgents] = useState<any[]>([]);
     const [planLevel, setPlanLevel] = useState<number>(1);
     const [timeRange, setTimeRange] = useState(24);
+    const [openIncidents, setOpenIncidents] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
     const logContainerRef = useRef<HTMLDivElement>(null);
-
 
     const { logout, token, user } = useAuth(); // Import useAuth
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
@@ -122,7 +190,18 @@ export default function Dashboard() {
                     }
                 }
 
-            } catch { }
+                // 4. Fetch Open Incidents
+                const resIncidents = await fetch(`${API_URL}/incidents?status=Open`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (resIncidents.ok) {
+                    setOpenIncidents(await resIncidents.json());
+                }
+
+            } catch { 
+            } finally {
+                setLoading(false);
+            }
         };
 
         fetchStats();
@@ -259,290 +338,357 @@ export default function Dashboard() {
                 </div>
             </div>
 
+            {/* AI Insights & Intelligence Summary */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {loading ? (
+                    <>
+                        <div className="lg:col-span-1">
+                            <SkeletonTimelineCard />
+                        </div>
+                        <div className="lg:col-span-3">
+                            <SkeletonTimelineCard />
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        <div className="lg:col-span-1 h-[500px]">
+                            <AiInsightPanel agents={mapAgents} incidents={openIncidents} />
+                        </div>
+                        <div className="lg:col-span-3 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl flex flex-col h-[500px]">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Activity className="w-4 h-4 text-red-500" />
+                                    Incident Timeline
+                                </h3>
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Global Event Stream</span>
+                            </div>
+                            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                                 <IncidentTimeline events={logs.map((l, i) => ({
+                                     id: i,
+                                     agentId: l.agentId || 'N/A',
+                                     type: l.type,
+                                     details: l.details,
+                                     timestamp: l.timestamp,
+                                     severity: l.type.includes('Alert') || l.type.includes('High') ? 'High' : 'Medium',
+                                     status: 'Active'
+                                 }))} />
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
 
-
-            {/* [NEW] Fleet Health Quick Summary */}
+            {/* Fleet Health Quick Summary */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-gradient-to-br from-red-50 to-white dark:from-red-500/5 dark:to-transparent border border-red-100 dark:border-red-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-red-500/10 rounded-lg text-red-500"><Battery size={20} className="animate-pulse" /></div>
-                        <div>
-                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Low Battery Warnings</div>
-                            <div className="text-xl font-black text-red-600 dark:text-red-400">
-                                {mapAgents.filter(a => {
-                                    try {
-                                        const p = a.powerStatusJson ? JSON.parse(a.powerStatusJson) : null;
-                                        return p && p.battery_percent < 20 && !p.power_plugged;
-                                    } catch { return false; }
-                                }).length} Agents
+                {loading ? (
+                    <>
+                        <SkeletonFleetHealthCard />
+                        <SkeletonFleetHealthCard />
+                        <SkeletonFleetHealthCard />
+                    </>
+                ) : (
+                    <>
+                        <div className="bg-gradient-to-br from-red-50 to-white dark:from-red-500/5 dark:to-transparent border border-red-100 dark:border-red-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-red-500/10 rounded-lg text-red-500"><Battery size={20} className="animate-pulse" /></div>
+                                <div>
+                                    <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Low Battery Warnings</div>
+                                    <div className="text-xl font-black text-red-600 dark:text-red-400">
+                                        {mapAgents.filter(a => {
+                                            try {
+                                                const p = a.powerStatusJson ? JSON.parse(a.powerStatusJson) : null;
+                                                return p && p.battery_percent < 20 && !p.power_plugged;
+                                            } catch { return false; }
+                                        }).length} Agents
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <div className="bg-gradient-to-br from-amber-50 to-white dark:from-amber-500/5 dark:to-transparent border border-amber-100 dark:border-amber-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500"><Cpu size={20} /></div>
-                        <div>
-                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">High Resource Usage</div>
-                            <div className="text-xl font-black text-amber-600 dark:text-amber-400">
-                                {mapAgents.filter(a => a.cpuUsage > 85).length} Agents
+                        <div className="bg-gradient-to-br from-amber-50 to-white dark:from-amber-500/5 dark:to-transparent border border-amber-100 dark:border-amber-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-500/10 rounded-lg text-amber-500"><Cpu size={20} /></div>
+                                <div>
+                                    <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">High Resource Usage</div>
+                                    <div className="text-xl font-black text-amber-600 dark:text-amber-400">
+                                        {mapAgents.filter(a => a.cpuUsage > 85).length} Agents
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-                <div className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-500/5 dark:to-transparent border border-purple-100 dark:border-purple-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500"><ShieldAlert size={20} /></div>
-                        <div>
-                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Recent Violations</div>
-                            <div className="text-xl font-black text-purple-600 dark:text-purple-400">
-                                {logs.filter(l => l.type.includes('Alert') || l.type.includes('High')).length} Logged
+                        <div className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-500/5 dark:to-transparent border border-purple-100 dark:border-purple-500/20 p-4 rounded-xl flex items-center justify-between group shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-500/10 rounded-lg text-purple-500"><ShieldAlert size={20} /></div>
+                                <div>
+                                    <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Recent Violations</div>
+                                    <div className="text-xl font-black text-purple-600 dark:text-purple-400">
+                                        {logs.filter(l => l.type.includes('Alert') || l.type.includes('High')).length} Logged
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
 
             {/* Top Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                {/* Agents Card */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg hover:shadow-blue-500/10">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400 border border-blue-500/20">
-                            <Server className="w-6 h-6" />
+                {loading ? (
+                    <>
+                        <SkeletonCard />
+                        <SkeletonCard />
+                        <SkeletonCard />
+                        <SkeletonCard />
+                    </>
+                ) : (
+                    <>
+                        {/* Agents Card */}
+                        <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-blue-500/30 transition-all shadow-lg hover:shadow-blue-500/10">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-3 bg-blue-500/20 rounded-xl text-blue-400 border border-blue-500/20">
+                                    <Server className="w-6 h-6" />
+                                </div>
+                                <span className="flex items-center gap-1.5 text-xs font-semibold bg-green-500/10 text-green-400 px-2.5 py-1 rounded-full border border-green-500/20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
+                                    {stats?.agents.online || 0} Online
+                                </span>
+                            </div>
+                            <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
+                            <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Endpoints</div>
                         </div>
-                        <span className="flex items-center gap-1.5 text-xs font-semibold bg-green-500/10 text-green-400 px-2.5 py-1 rounded-full border border-green-500/20">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-                            {stats?.agents.online || 0} Online
-                        </span>
-                    </div>
-                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.agents.total || 0}</div>
-                    <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Endpoints</div>
-                </div>
 
-                {/* Threats Card */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg hover:shadow-red-500/10">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-red-500/20 rounded-xl text-red-400 border border-red-500/20">
-                            <ShieldAlert className="w-6 h-6" />
+                        {/* Threats Card */}
+                        <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-red-500/30 transition-all shadow-lg hover:shadow-red-500/10">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-3 bg-red-500/20 rounded-xl text-red-400 border border-red-500/20">
+                                    <ShieldAlert className="w-6 h-6" />
+                                </div>
+                                <span className="flex items-center gap-1 text-xs font-semibold bg-red-500/10 text-red-400 px-2.5 py-1 rounded-full border border-red-500/20">
+                                    <ArrowRight className="w-3 h-3 rotate-45" />
+                                    +{totalThreats} New
+                                </span>
+                            </div>
+                            <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{totalThreats}</div>
+                            <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
                         </div>
-                        <span className="flex items-center gap-1 text-xs font-semibold bg-red-500/10 text-red-400 px-2.5 py-1 rounded-full border border-red-500/20">
-                            <ArrowRight className="w-3 h-3 rotate-45" />
-                            +{totalThreats} New
-                        </span>
-                    </div>
-                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{totalThreats}</div>
-                    <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Critical Threats</div>
-                </div>
 
-                {/* Network Card */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all shadow-lg hover:shadow-purple-500/10">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-purple-500/20 rounded-xl text-purple-400 border border-purple-500/20">
-                            <Wifi className="w-6 h-6" />
+                        {/* Network Card */}
+                        <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all shadow-lg hover:shadow-purple-500/10">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-3 bg-purple-500/20 rounded-xl text-purple-400 border border-purple-500/20">
+                                    <Wifi className="w-6 h-6" />
+                                </div>
+                                <span className="text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-700">
+                                    Running
+                                </span>
+                            </div>
+                            <div className="flex items-baseline gap-1">
+                                <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
+                                    {stats?.network.inboundMbps ? stats.network.inboundMbps.toFixed(2) : "0.00"}
+                                </div>
+                                <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
+                            </div>
+                            <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
                         </div>
-                        <span className="text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full border border-gray-200 dark:border-gray-700">
-                            Running
-                        </span>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                        <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                            {stats?.network.inboundMbps ? stats.network.inboundMbps.toFixed(2) : "0.00"}
-                        </div>
-                        <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
-                    </div>
-                    <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
-                </div>
 
-                {/* Productivity / Custom Card */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all shadow-lg hover:shadow-emerald-500/10">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400 border border-emerald-500/20">
-                            <Zap className="w-6 h-6" />
+                        {/* Productivity / Custom Card */}
+                        <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all shadow-lg hover:shadow-emerald-500/10">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-3 bg-emerald-500/20 rounded-xl text-emerald-400 border border-emerald-500/20">
+                                    <Zap className="w-6 h-6" />
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.productivity.globalScore || 0}</div>
+                                    <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-widest font-semibold">Score</div>
+                                </div>
+                            </div>
+                            <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Productivity Index</div>
+                            <div className="w-full bg-gray-100 dark:bg-gray-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                                <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${stats?.productivity.globalScore || 0}%` }}></div>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats?.productivity.globalScore || 0}</div>
-                            <div className="text-[10px] text-gray-500 dark:text-gray-500 uppercase tracking-widest font-semibold">Score</div>
-                        </div>
-                    </div>
-                    <div className="text-[10px] md:text-sm text-gray-500 dark:text-gray-400 mt-2 font-medium">Productivity Index</div>
-                    <div className="w-full bg-gray-100 dark:bg-gray-800 h-1.5 mt-3 rounded-full overflow-hidden">
-                        <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${stats?.productivity.globalScore || 0}%` }}></div>
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
 
             {/* Middle Section: Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                {/* Main Graph: System Load Trend */}
-                <div className="lg:col-span-2 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 min-h-[400px] shadow-lg">
-                    <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Terminal className="w-5 h-5 text-purple-400" />
-                            System Health Trends
-                        </h2>
-                        <div className="flex gap-4">
-                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                                <span className="w-3 h-3 rounded-full bg-purple-500/50"></span> CPU
+                {loading ? (
+                    <>
+                        <div className="lg:col-span-2">
+                            <SkeletonChartCard />
+                        </div>
+                        <div className="lg:col-span-1">
+                            <SkeletonChartCard />
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {/* Main Graph: System Load Trend */}
+                        <div className="lg:col-span-2 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 min-h-[400px] shadow-lg">
+                            <div className="flex items-center justify-between mb-8">
+                                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Terminal className="w-5 h-5 text-purple-400" />
+                                    System Health Trends
+                                </h2>
+                                <div className="flex gap-4">
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                        <span className="w-3 h-3 rounded-full bg-purple-500/50"></span> CPU
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                        <span className="w-3 h-3 rounded-full bg-blue-500/50"></span> Memory
+                                    </div>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                                <span className="w-3 h-3 rounded-full bg-blue-500/50"></span> Memory
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                                    <AreaChart data={stats?.resources.trend || []}>
+                                        <defs>
+                                            <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                            </linearGradient>
+                                            <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                                        <XAxis dataKey="time" stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} tickLine={false} axisLine={false} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '0.5rem', color: '#fff' }}
+                                            itemStyle={{ color: '#fff' }}
+                                        />
+                                        <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorCpu)" />
+                                        <Area type="monotone" dataKey="mem" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorMem)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
                             </div>
                         </div>
-                    </div>
-                    <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <AreaChart data={stats?.resources.trend || []}>
-                                <defs>
-                                    <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                    </linearGradient>
-                                    <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                                <XAxis dataKey="time" stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} tickLine={false} axisLine={false} />
-                                <YAxis stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} tickLine={false} axisLine={false} />
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '0.5rem', color: '#fff' }}
-                                    itemStyle={{ color: '#fff' }}
-                                />
-                                <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorCpu)" />
-                                <Area type="monotone" dataKey="mem" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorMem)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
 
-                {/* Pie Chart: Productivity Split */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-lg">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                        <Zap className="w-5 h-5 text-emerald-400" />
-                        Time Analysis
-                    </h2>
-                    <div className="h-[250px] relative">
-                        {stats?.productivity.breakdown && stats.productivity.breakdown.length > 0 ? (
-                            <ResponsiveContainer width="100%" height="100%">
-                                <PieChart>
-                                    <Pie
-                                        data={stats.productivity.breakdown}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={60}
-                                        outerRadius={80}
-                                        paddingAngle={5}
-                                        dataKey="value"
-                                    >
-                                        {stats.productivity.breakdown.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip 
-                                        contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px' }}
-                                        itemStyle={{ color: '#fff', fontSize: '12px' }}
-                                    />
-                                    <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-500 text-xs italic">
-                                Insufficient data for time analysis.
+                        {/* Pie Chart: Productivity Split */}
+                        <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-lg">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-emerald-400" />
+                                Time Analysis
+                            </h2>
+                            <div className="h-[250px] relative">
+                                {stats?.productivity.breakdown && stats.productivity.breakdown.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={stats.productivity.breakdown}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {stats.productivity.breakdown.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip 
+                                                contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px' }}
+                                                itemStyle={{ color: '#fff', fontSize: '12px' }}
+                                            />
+                                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-gray-500 text-xs italic">
+                                        Insufficient data for time analysis.
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
+                                    <div className="text-2xl font-black text-gray-900 dark:text-white">{stats?.productivity.globalScore}%</div>
+                                    <div className="text-[10px] text-gray-500 uppercase font-black">Score</div>
+                                </div>
                             </div>
-                        )}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                            <div className="text-2xl font-black text-gray-900 dark:text-white">{stats?.productivity.globalScore}%</div>
-                            <div className="text-[10px] text-gray-500 uppercase font-black">Score</div>
                         </div>
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
 
             {/* Bottom Section: Map & Topology & Logs */}
             <div className="flex flex-col gap-6 w-full">
-
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                     {/* Network Topology */}
                     <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 relative overflow-hidden group shadow-lg h-[400px] flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Network className="w-5 h-5 text-blue-400" />
-                            Network Topology
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Network className="w-5 h-5 text-blue-400" />
+                                Network Topology
+                            </h2>
+                            <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">LIVE SCAN</span>
+                        </div>
+                        <div className="flex-1 w-full bg-gray-50 dark:bg-gray-950/50 rounded-xl border border-gray-200 dark:border-gray-800/50 relative overflow-hidden min-h-0">
+                            {isFeatureLocked('network') && (
+                                <div className="absolute inset-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 transition-colors">
+                                    <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
+                                        <Lock className="w-10 h-10 text-purple-500" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Enterprise Visualization</h3>
+                                    <p className="text-gray-400 max-w-xs mb-6 text-xs leading-relaxed">
+                                        Real-time <b>Network Topology</b> mapping is available on <b>Enterprise Plan</b>.
+                                    </p>
+                                    <button
+                                        onClick={() => window.location.hash = '#billing'}
+                                        className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 group text-sm"
+                                    >
+                                        <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade Now
+                                    </button>
+                                </div>
+                            )}
+                            <NetworkTopology />
+                        </div>
+                    </div>
+
+                    {/* Live Logs */}
+                    <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col h-[400px] shadow-lg">
+                        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                            Live Security Feed
                         </h2>
-                        <span className="text-[10px] font-mono font-bold text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">LIVE SCAN</span>
-                    </div>
-                    <div className="flex-1 w-full bg-gray-50 dark:bg-gray-950/50 rounded-xl border border-gray-200 dark:border-gray-800/50 relative overflow-hidden min-h-0">
-                        {isFeatureLocked('network') && (
-                            <div className="absolute inset-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6 transition-colors">
-                                <div className="p-4 bg-purple-500/10 rounded-full mb-4 ring-4 ring-purple-500/20">
-                                    <Lock className="w-10 h-10 text-purple-500" />
+                        <div
+                            ref={logContainerRef}
+                            className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 scrollbar-track-transparent custom-scrollbar"
+                        >
+                            {logs.map((log, i) => (
+                                <div key={i} className="p-3 bg-gray-50 dark:bg-gray-950/50 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-all group animate-in slide-in-from-right-2 duration-300">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${log.type.includes('Security') || log.type.includes('Threat')
+                                            ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                            : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                            }`}>
+                                            {log.type}
+                                        </span>
+                                        <span className="text-[10px] text-gray-500 font-mono">{new Date(normalizeTimestamp(log.timestamp)).toLocaleTimeString()}</span>
+                                    </div>
+                                    <div className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors line-clamp-1" title={log.details}>{log.details}</div>
+                                    {log.agentId && <div className="text-[10px] text-gray-500 dark:text-gray-600 mt-1 flex items-center gap-1 font-mono"><Server className="w-3 h-3" /> {log.agentId}</div>}
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Enterprise Visualization</h3>
-                                <p className="text-gray-400 max-w-xs mb-6 text-xs leading-relaxed">
-                                    Real-time <b>Network Topology</b> mapping is available on <b>Enterprise Plan</b>.
-                                </p>
-                                <button
-                                    onClick={() => window.location.hash = '#billing'}
-                                    className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 group text-sm"
-                                >
-                                    <Zap className="w-4 h-4 group-hover:animate-pulse" /> Upgrade Now
-                                </button>
-                            </div>
-                        )}
-                        <NetworkTopology />
-                    </div>
-                </div>
-
-                {/* Live Logs */}
-                <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col h-[400px] shadow-lg">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                        <AlertTriangle className="w-5 h-5 text-yellow-500" />
-                        Live Security Feed
-                    </h2>
-                    <div
-                        ref={logContainerRef}
-                        className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-800 scrollbar-track-transparent custom-scrollbar"
-                    >
-                        {logs.map((log, i) => (
-                            <div key={i} className="p-3 bg-gray-50 dark:bg-gray-950/50 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-gray-400 dark:hover:border-gray-600 transition-all group animate-in slide-in-from-right-2 duration-300">
-                                <div className="flex justify-between items-start mb-1">
-                                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${log.type.includes('Security') || log.type.includes('Threat')
-                                        ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                                        : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                        }`}>
-                                        {log.type}
-                                    </span>
-                                    <span className="text-[10px] text-gray-500 font-mono">{new Date(normalizeTimestamp(log.timestamp)).toLocaleTimeString()}</span>
+                            ))}
+                            {logs.length === 0 && (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-600 space-y-2">
+                                    <Activity className="w-8 h-8 opacity-20" />
+                                    <span>Waiting for events...</span>
                                 </div>
-                                <div className="text-sm text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors line-clamp-1" title={log.details}>{log.details}</div>
-                                {log.agentId && <div className="text-[10px] text-gray-500 dark:text-gray-600 mt-1 flex items-center gap-1 font-mono"><Server className="w-3 h-3" /> {log.agentId}</div>}
-                            </div>
-                        ))}
-                        {logs.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-600 space-y-2">
-                                <Activity className="w-8 h-8 opacity-20" />
-                                <span>Waiting for events...</span>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
-                </div>
-
                 </div>
 
                 {/* Global Threat Map */}
                 <div className="w-full h-[500px]">
                     <WorldMap agents={mapAgents} />
                 </div>
-
             </div>
-
         </div>
     );
 }

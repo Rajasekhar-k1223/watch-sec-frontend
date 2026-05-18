@@ -1,5 +1,4 @@
 @import "tailwindcss";
-/* @config "../tailwind.config.js"; */
 
 @utility scrollbar-none {
   -ms-overflow-style: none;
@@ -9,104 +8,246 @@
   }
 }
 
+/* =============================================
+   Monitorix Design System — Light Mode First
+   ============================================= */
 :root {
-    /* Default variables if needed, usually empty or system pref */
-}
+    --brand-primary: #2563eb;
+    --brand-secondary: #7c3aed;
+    --brand-accent: #059669;
+    --brand-danger: #dc2626;
+    --brand-warning: #d97706;
 
-.light {
-    color-scheme: light;
-    --bg-color: #f8fafc;
-    --text-color: #0f172a;
-    --tooltip-bg: #ffffff;
-    --tooltip-border: #e2e8f0;
-    --tooltip-text: #0f172a;
-    --grid-color: rgba(0, 0, 0, 0.05);
+    /* Light mode variables (default) */
+    --bg-main: #f8fafc;
+    --bg-card: #ffffff;
+    --bg-sidebar: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-subtle: #94a3b8;
+    --border-color: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.10);
+    --card-bg: #ffffff;
+    --input-bg: #f8fafc;
 }
 
 .dark {
-    color-scheme: dark;
-    --bg-color: #030712;
-    --text-color: #ffffff;
-    --tooltip-bg: #0f172a;
-    --tooltip-border: #334155;
-    --tooltip-text: #ffffff;
-    --grid-color: rgba(255, 255, 255, 0.05);
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --bg-sidebar: #0f172a;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-subtle: #64748b;
+    --border-color: #1e293b;
+    --border-strong: #334155;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.3);
+    --shadow-lg: 0 8px 24px rgba(0,0,0,0.4);
+    --card-bg: #1e293b;
+    --input-bg: #0f172a;
 }
 
+/* Base Body */
 body {
-    @apply font-sans antialiased overflow-x-hidden transition-colors duration-300;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    /* Subtle Grid Pattern only in dark mode or adaptive? */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-.dark body {
-    background-image: radial-gradient(#1f2937 1px, transparent 1px);
-    background-size: 40px 40px;
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.3;
 }
 
-.light body {
-    background-image: radial-gradient(#d1d5db 1px, transparent 1px);
-    background-size: 40px 40px;
+code, .font-mono, pre {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 13px;
 }
 
-/* Custom Scrollbar */
+/* =============================================
+   Card Component
+   ============================================= */
+@utility glass-card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.glass-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-strong);
+}
+
+@utility glass {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+/* =============================================
+   Text Utilities
+   ============================================= */
+.text-gradient {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-gradient-danger {
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-gradient-gold {
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* =============================================
+   Scrollbars
+   ============================================= */
 ::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-}
-
-@media (min-width: 768px) {
-    ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
-    }
+    width: 5px;
+    height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 dark:bg-gray-800 rounded-full hover:bg-gray-400 dark:hover:bg-gray-700 transition-colors;
+    background: #cbd5e1;
+    border-radius: 99px;
 }
 
-/* Responsive Table Wrapper */
-.responsive-table-container {
-    @apply overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 scrollbar-none;
-    -webkit-overflow-scrolling: touch;
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
 }
 
-/* Animations */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
+.dark ::-webkit-scrollbar-thumb {
+    background: #334155;
+}
 
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0;
+    border-radius: 99px;
+}
+
+/* =============================================
+   Skeleton Loading
+   ============================================= */
+.skeleton {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+    border-radius: 6px;
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.dark .skeleton {
+    background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+    background-size: 200% 100%;
+}
+
+/* =============================================
+   Data Table Rows
+   ============================================= */
+.data-table-row {
+    border-bottom: 1px solid var(--border-color);
+    transition: background-color 0.15s ease;
+}
+
+.data-table-row:hover {
+    background-color: #f8fafc;
+}
+
+.dark .data-table-row:hover {
+    background-color: rgba(30, 41, 59, 0.5);
+}
+
+/* =============================================
+   Subtle Animations — Lightweight
+   ============================================= */
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
+    animation: fade-in 0.3s ease-out forwards;
 }
 
-.animate-fade-in-up {
-    opacity: 0;
-    animation: fadeIn 0.6s ease-out forwards;
+@keyframes soft-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
-/* Glassmorphism Utilities */
-.glass-panel {
-    @apply bg-white/70 dark:bg-gray-800/40 backdrop-blur-md border border-gray-200 dark:border-gray-700/50 shadow-xl;
+.animate-soft-pulse {
+    animation: soft-pulse 3s ease-in-out infinite;
 }
 
-/* Chart Gradients */
-.bg-grid-pattern {
-    background-image: linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
-        linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
-    background-size: 20px 20px;
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 10s linear infinite;
+}
+
+/* =============================================
+   Status Badges
+   ============================================= */
+.badge-online {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.badge-offline {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }

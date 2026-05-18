@@ -63,83 +63,95 @@ export default function Settings() {
     };
 
     return (
-        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
-            <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200 dark:border-gray-800">
-                <div className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-                    <User size={32} className="text-blue-500" />
-                </div>
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Account Settings</h1>
-                    <p className="text-gray-500 dark:text-gray-400">Manage your profile, security, and preferences.</p>
+        <div className="p-10 bg-slate-50 dark:bg-[#020617] min-h-screen text-slate-900 dark:text-white transition-colors animate-in fade-in duration-700">
+            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-12 pb-8 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-6">
+                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl">
+                        <User size={32} className="text-blue-500" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                             <div className="p-1 bg-blue-500/20 rounded text-blue-500 ring-1 ring-blue-500/30">
+                                <Lock size={12} />
+                             </div>
+                             <span className="text-[10px] font-black tracking-[0.2em] uppercase text-blue-500/80">Identity Control</span>
+                        </div>
+                        <h1 className="text-4xl font-black tracking-tighter">
+                            <span className="text-gradient">Console Settings</span>
+                        </h1>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs font-medium mt-2">Protocol configuration and identity security management.</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
                 {/* Sidebar Navigation */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                     <button
                         onClick={() => setActiveTab('security')}
-                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'security' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'security' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
                     >
-                        <Lock size={18} /> Security
+                        <Lock size={16} /> Security
                     </button>
                     <button
                         onClick={() => setActiveTab('preferences')}
-                        className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'preferences' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                        className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'preferences' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
                     >
-                        <Bell size={18} /> Notifications
+                        <Bell size={16} /> Notifications
                     </button>
                     {(user?.role === 'TenantAdmin' || user?.role === 'SuperAdmin') && (
                         <button
                             onClick={() => setActiveTab('organization')}
-                            className={`w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'organization' ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                            className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'organization' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                            <Building2 size={18} /> Organization
+                            <Building2 size={16} /> Organization
                         </button>
                     )}
                 </div>
 
                 {/* Content Area */}
-                <div className="lg:col-span-3 bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700 shadow-xl transition-colors">
+                <div className="lg:col-span-3 glass-card p-10 transition-colors relative overflow-hidden">
+                    <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
+
                     {activeTab === 'security' && (
-                        <div className="max-w-md">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                <Lock className="text-blue-400" /> Change Password
+                        <div className="max-w-md relative z-10">
+                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
+                                <Lock className="text-blue-500" size={16} /> Update Cryptographic Key
                             </h2>
 
                             {msg.text && (
-                                <div className={`p-4 rounded-lg mb-6 flex items-start gap-3 ${msg.type === 'success' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'}`}>
-                                    {msg.type === 'success' ? <Check size={18} className="mt-0.5" /> : <AlertCircle size={18} className="mt-0.5" />}
-                                    <p>{msg.text}</p>
+                                <div className={`p-5 rounded-2xl mb-8 flex items-start gap-4 text-[10px] font-black uppercase tracking-widest ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'}`}>
+                                    {msg.type === 'success' ? <Check size={16} className="mt-0.5" /> : <AlertCircle size={16} className="mt-0.5" />}
+                                    <p className="mt-1">{msg.text}</p>
                                 </div>
                             )}
 
-                            <form onSubmit={handleChangePassword} className="space-y-4">
+                            <form onSubmit={handleChangePassword} className="space-y-8">
                                 <div>
-                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Current Password</label>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Current Password</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 text-gray-900 dark:text-white outline-none transition-colors"
+                                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white outline-none transition-all font-black"
                                         value={oldPassword}
                                         onChange={e => setOldPassword(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">New Password</label>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">New Identity Secret</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 text-gray-900 dark:text-white outline-none transition-colors"
+                                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white outline-none transition-all font-black"
                                         value={newPassword}
                                         onChange={e => setNewPassword(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1">Confirm New Password</label>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Confirm Secret</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 focus:border-blue-500 text-gray-900 dark:text-white outline-none transition-colors"
+                                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white outline-none transition-all font-black"
                                         value={confirmPassword}
                                         onChange={e => setConfirmPassword(e.target.value)}
                                         required
@@ -149,32 +161,32 @@ export default function Settings() {
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className={`w-full py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold transition-all ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+                                    className={`w-full py-5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl shadow-slate-500/10 hover:scale-[1.02] active:scale-95 ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
                                 >
-                                    {isLoading ? 'Updating...' : 'Update Password'}
+                                    {isLoading ? 'Encrypting...' : 'Commit Changes'}
                                 </button>
                             </form>
                         </div>
                     )}
 
                     {activeTab === 'preferences' && (
-                        <div className="max-w-xl">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                <Bell className="text-yellow-400" /> notification Preferences
+                        <div className="max-w-xl relative z-10">
+                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
+                                <Bell className="text-amber-500" size={16} /> Notification Pulse
                             </h2>
                             <div className="space-y-6">
-                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">Email Security Alerts</h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Receive immediate emails for critical threats.</p>
+                                <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-950/40 rounded-3xl border border-slate-200 dark:border-slate-800 transition-all hover:border-blue-500/30">
+                                    <div className="max-w-[70%]">
+                                        <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Critical Alert Broadcast</h3>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-2 leading-relaxed">Immediate SMTP/Webhook transmission for high-severity threat detections.</p>
                                     </div>
                                     <ToggleSwitch enabled={emailAlerts} onChange={setEmailAlerts} />
                                 </div>
 
-                                <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
-                                    <div>
-                                        <h3 className="font-bold text-gray-900 dark:text-white">Weekly Summary Report</h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400">Get a PDF summary every Monday morning.</p>
+                                <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-950/40 rounded-3xl border border-slate-200 dark:border-slate-800 transition-all hover:border-blue-500/30">
+                                    <div className="max-w-[70%]">
+                                        <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Weekly Intelligence Sync</h3>
+                                        <p className="text-[10px] text-slate-500 font-medium mt-2 leading-relaxed">Consolidated forensic digest transmitted every UTC Monday 00:00.</p>
                                     </div>
                                     <ToggleSwitch enabled={weeklyReport} onChange={setWeeklyReport} />
                                 </div>
@@ -183,9 +195,9 @@ export default function Settings() {
                     )}
 
                     {activeTab === 'organization' && (
-                        <div className="max-w-xl">
-                            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                                <Building2 className="text-blue-400" /> Organization Settings
+                        <div className="max-w-xl relative z-10">
+                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
+                                <Building2 className="text-blue-500" size={16} /> Organization Protocol
                             </h2>
                             <MaintenanceSettings />
                         </div>

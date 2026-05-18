@@ -123,51 +123,56 @@ export default function Vulnerabilities() {
     const isLocked = planLevel < (FEATURE_TIERS["vulnerabilities"] || 3);
 
     return (
-        <div className="p-8 animate-in fade-in duration-500 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors relative">
+        <div className="p-8 animate-in fade-in duration-700 min-h-screen bg-slate-50 dark:bg-[#020617] transition-colors relative">
             {isLocked && (
-                <div className="absolute inset-0 z-[60] bg-gray-950/95 backdrop-blur-2xl flex flex-col items-center justify-center text-center p-6">
-                    <div className="p-8 bg-blue-500/10 rounded-3xl mb-8 ring-1 border border-blue-500/20 shadow-2xl shadow-blue-500/10">
-                        <Lock className="w-20 h-20 text-blue-500" />
+                <div className="absolute inset-0 z-[60] bg-slate-950/95 backdrop-blur-3xl flex flex-col items-center justify-center text-center p-6">
+                    <div className="p-10 bg-blue-500/10 rounded-[3rem] mb-10 ring-1 border border-blue-500/20 shadow-2xl shadow-blue-500/20 animate-pulse-slow">
+                        <Lock className="w-24 h-24 text-blue-500" />
                     </div>
-                    <h2 className="text-5xl font-black text-white mb-6 bg-clip-text text-transparent bg-gradient-to-br from-white to-blue-400">Enterprise Intelligence</h2>
-                    <p className="text-gray-400 max-w-lg mb-12 text-xl font-medium leading-relaxed">
-                        Fleet-wide <b>Vulnerability Scanning</b> and <b>Threat Intelligence</b> are exclusive to our <b>Enterprise Plan</b>.
+                    <h2 className="text-6xl font-black text-white mb-6 tracking-tighter">
+                        <span className="text-gradient">Monitorix Intelligence</span>
+                    </h2>
+                    <p className="text-slate-400 max-w-2xl mb-14 text-2xl font-medium leading-tight tracking-tight">
+                        Autonomous <b>Vulnerability Orchestration</b> and <b>Threat Forensics</b> are locked for this identity tier.
                     </p>
                     <button
                         onClick={() => window.location.hash = '#billing'}
-                        className="px-12 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-2xl shadow-2xl shadow-blue-500/40 hover:shadow-blue-400/50 transition-all flex items-center gap-4 group text-xl"
+                        className="px-16 py-6 bg-white text-slate-950 font-black rounded-3xl shadow-2xl shadow-blue-500/40 hover:scale-105 transition-all flex items-center gap-6 group text-xs uppercase tracking-[0.3em]"
                     >
-                        <Zap className="w-8 h-8 group-hover:rotate-12 transition-transform" />
-                        Activate Enterprise Suite
+                        <Zap className="w-6 h-6 group-hover:rotate-12 transition-transform text-blue-600" />
+                        Authorize Enterprise Suite
                     </button>
-                    <div className="mt-8 flex gap-6 text-gray-500 font-bold uppercase tracking-widest text-[10px]">
-                        <span>CVE Tracking</span>
+                    <div className="mt-12 flex gap-8 text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] opacity-50">
+                        <span>CVE Correlation</span>
                         <span>•</span>
-                        <span>Patch Management</span>
+                        <span>Autonomous Patching</span>
                         <span>•</span>
-                        <span>Risk Scoring</span>
+                        <span>Zero-Day Guard</span>
                     </div>
                 </div>
             )}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                        <div className="p-2 bg-red-100 dark:bg-red-500/10 rounded-lg">
-                            <ShieldAlert className="text-red-600 dark:text-red-500 w-8 h-8" />
-                        </div>
-                        Vulnerability Intelligence
+                    <div className="flex items-center gap-2 mb-3">
+                         <div className="p-1.5 bg-red-500/20 rounded-lg text-red-500 ring-1 ring-red-500/30">
+                            <ShieldAlert size={18} />
+                         </div>
+                         <span className="text-[10px] font-black tracking-[0.2em] uppercase text-red-500/80">Threat Surface Audit</span>
+                    </div>
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
+                        <span className="text-gradient">Vulnerability Intel</span>
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-2 font-medium">
-                        Detected vulnerable software packages across the managed fleet.
+                    <p className="text-slate-500 dark:text-slate-400 text-xs mt-3 font-medium max-w-xl leading-relaxed">
+                        Continuous forensic auditing of endpoint software stacks. Cross-referencing fleet inventory against global CVE repositories in real-time.
                     </p>
                 </div>
-                <div className="flex gap-3">
-                    <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 items-center shadow-sm">
-                        <Search className="text-gray-400 dark:text-gray-500 ml-2" size={16} />
+                <div className="flex flex-wrap gap-3">
+                    <div className="glass px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
+                        <Search className="text-slate-400" size={16} />
                         <input
                             type="text"
-                            placeholder="Search by Agent ID..."
-                            className="bg-transparent text-gray-900 dark:text-white text-xs px-3 py-1 outline-none w-48 placeholder-gray-400"
+                            placeholder="OPERATOR SEARCH..."
+                            className="bg-transparent text-slate-900 dark:text-white text-[10px] font-black uppercase tracking-widest outline-none w-40 placeholder-slate-500"
                             value={searchAgent}
                             onChange={(e) => setSearchAgent(e.target.value)}
                         />
@@ -175,86 +180,79 @@ export default function Vulnerabilities() {
                     <button
                         onClick={triggerGlobalScan}
                         disabled={triggeringAll || isLocked}
-                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-all shadow-lg shadow-blue-900/20 font-bold disabled:opacity-50"
+                        className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-2.5 rounded-xl flex items-center gap-3 transition-all shadow-xl shadow-blue-500/10 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 active:scale-95"
                     >
-                        {triggeringAll ? <RefreshCw size={18} className="animate-spin" /> : <Shield size={18} />}
-                        Scan All Fleet
+                        {triggeringAll ? <RefreshCw size={14} className="animate-spin" /> : <Shield size={14} />}
+                        Sync Fleet Scan
                     </button>
                     <button
                         onClick={() => navigate('/fleet-inventory')}
                         disabled={isLocked}
-                        className="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-200 dark:border-gray-700 shadow-sm font-medium disabled:opacity-50"
-                        title="View whole fleet software inventory"
+                        className="glass px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-white flex items-center gap-3 transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50 active:scale-95"
                     >
-                        <Package size={18} />
-                        Software Inventory
+                        <Package size={14} /> Inventory
                     </button>
                     <button
                         onClick={handleExport}
                         disabled={loading || isLocked}
-                        className="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-200 dark:border-gray-700 shadow-sm font-medium disabled:opacity-50"
+                        className="glass px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-white flex items-center gap-3 transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50 active:scale-95"
                     >
-                        <Download size={18} />
-                        Export CSV
-                    </button>
-                    <button
-                        onClick={fetchAlerts}
-                        className="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-200 dark:border-gray-700 shadow-sm font-medium"
-                    >
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-                        Refresh
+                        <Download size={14} /> Export
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200 dark:border-gray-700 p-6 rounded-2xl shadow-xl dark:shadow-lg transition-colors">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-500/10 rounded-lg">
-                            <Shield className="text-blue-600 dark:text-blue-400 w-6 h-6" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div className="glass-card p-8 relative overflow-hidden group">
+                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
+                    <div className="flex justify-between items-start mb-6">
+                        <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 ring-1 ring-blue-500/20">
+                            <Shield size={24} />
                         </div>
-                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-500/10 px-2 py-1 rounded-full border border-blue-200 dark:border-blue-500/20">SCANNED</span>
+                        <span className="text-[9px] font-black text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 tracking-widest uppercase">Validated</span>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{alerts.length}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Total Alerts</div>
+                    <div className="text-5xl font-black text-slate-900 dark:text-white mb-2 leading-none">{alerts.length}</div>
+                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Total Anomalies</div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200 dark:border-gray-700 p-6 rounded-2xl shadow-xl dark:shadow-lg transition-colors">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-red-50 dark:bg-red-500/10 rounded-lg">
-                            <AlertCircle className="text-red-600 dark:text-red-400 w-6 h-6" />
+                <div className="glass-card p-8 relative overflow-hidden group">
+                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all"></div>
+                    <div className="flex justify-between items-start mb-6">
+                        <div className="p-3 bg-red-500/10 rounded-2xl text-red-500 ring-1 ring-red-500/20">
+                            <AlertCircle size={24} />
                         </div>
-                        <span className="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/10 px-2 py-1 rounded-full border border-red-200 dark:border-red-500/20">CRITICAL</span>
+                        <span className="text-[9px] font-black text-red-500 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20 tracking-widest uppercase">High Risk</span>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                    <div className="text-5xl font-black text-slate-900 dark:text-white mb-2 leading-none">
                         {alerts.filter(a => a.Details.toLowerCase().includes('critical') || a.Details.toLowerCase().includes('high')).length}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">High Risk Items</div>
+                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Critical Exposures</div>
                 </div>
 
-                <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200 dark:border-gray-700 p-6 rounded-2xl shadow-xl dark:shadow-lg transition-colors">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-2 bg-emerald-50 dark:bg-emerald-500/10 rounded-lg">
-                            <CheckCircle className="text-emerald-600 dark:text-emerald-400 w-6 h-6" />
+                <div className="glass-card p-8 relative overflow-hidden group">
+                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+                    <div className="flex justify-between items-start mb-6">
+                        <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 ring-1 ring-emerald-500/20">
+                            <CheckCircle size={24} />
                         </div>
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-200 dark:border-emerald-500/20">LATEST</span>
+                        <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 tracking-widest uppercase">Sync Status</span>
                     </div>
-                    <div className="text-xl font-bold text-gray-900 dark:text-white truncate mb-1">
-                        {alerts.length > 0 ? new Date(alerts[0].Timestamp).toLocaleDateString() : 'N/A'}
+                    <div className="text-2xl font-black text-slate-900 dark:text-white mb-2 leading-none truncate">
+                        {alerts.length > 0 ? new Date(alerts[0].Timestamp).toLocaleDateString() : 'REAL-TIME'}
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider font-bold">Last Scan Date</div>
+                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Last Intelligence Pulse</div>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-xl dark:shadow-2xl transition-colors">
+            <div className="glass-card overflow-hidden shadow-2xl transition-colors">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-700">
+                    <thead className="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
                         <tr>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Timestamp</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Agent ID</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Type</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Detection Details</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Actions</th>
+                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Timestamp</th>
+                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Agent Identity</th>
+                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Risk Category</th>
+                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Forensic Details</th>
+                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">

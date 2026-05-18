@@ -24,76 +24,93 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
 
     const allNavItems = [
         { name: 'Dashboard', path: '/status', icon: LayoutDashboard, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
-        { name: 'My Dashboard', path: '/my-dashboard', icon: LayoutDashboard, roles: ['Analyst'], minTier: 1 },
-        { name: 'Central Server', path: '/central-server', icon: Server, roles: ['SuperAdmin'], minTier: 1 },
-        { name: 'Users and Privileges', path: '/users', icon: Users, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
+        { name: 'My Insights', path: '/my-dashboard', icon: LayoutDashboard, roles: ['Analyst'], minTier: 1 },
+        { name: 'Central Command', path: '/central-server', icon: Server, roles: ['SuperAdmin'], minTier: 1 },
+        { name: 'Access Control', path: '/users', icon: Users, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
         { name: 'Tenants', path: '/tenants', icon: Share2, roles: ['SuperAdmin'], minTier: 1 },
-        { name: 'Agents', path: '/agents', icon: Monitor, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Mail Processing', path: '/mail', icon: Mail, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Event Log', path: '/events', icon: List, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Asset Management', path: '/agents', icon: Monitor, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Email Forensics', path: '/mail', icon: Mail, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Security Logs', path: '/events', icon: List, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'System Audit', path: '/audit', icon: ShieldCheck, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
-        { name: 'Employee Pulse', path: '/employee-pulse', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Productivity', path: '/productivity', icon: Activity, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Bandwidth', path: '/bandwidth', icon: Wifi, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Reports', path: '/reports', icon: FileText, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Architecture', path: '/architecture', icon: Share2, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
+        { name: 'Engagement Analytics', path: '/employee-pulse', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Human Intelligence', path: '/human-intelligence', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Performance Intel', path: '/productivity', icon: Activity, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Network Analytics', path: '/bandwidth', icon: Wifi, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Executive Reports', path: '/reports', icon: FileText, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Infrastructure Map', path: '/architecture', icon: Share2, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
+        { name: 'AI Security Copilot', path: '/ai-copilot', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
 
         { name: 'Billing', path: '/billing', icon: CreditCard, roles: ['TenantAdmin'], minTier: 1 },
         { name: 'Settings', path: '/settings', icon: Settings, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'DLP Policies', path: '/policies', icon: Shield, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 2 }, // Pro
-        { name: 'Vulnerabilities', path: '/vulnerabilities', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
-        { name: 'Image Analysis', path: '/image-recognition', icon: Image, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
-        { name: 'Speech Intel', path: '/speech-recognition', icon: Mic, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
+        { name: 'Threat Resilience', path: '/vulnerabilities', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
+        { name: 'Visual Intelligence', path: '/image-recognition', icon: Image, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Acoustic Forensic', path: '/speech-recognition', icon: Mic, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
     ];
 
     const navItems = allNavItems.filter(item => item.roles.includes(role));
 
     return (
         <aside className={`
-            w-64 glass-panel border-r border-gray-200 dark:border-gray-800 h-screen flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 font-sans
+            w-72 glass-card border-r border-slate-200 dark:border-slate-800 h-screen flex flex-col fixed left-0 top-0 z-50 transition-transform duration-500 ease-in-out
             ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
-            {/* Background Overlay */}
-            <div className="absolute inset-0 bg-gray-50/80 dark:bg-gray-900/60 -z-10"></div>
+            {/* Ambient Background Element */}
+            <div className="absolute inset-0 bg-slate-50/40 dark:bg-black/40 -z-10 backdrop-blur-3xl"></div>
 
-            <div className="p-4 md:p-6 border-b border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-black/20 relative">
+            <div className="p-8 border-b border-slate-200 dark:border-slate-800/50 relative">
                 {/* Mobile Close Button */}
                 <button
                     onClick={onClose}
-                    className="md:hidden absolute right-4 top-4 text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-sm"
+                    className="md:hidden absolute right-6 top-6 text-slate-500 hover:text-slate-900 dark:hover:text-white p-2.5 bg-white dark:bg-slate-900 rounded-xl shadow-2xl ring-1 ring-slate-200 dark:ring-slate-800"
                 >
-                    <X size={20} />
+                    <X size={18} />
                 </button>
 
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 tracking-wider">
-                    <div className="relative">
-                        <img src={logo} alt="M" className="w-8 h-8 rounded-lg brightness-110" />
-                        <div className="absolute inset-0 bg-blue-500/20 blur-lg rounded-full"></div>
+                <div className="flex items-center gap-4 mb-8">
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-blue-500/30 blur-xl group-hover:bg-blue-500/50 transition-all duration-700 rounded-full"></div>
+                        <img src={logo} alt="M" className="w-10 h-10 rounded-2xl relative z-10 brightness-110 shadow-2xl" />
                     </div>
-                    MONITORIX
-                </h1>
-                <p className="text-xs text-cyan-600 dark:text-cyan-500/80 mt-1 uppercase tracking-[0.2em] ml-10">System Secure</p>
+                    <div>
+                        <h1 className="text-sm font-black text-slate-900 dark:text-white tracking-[0.3em] uppercase leading-none">
+                            Monitorix
+                        </h1>
+                        <span className="text-[8px] font-black bg-blue-600 text-white px-1.5 py-0.5 rounded-sm mt-1 inline-block tracking-widest uppercase">Enterprise</span>
+                    </div>
+                </div>
 
-                <div className="mt-4 px-3 py-2 bg-gray-100 dark:bg-gray-900/80 rounded border border-gray-200 dark:border-gray-800 inline-flex items-center gap-2 w-full">
-                    <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"></div>
-                    <span className="text-xs text-gray-700 dark:text-gray-400 uppercase font-bold tracking-wider truncate">
-                        {user?.username} :: {role} ({user?.plan || 'Starter'})
-                    </span>
+                <div className="px-4 py-3 bg-slate-900/5 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-slate-800/50 flex items-center gap-3 group transition-all hover:bg-slate-900/10 dark:hover:bg-white/10">
+                    <div className="relative">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]"></div>
+                        <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-500 animate-ping"></div>
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[10px] text-slate-900 dark:text-white font-black uppercase tracking-widest truncate">
+                            {user?.username}
+                        </p>
+                        <p className="text-[8px] text-slate-500 font-black uppercase tracking-[0.2em] truncate mt-0.5">
+                            {role} // {user?.plan || 'Standard'}
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
+            <nav className="flex-1 p-6 space-y-1.5 overflow-y-auto custom-scrollbar">
+                <div className="mb-4 px-2">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Fleet Operations</p>
+                </div>
                 {navItems.map((item) => {
                     const isLocked = item.minTier > currentTier && role !== 'SuperAdmin';
 
                     if (isLocked) {
                         return (
-                            <div key={item.path} className="relative group/lock cursor-not-allowed opacity-60">
-                                <div className="flex items-center gap-3 px-4 py-3 rounded-md text-sm font-semibold text-gray-400 border border-transparent bg-gray-50/50 dark:bg-gray-800/20">
-                                    <item.icon className="w-5 h-5 text-gray-300 dark:text-gray-600" />
-                                    <span className="uppercase tracking-wide truncate">{item.name}</span>
+                            <div key={item.path} className="relative group/lock cursor-not-allowed">
+                                <div className="flex items-center gap-4 px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-slate-400/50 border border-transparent bg-slate-50/50 dark:bg-slate-900/20 transition-all grayscale opacity-50">
+                                    <item.icon className="w-4 h-4 opacity-40" />
+                                    <span className="truncate">{item.name}</span>
                                     <div className="ml-auto">
-                                        <Lock size={14} className="text-gray-300 dark:text-gray-600" />
+                                        <Lock size={12} className="opacity-40" />
                                     </div>
                                 </div>
                             </div>
@@ -105,17 +122,23 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                             key={item.path}
                             to={item.path}
                             className={({ isActive }) =>
-                                `flex items-center gap-3 px-4 py-3 rounded-md text-sm font-semibold transition-all group border ${isActive
-                                    ? 'bg-cyan-50 dark:bg-cyan-950/30 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/30 shadow-sm'
-                                    : 'text-gray-600 dark:text-gray-500 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-200 dark:hover:border-gray-700'
+                                `flex items-center gap-4 px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all group border ${isActive
+                                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-2xl shadow-slate-500/20'
+                                    : 'text-slate-500 dark:text-slate-500 border-transparent hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'
                                 }`
                             }
                         >
                             {({ isActive }) => (
                                 <>
-                                    <item.icon className={`w-5 h-5 transition-colors ${item.name === 'Employee Pulse' ? 'group-hover:text-purple-500 dark:group-hover:text-purple-400' : 'group-hover:text-cyan-600 dark:group-hover:text-cyan-400'}`} />
-                                    <span className="uppercase tracking-wide truncate">{item.name}</span>
-                                    {isActive && <div className="ml-auto w-1 h-1 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.8)]"></div>}
+                                    <item.icon className={`w-4 h-4 transition-all duration-500 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+                                    <span className="truncate">{item.name}</span>
+                                    {isActive && (
+                                        <div className="ml-auto flex gap-1">
+                                            <div className="w-1 h-1 rounded-full bg-current opacity-20 animate-pulse"></div>
+                                            <div className="w-1 h-1 rounded-full bg-current opacity-40 animate-pulse delay-75"></div>
+                                            <div className="w-1 h-1 rounded-full bg-current opacity-60 animate-pulse delay-150"></div>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </NavLink>
@@ -123,24 +146,32 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                 })}
             </nav>
 
-            <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3 bg-gray-50/50 dark:bg-black/20">
-                <div className="bg-white dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-800 p-3 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-purple-500/10 to-transparent rounded-bl-full"></div>
-                    <p className="text-xs text-gray-500 uppercase font-bold mb-1">Active Session scope</p>
-                    <div className="flex items-center gap-2 mb-3">
-                        <div className="w-6 h-6 rounded bg-purple-100 dark:bg-purple-900/50 border border-purple-200 dark:border-purple-500/30 flex items-center justify-center font-bold text-purple-600 dark:text-purple-400 text-xs shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+            <div className="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/30 dark:bg-black/20">
+                <div className="glass-card bg-white dark:bg-slate-900/40 p-5 relative overflow-hidden group">
+                    <div className="absolute top-[-20%] right-[-20%] w-24 h-24 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
+                    
+                    <div className="flex items-center justify-between mb-4">
+                         <p className="text-[9px] text-slate-400 uppercase font-black tracking-[0.2em]">Runtime Scope</p>
+                         <div className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                             v2.1
+                         </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 mb-6 relative z-10">
+                        <div className="w-8 h-8 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xs shadow-2xl">
                             {user?.tenantId ? 'T' : 'G'}
                         </div>
                         <div className="overflow-hidden">
-                            <p className="text-xs font-bold text-gray-700 dark:text-gray-300 truncate w-32">
-                                {user?.tenantId ? 'Tenant' : 'Global'}
+                            <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest truncate">
+                                {user?.tenantId ? 'Tenant Node' : 'Global Hub'}
                             </p>
+                            <p className="text-[8px] text-slate-500 font-black uppercase tracking-tight mt-0.5">Encrypted Tunnel</p>
                         </div>
                     </div>
 
                     <button
                         onClick={() => logout()}
-                        className="w-full flex items-center justify-center gap-2 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-500 border border-red-200 dark:border-red-900/30 hover:border-red-300 dark:hover:border-red-800 rounded py-2 text-xs uppercase font-bold tracking-wider transition-all"
+                        className="w-full flex items-center justify-center gap-3 bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 hover:border-red-500 rounded-xl py-3.5 text-[10px] uppercase font-black tracking-[0.2em] transition-all shadow-xl active:scale-95"
                     >
                         Disconnect
                     </button>

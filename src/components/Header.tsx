@@ -3,7 +3,6 @@ import { Sun, Moon, Bell, Search, Menu, LayoutDashboard, Users, FileText, List, 
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../config';
 
 interface HeaderProps {
@@ -23,13 +22,14 @@ interface Notification {
 export default function Header({ onMenuClick }: HeaderProps) {
     const { theme, toggleTheme } = useTheme();
     const { user, logout, token } = useAuth();
+    const role = user?.role || 'VIEWER';
     const navigate = useNavigate();
 
     // Notifications State
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const notifRef = useRef<HTMLDivElement>(null);
-    const socketRef = useRef<Socket | null>(null);
+
 
     // Search/Command State
     const [showSearch, setShowSearch] = useState(false);
@@ -37,48 +37,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
     const searchRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch History & Init Socket
+    // Fetch notifications once on mount (no separate socket — Dashboard already has one)
     useEffect(() => {
         if (!token || !user) return;
-
-        // 1. Fetch Initial Notifications
         const fetchNotifs = async () => {
-            const res = await fetch(`${API_URL}/notifications`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) setNotifications(await res.json());
+            try {
+                const res = await fetch(`${API_URL}/notifications`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) setNotifications(await res.json());
+            } catch { /* silent */ }
         };
         fetchNotifs();
-
-        // 2. Connect Socket for Real-time
-        const socket = io(API_URL, {
-            transports: ['websocket'],
-            auth: { token }
-        });
-        socketRef.current = socket;
-
-        socket.on('connect', () => {
-            if (user.tenantId) {
-                socket.emit('join', { room: `tenant_${user.tenantId}` });
-            }
-        });
-
-        socket.on('NewNotification', (notif: any) => {
-            setNotifications(prev => [
-                {
-                    Id: notif.id || Date.now(),
-                    Title: notif.title,
-                    Message: notif.message,
-                    Type: notif.type,
-                    CreatedAt: new Date().toISOString(),
-                    IsRead: false,
-                    AgentId: notif.agentId
-                },
-                ...prev
-            ].slice(0, 50));
-        });
-
-        return () => { socket.disconnect(); };
     }, [token, user]);
 
     // Commands Definition
@@ -160,59 +130,59 @@ export default function Header({ onMenuClick }: HeaderProps) {
     };
 
     return (
-        <header className="flex items-center justify-between px-4 md:px-6 py-3 md:py-4 mb-2 sticky top-0 z-40 bg-white/80 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 transition-colors">
+        <header className="flex items-center justify-between px-8 py-5 sticky top-0 z-40 bg-white/60 dark:bg-[#020617]/60 backdrop-blur-3xl border-b border-slate-200 dark:border-slate-800/50 transition-all duration-500">
             {/* Search / Command Area */}
-            <div className="flex items-center gap-4 flex-1">
+            <div className="flex items-center gap-6 flex-1">
                 <button
                     onClick={onMenuClick}
-                    className="p-2 md:hidden text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                    className="p-3 md:hidden text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors"
                 >
                     <Menu size={20} />
                 </button>
-                <div className="relative flex-1 max-w-[180px] sm:max-w-none md:w-96 group" ref={searchRef}>
-                    <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${showSearch ? 'text-cyan-500' : 'text-gray-500'}`} />
+                <div className="relative flex-1 max-w-[240px] sm:max-w-none md:w-[450px] group" ref={searchRef}>
+                    <Search className={`absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 transition-all duration-500 ${showSearch ? 'text-blue-500 scale-110' : 'text-slate-400'}`} />
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="SEARCH..."
+                        placeholder="TERMINAL SEARCH..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => setShowSearch(true)}
-                        className={`w-full bg-gray-100 dark:bg-black/40 backdrop-blur border rounded-lg pl-10 pr-12 py-2 text-xs font-mono text-gray-800 dark:text-cyan-100 placeholder-gray-500 dark:placeholder-gray-600 outline-none transition-all ${showSearch ? 'ring-2 ring-cyan-500/30 border-cyan-500/50' : 'border-gray-200 dark:border-gray-800'}`}
+                        className={`w-full bg-slate-100 dark:bg-white/5 border rounded-2xl pl-12 pr-14 py-3.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 outline-none transition-all duration-500 ${showSearch ? 'ring-4 ring-blue-500/10 border-blue-500/50 bg-white dark:bg-slate-900' : 'border-slate-200 dark:border-slate-800'}`}
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:flex gap-1 pointer-events-none">
-                        <span className="text-[10px] text-gray-400 border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded">CTRL</span>
-                        <span className="text-[10px] text-gray-400 border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded">K</span>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden sm:flex gap-1.5 pointer-events-none opacity-40">
+                        <span className="text-[8px] font-black text-slate-500 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">CTRL</span>
+                        <span className="text-[8px] font-black text-slate-500 border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded-md">K</span>
                     </div>
 
                     {/* Command Palette Dropdown */}
                     {showSearch && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                            <div className="max-h-80 overflow-y-auto py-1">
+                        <div className="absolute top-full left-0 right-0 mt-4 glass-card border border-slate-200 dark:border-slate-800/50 shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="max-h-[400px] overflow-y-auto py-2">
                                 {filteredCommands.length === 0 ? (
-                                    <div className="p-4 text-center text-gray-500 text-xs italic">No commands found.</div>
+                                    <div className="p-8 text-center text-slate-400 text-[10px] font-black uppercase tracking-widest italic">No matching protocols.</div>
                                 ) : (
                                     <>
-                                        <div className="px-3 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800/50">Suggested Actions</div>
+                                        <div className="px-6 py-3 text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] bg-slate-50/50 dark:bg-white/5">Suggested Procedures</div>
                                         {filteredCommands.map((cmd) => (
                                             <button
                                                 key={cmd.id}
                                                 onClick={() => handleCommandClick(cmd.action)}
-                                                className="w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-cyan-50 dark:hover:bg-cyan-900/20 text-gray-700 dark:text-gray-300 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors group"
+                                                className="w-full text-left px-6 py-4 flex items-center gap-4 hover:bg-blue-500/5 transition-all group"
                                             >
-                                                <div className="p-1.5 rounded bg-gray-100 dark:bg-gray-800 group-hover:bg-cyan-100 dark:group-hover:bg-cyan-900/40 text-gray-500 dark:text-gray-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                                                    <cmd.icon size={14} />
+                                                <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-900 group-hover:bg-blue-500 group-hover:text-white transition-all duration-500 text-slate-500 dark:text-slate-400">
+                                                    <cmd.icon size={16} />
                                                 </div>
-                                                <span className="text-sm font-medium">{cmd.label}</span>
-                                                {cmd.type === 'Navigation' && <ArrowRightIcon className="ml-auto opacity-0 group-hover:opacity-50" size={12} />}
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-300 group-hover:text-blue-500 transition-colors">{cmd.label}</span>
+                                                {cmd.type === 'Navigation' && <ArrowRightIcon className="ml-auto opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all text-blue-500" size={14} />}
                                             </button>
                                         ))}
                                     </>
                                 )}
                             </div>
-                            <div className="p-2 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 text-[10px] text-gray-400 flex justify-between">
+                            <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800/50 bg-slate-50 dark:bg-slate-950 text-[8px] font-black text-slate-400 uppercase tracking-widest flex justify-between">
                                 <span>Navigate with arrows</span>
-                                <span>Enter to select</span>
+                                <span>Enter to execute</span>
                             </div>
                         </div>
                     )}
@@ -220,14 +190,14 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </div>
 
             {/* Right Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
                 {/* Theme Toggle */}
                 <button
                     onClick={toggleTheme}
-                    className="p-2 rounded bg-white dark:bg-black/40 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-500 hover:text-cyan-600 dark:hover:text-cyan-400 hover:border-cyan-500/30 transition-all shadow-sm"
-                    title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-500 shadow-xl"
+                    title={`Protocol: ${theme === 'dark' ? 'Standard' : 'Tactical'} Mode`}
                 >
-                    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    {theme === 'dark' ? <Sun size={18} className="animate-spin-slow" /> : <Moon size={18} />}
                 </button>
 
                 {/* Notifications */}
@@ -237,45 +207,47 @@ export default function Header({ onMenuClick }: HeaderProps) {
                             setShowNotifications(!showNotifications);
                             if (!showNotifications) markAllAsRead();
                         }}
-                        className={`p-2 rounded border transition-all relative shadow-sm ${showNotifications ? 'bg-cyan-50 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 border-cyan-500/30' : 'bg-white dark:bg-black/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-500 hover:text-cyan-600 dark:hover:text-cyan-400 hover:border-cyan-500/30'}`}
+                        className={`p-3 rounded-2xl border transition-all duration-500 relative shadow-xl ${showNotifications ? 'bg-blue-500 text-white border-blue-500 shadow-blue-500/20' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 hover:text-blue-500 hover:border-blue-500/30'}`}
                     >
                         <Bell size={18} />
                         {notifications.filter(n => !n.IsRead).length > 0 && (
-                            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-900 shadow-[0_0_5px_rgba(239,68,68,0.8)]"></span>
+                            <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 shadow-2xl"></span>
                         )}
                     </button>
 
                     {/* Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
-                            <div className="p-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex justify-between items-center">
-                                <h3 className="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Alerts & System Feed</h3>
-                                <button onClick={clearAllNotifications} className="text-[10px] text-blue-500 hover:underline font-bold">Clear All</button>
+                        <div className="absolute right-0 mt-4 w-96 glass-card border border-slate-200 dark:border-slate-800 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-300 overflow-hidden">
+                            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-white/5 flex justify-between items-center">
+                                <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Signal Feed</h3>
+                                <button onClick={clearAllNotifications} className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-600 transition-colors tracking-widest">Purge All</button>
                             </div>
-                            <div className="max-h-96 overflow-y-auto">
+                            <div className="max-h-[450px] overflow-y-auto">
                                 {notifications.length === 0 ? (
-                                    <div className="p-10 text-center text-gray-400 dark:text-gray-500 text-xs italic flex flex-col items-center gap-2">
-                                        <Bell className="opacity-20" size={32} />
-                                        No new notifications
+                                    <div className="p-20 text-center text-slate-400 text-[10px] font-black uppercase tracking-widest flex flex-col items-center gap-4 opacity-40">
+                                        <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-3xl">
+                                            <Bell size={32} />
+                                        </div>
+                                        Vacuum State
                                     </div>
                                 ) : (
                                     notifications.map(n => (
-                                        <div key={n.Id} className={`p-4 border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors relative ${!n.IsRead ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
-                                            <div className="flex gap-3">
-                                                <div className={`p-2 rounded-lg h-fit ${n.Type === 'Critical' ? 'bg-red-100 dark:bg-red-900/30 text-red-500' :
-                                                    n.Type === 'Warning' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-500' :
-                                                        'bg-blue-100 dark:bg-blue-900/30 text-blue-500'
+                                        <div key={n.Id} className={`p-6 border-b border-slate-50 dark:border-slate-800/50 hover:bg-blue-500/5 transition-all relative group ${!n.IsRead ? 'bg-blue-500/[0.03]' : ''}`}>
+                                            <div className="flex gap-4">
+                                                <div className={`p-3 rounded-2xl h-fit transition-transform group-hover:scale-110 duration-500 ${n.Type === 'Critical' ? 'bg-red-500/10 text-red-500 border border-red-500/20' :
+                                                    n.Type === 'Warning' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' :
+                                                        'bg-blue-500/10 text-blue-500 border border-blue-500/20'
                                                     }`}>
-                                                    {n.Type === 'Critical' ? <AlertTriangle size={14} /> : n.Type === 'Warning' ? <AlertTriangle size={14} /> : <Info size={14} />}
+                                                    {n.Type === 'Critical' ? <AlertTriangle size={16} /> : n.Type === 'Warning' ? <AlertTriangle size={16} /> : <Info size={16} />}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <div className="flex justify-between items-start">
-                                                        <h4 className={`text-sm font-bold truncate ${n.Type === 'Critical' ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-gray-200'}`}>{n.Title}</h4>
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <h4 className={`text-[10px] font-black uppercase tracking-widest truncate ${n.Type === 'Critical' ? 'text-red-500' : 'text-slate-900 dark:text-white'}`}>{n.Title}</h4>
                                                     </div>
-                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">{n.Message}</p>
-                                                    <div className="flex justify-between items-center mt-2">
-                                                        <span className="text-[10px] text-gray-400 font-medium">{new Date(n.CreatedAt).toLocaleTimeString()}</span>
-                                                        {n.AgentId && <span className="text-[9px] bg-gray-100 dark:bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded font-mono">{n.AgentId}</span>}
+                                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{n.Message}</p>
+                                                    <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
+                                                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{new Date(n.CreatedAt).toLocaleTimeString()}</span>
+                                                        {n.AgentId && <span className="text-[8px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-md font-black tracking-widest uppercase">{n.AgentId}</span>}
                                                     </div>
                                                 </div>
                                             </div>
@@ -288,13 +260,16 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 </div>
 
                 {/* User Profile */}
-                <div className="flex items-center gap-3 pl-2 md:pl-4 ml-1 md:ml-2 border-l-0 md:border-l border-gray-200 dark:border-gray-800/50">
+                <div className="flex items-center gap-4 pl-6 ml-2 border-l border-slate-200 dark:border-slate-800/50">
                     <div className="text-right hidden md:block">
-                        <p className="text-xs font-bold text-gray-700 dark:text-gray-200 tracking-wide">{user?.username || 'GUEST'}</p>
-                        <p className="text-[10px] text-cyan-600 dark:text-cyan-500/70 uppercase tracking-wider">{user?.role || 'VIEWER'}</p>
+                        <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">{user?.username || 'ANONYMOUS'}</p>
+                        <p className="text-[8px] text-blue-500 font-black uppercase tracking-[0.2em] mt-0.5">{role}</p>
                     </div>
-                    <div className="w-8 h-8 rounded bg-gradient-to-tr from-cyan-100 to-blue-100 dark:from-cyan-900 dark:to-blue-900 border border-cyan-500/20 flex items-center justify-center text-cyan-600 dark:text-cyan-100 font-bold shadow-[0_0_10px_rgba(6,182,212,0.2)]">
-                        {user?.username?.charAt(0).toUpperCase() || 'U'}
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-blue-500/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity rounded-full"></div>
+                        <div className="w-11 h-11 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-sm shadow-2xl relative z-10 transition-transform group-hover:scale-105 active:scale-95 duration-500 ring-1 ring-slate-200 dark:ring-slate-800">
+                            {user?.username?.charAt(0).toUpperCase() || 'U'}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -78,25 +78,22 @@ export default function Landing() {
 
                 {/* 2D Canvas Background - Network Topology */}
                 <div className="absolute inset-0 bg-white dark:bg-[#020617]"></div>
-                <NetworkBackground nodeCount={60} connectionDistance={150} />
+                <NetworkBackground />
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/50 dark:via-[#020617]/50 to-white dark:to-[#020617] pointer-events-none"></div>
 
                 {/* Navbar */}
-                <nav className="container mx-auto px-6 h-20 flex items-center justify-between relative z-20 animate-fade-in-down">
-                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
-                        <div className="relative group">
-                            <div className="absolute inset-0 bg-blue-500 blur-lg opacity-50 animate-pulse group-hover:opacity-80 transition-opacity"></div>
-                            <div className="relative w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-2xl border border-white/10 hidden">
-                                <Shield className="w-6 h-6 text-white" />
-                            </div>
-                            <img src={logo} alt="Monitorix" className="w-10 h-10 rounded-xl relative shadow-2xl border border-white/10" />
+                <nav className="container mx-auto px-6 h-24 flex items-center justify-between relative z-50 animate-in fade-in slide-in-from-top duration-1000">
+                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                            <img src={logo} alt="Monitorix" className="w-12 h-12 rounded-2xl relative shadow-2xl border border-white/10 ring-1 ring-white/5" />
                         </div>
-                        <span className="text-xl font-bold tracking-tight">Monitorix <span className="text-blue-500">Enterprise</span></span>
+                        <span className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">Monitorix</span>
                     </div>
-                    <div className="flex items-center gap-6">
-                        <button onClick={() => navigate('/login')} className="text-sm font-semibold text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors">Sign In</button>
-                        <button onClick={() => navigate('/register')} className="bg-blue-600 text-white dark:bg-white dark:text-black px-6 py-2.5 rounded-full text-sm font-bold hover:bg-blue-700 dark:hover:bg-blue-50 transition-all shadow-lg hover:shadow-blue-500/20 transform hover:-translate-y-1 active:scale-95">
-                            Get Started
+                    <div className="flex items-center gap-8">
+                        <button onClick={() => navigate('/login')} className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 hover:text-blue-500 transition-all">Command Access</button>
+                        <button onClick={() => navigate('/register')} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-2xl shadow-blue-500/10 active:scale-95">
+                            Provision Fleet
                         </button>
                     </div>
                 </nav>
@@ -112,24 +109,23 @@ export default function Landing() {
                         v2.0 Enterprise Release
                     </div>
 
-                    <h1 className="reveal text-6xl md:text-8xl font-extrabold tracking-tighter mb-8 leading-[1.1] max-w-5xl bg-clip-text text-transparent bg-gradient-to-r from-gray-900 dark:from-white via-gray-700 dark:via-blue-100 to-gray-500 dark:to-gray-400 drop-shadow-2xl">
-                        Secure Your Workforce <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-600">Across the Globe.</span>
+                    <h1 className="reveal text-6xl md:text-9xl font-black tracking-tighter mb-8 leading-[0.9] max-w-6xl animate-in fade-in slide-in-from-bottom-12 duration-1000">
+                        <span className="text-gradient">Autonomy</span> <br />
+                        <span className="text-slate-900 dark:text-white">Through Intelligence.</span>
                     </h1>
 
-                    <p className="reveal text-xl md:text-2xl text-gray-600 dark:text-gray-400 max-w-3xl mb-12 leading-relaxed font-light">
-                        The all-in-one Endpoint Detection & Response (EDR) platform.<br />
-                        <Typewriter text="Monitor. Audit. Protect." />
+                    <p className="reveal text-xl md:text-3xl text-slate-500 dark:text-slate-400 max-w-4xl mb-14 leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-200">
+                        The ultimate sovereign-grade EDR for the modern enterprise. <br />
+                        <Typewriter text="Detect. Neutralize. Audit." />
                     </p>
 
-                    <div className="reveal flex flex-col md:flex-row gap-6 w-full md:w-auto mb-20">
-                        <button onClick={() => navigate('/register')} className="group relative bg-blue-600 hover:bg-blue-500 text-white px-10 py-5 rounded-full text-lg font-bold transition-all shadow-[0_0_40px_rgba(37,99,235,0.4)] hover:shadow-[0_0_60px_rgba(37,99,235,0.6)] flex items-center justify-center gap-3 overflow-hidden active:scale-[0.98]">
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                            <span className="relative">Start Free Trial</span>
-                            <ArrowRight className="w-5 h-5 relative group-hover:translate-x-1 transition-transform" />
+                    <div className="reveal flex flex-col md:flex-row gap-6 w-full md:w-auto mb-24">
+                        <button onClick={() => navigate('/register')} className="group relative bg-blue-600 hover:bg-blue-500 text-white px-12 py-6 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-2xl shadow-blue-500/30 flex items-center justify-center gap-4 overflow-hidden active:scale-95">
+                            <span className="relative z-10">Provision Trial</span>
+                            <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
                         </button>
-                        <button onClick={() => window.open('https://youtube.com', '_blank')} className="bg-gray-800/50 hover:bg-gray-800 text-white px-10 py-5 rounded-full text-lg font-bold border border-gray-700 transition-all backdrop-blur-sm hover:border-gray-500 active:scale-[0.98]">
-                            Watch Interactive Demo
+                        <button onClick={() => window.open('https://youtube.com', '_blank')} className="glass-card hover:bg-slate-800/20 text-slate-900 dark:text-white px-12 py-6 rounded-2xl text-xs font-black uppercase tracking-[0.3em] border border-slate-200 dark:border-slate-800 transition-all active:scale-95">
+                            Operational Demo
                         </button>
                     </div>
 

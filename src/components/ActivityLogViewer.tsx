@@ -218,7 +218,7 @@ export default function ActivityLogViewer({
 
             // App Usage (Active Time Only)
             if (type !== 'System' && type !== 'Web') { // Focus on apps for 'Top Apps', or include Web? Let's include non-system.
-                const name = l.processName || l.ProcessName || l.windowTitle || 'Unknown';
+                const name = l.processName || l.ProcessName || l.windowTitle || l.WindowTitle || 'Unknown';
                 appMap.set(name, (appMap.get(name) || 0) + active);
             } else if (type === 'Web') {
                 // aggregate web as 'Browser' or specific domain if available, for now 'Browser Activity'
@@ -393,9 +393,9 @@ export default function ActivityLogViewer({
                 setLogs(prev => {
                     const first = prev[0];
                     if (first &&
-                        first.ProcessName === data.ProcessName &&
-                        first.WindowTitle === data.WindowTitle &&
-                        first.ActivityType === data.ActivityType
+                        (first.ProcessName || first.processName) === (data.ProcessName || data.processName) &&
+                        (first.WindowTitle || first.windowTitle) === (data.WindowTitle || data.windowTitle) &&
+                        (first.ActivityType || first.activityType) === (data.ActivityType || data.activityType)
                     ) {
                         // User is still doing the same thing. Update duration of the TOP item.
                         // NOTE: Backend sends strict chunks (e.g. 60s).
@@ -403,11 +403,17 @@ export default function ActivityLogViewer({
                         // We want TOTAL TIME.
                         // So we add the new duration to the existing accumulated duration.
 
-                        const newDuration = (Number(first.DurationSeconds) || 0) + (Number(data.DurationSeconds) || 0);
-                        const newIdle = (Number(first.IdleSeconds) || 0) + (Number(data.IdleSeconds) || 0);
+                        const newDuration = (Number(first.DurationSeconds || first.durationSeconds) || 0) + (Number(data.DurationSeconds || data.durationSeconds) || 0);
+                        const newIdle = (Number(first.IdleSeconds || first.idleSeconds) || 0) + (Number(data.IdleSeconds || data.idleSeconds) || 0);
 
                         // Create updated item
-                        const updatedItem = { ...first, DurationSeconds: newDuration, IdleSeconds: newIdle };
+                        const updatedItem = { 
+                            ...first, 
+                            DurationSeconds: newDuration, 
+                            durationSeconds: newDuration,
+                            IdleSeconds: newIdle,
+                            idleSeconds: newIdle
+                        };
 
                         // Return new array with updated first item
                         return [updatedItem, ...prev.slice(1)];

@@ -194,7 +194,24 @@ export default function SpeechRecognition() {
                                         ))}
                                     </td>
                                     <td className="p-4">
-                                        <button className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-shadow shadow-md">
+                                        <button
+                                            onClick={() => {
+                                                const url = log.audioUrl.startsWith('http') ? log.audioUrl : `${API_URL}${log.audioUrl}`;
+                                                // Add auth token to the request if it's not a public URL
+                                                // Note: Standard Audio() doesn't support headers easily, 
+                                                // but since our download endpoint is a GET, we can use a temporary signed URL or blob if needed.
+                                                // For now, let's use a simple approach: if it fails, we fetch as blob.
+                                                fetch(url, { headers: { 'Authorization': `Bearer ${token}` } })
+                                                    .then(res => res.blob())
+                                                    .then(blob => {
+                                                        const blobUrl = URL.createObjectURL(blob);
+                                                        const a = new Audio(blobUrl);
+                                                        a.play();
+                                                    })
+                                                    .catch(e => console.error("Playback error", e));
+                                            }}
+                                            className="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-shadow shadow-md"
+                                        >
                                             <Play size={14} />
                                         </button>
                                     </td>

@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera, MapPin, Battery } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera, MapPin, Battery, ShieldAlert } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -63,6 +63,7 @@ interface AgentReport {
     country?: string;
     publicIp?: string;
     localIp?: string;
+    behavioralMetadataJson?: string; // [v2.7.5] Human Intelligence
 }
 
 interface DashStats {
@@ -134,17 +135,17 @@ const FEATURE_TIERS: Record<string, number> = {
 };
 
 const TAB_TABS = [
-    { id: 'logs', label: 'Logs', feat: null },
-    { id: 'monitor', label: 'Live Control', feat: null },
-    { id: 'screenshots', label: 'Screenshots', feat: 'screenshots' },
-    { id: 'activity', label: 'Activity', feat: 'activity' },
-    { id: 'mail', label: 'Mail', feat: 'mail' },
-    { id: 'speech', label: 'Speech', feat: 'speech' },
-    { id: 'vuln', label: 'Security', feat: 'vuln' },
-    { id: 'specs', label: 'Specs', feat: null },
-    { id: 'apps', label: 'Apps', feat: 'app_blocker' },
-    { id: 'vault', label: 'Vault', feat: 'shadow' },
-    { id: 'policy', label: 'Policy', feat: null, role: 'TenantAdmin' }
+    { id: 'logs', label: 'Security Logs', feat: null },
+    { id: 'monitor', label: 'Live Forensic Audit', feat: null },
+    { id: 'screenshots', label: 'Visual Activity', feat: 'screenshots' },
+    { id: 'activity', label: 'Behavioral Audit', feat: 'activity' },
+    { id: 'mail', label: 'Mail Intelligence', feat: 'mail' },
+    { id: 'speech', label: 'Acoustic Forensic', feat: 'speech' },
+    { id: 'vuln', label: 'Threat Intel', feat: 'vuln' },
+    { id: 'specs', label: 'Asset Telemetry', feat: null },
+    { id: 'apps', label: 'App Governance', feat: 'app_blocker' },
+    { id: 'vault', label: 'Data Vault', feat: 'shadow' },
+    { id: 'policy', label: 'Security Policy', feat: null, role: 'TenantAdmin' }
 ];
 
 export default function Agents() {
@@ -162,7 +163,7 @@ export default function Agents() {
     const [selectedDate, setSelectedDate] = useState(''); // Default to empty for rolling 24h
     const [agentSearch, setAgentSearch] = useState('');
 
-    const [latestVersion, setLatestVersion] = useState("v1.8.54"); // Default fallback
+    const [latestVersion, setLatestVersion] = useState("v1.8.62"); // [v1.8.62] Latest Enterprise Build
     const [updateProgressMap, setUpdateProgressMap] = useState<Record<string, number>>({});
     const updateTimeouts = useRef<Record<string, any>>({});
 
@@ -170,7 +171,10 @@ export default function Agents() {
     const [showUpdateHub, setShowUpdateHub] = useState(false);
     const [isProcessingBatch, setIsProcessingBatch] = useState(false);
 
-
+    // [v2.6.0] Monitorix Lockdown State
+    const [isLockdownModalOpen, setIsLockdownModalOpen] = useState(false);
+    const [lockdownTargetIds, setLockdownTargetIds] = useState<string[]>([]);
+    const [lockdownKey, setLockdownKey] = useState("");
 
     // [NEW] Plan State
 
@@ -451,6 +455,8 @@ export default function Agents() {
         }
     };
 
+
+
     // [v1.8.42] Patch Now: Administrator Override
     const handlePatchNow = async (agentId: string) => {
         if (!window.confirm("FORCE immediate patch? This will bypass any maintenance windows.\n\nProceed?")) return;
@@ -471,6 +477,70 @@ export default function Agents() {
         } catch (e) {
             console.error(e);
             toast.error("Network error triggering patch.");
+        }
+    };
+
+    // [v2.6.0] Monitorix System Lockdown Modal Trigger
+    const handleSovereignLockdown = (agentId: string) => {
+        setLockdownTargetIds([agentId]);
+        setLockdownKey("");
+        setIsLockdownModalOpen(true);
+    };
+
+    const handleBulkSovereignLockdown = () => {
+        if (selectedAgents.size === 0) return;
+        setLockdownTargetIds(Array.from(selectedAgents));
+        setLockdownKey("");
+        setIsLockdownModalOpen(true);
+    };
+
+    const [lockdownReason, setLockdownReason] = useState("");
+    const [confirmationText, setConfirmationText] = useState("");
+
+    const executeLockdown = async () => {
+        if (lockdownTargetIds.length === 0 || lockdownKey.length < 6 || !lockdownReason) {
+            toast.error("All fields (Key, Reason) are required.");
+            return;
+        }
+
+        if (confirmationText !== "LOCK") {
+            toast.error("Confirmation failed: Please type 'LOCK' to proceed.");
+            return;
+        }
+
+        try {
+            const endpoint = lockdownTargetIds.length === 1 
+                ? `${API_URL}/agents/${lockdownTargetIds[0]}/lockdown`
+                : `${API_URL}/remediation/lock-multiple`;
+            
+            const payload = lockdownTargetIds.length === 1
+                ? { unlock_key: lockdownKey, reason: lockdownReason }
+                : { agent_ids: lockdownTargetIds, unlock_key: lockdownKey, reason: lockdownReason };
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                toast.success("MONITORIX LOCKDOWN INITIATED!", { icon: '🔒', style: { background: '#000', color: '#fff' }});
+                setIsLockdownModalOpen(false);
+                setLockdownKey("");
+                setLockdownReason("");
+                setConfirmationText("");
+                setSelectedAgents(new Set());
+                fetchAgents();
+            } else {
+                const data = await res.json();
+                toast.error(`Lockdown failed: ${data.detail || 'Unknown error'}`);
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Network error triggering lockdown.");
         }
     };
 
@@ -527,7 +597,7 @@ export default function Agents() {
 
 
     const [showDeployModal, setShowDeployModal] = useState(false);
-    const [deployOS, setDeployOS] = useState<'windows' | 'linux-x64' | 'linux-arm64'>('windows');
+    const [deployOS, setDeployOS] = useState<'windows' | 'linux-x64' | 'linux-arm64' | 'mac-x64' | 'mac-arm64'>('windows');
 
     // const [showOtpModal, setShowOtpModal] = useState(false);
     // const [otpToken, setOtpToken] = useState<string | null>(null);
@@ -693,6 +763,7 @@ export default function Agents() {
         if (failed > 0) toast.error(`${failed} agent(s) failed to delete.`);
         else toast.success(`${ids.length} agent(s) deleted.`);
     };
+
 
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'logs' | 'monitor' | 'activity' | 'screenshots' | 'mail' | 'remote' | 'specs' | 'apps' | 'vault' | 'policy' | 'speech' | 'vuln' | null>(null);
@@ -1155,15 +1226,22 @@ export default function Agents() {
     }, []);
 
     return (
-        <div className="p-3 md:p-8">
+        <div className="p-3 md:p-8 space-y-8 animate-in fade-in duration-700">
             <div className="mb-6 space-y-4 md:space-y-6">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-4">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                            <Monitor className="w-6 h-6 md:w-8 md:h-8 text-blue-600 dark:text-blue-500" />
-                            Agent Management
+                        <div className="flex items-center gap-2 mb-2">
+                             <div className="p-1.5 bg-blue-500/20 rounded-lg text-blue-500 ring-1 ring-blue-500/30">
+                                <Monitor size={18} />
+                             </div>
+                             <span className="text-[10px] font-black tracking-[0.2em] uppercase text-blue-500/80">Monitorix Asset Control</span>
+                        </div>
+                        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight">
+                            <span className="text-gradient">
+                                Fleet Intelligence
+                            </span>
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Monitor connected endpoints, track resources, and analyze fleet security.</p>
+                        <p className="text-slate-500 dark:text-slate-400 text-xs mt-2 font-medium">Real-time enterprise endpoint auditing and autonomous security management.</p>
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
                         <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 items-center shadow-sm">
@@ -1182,35 +1260,35 @@ export default function Agents() {
                         </div>
 
                         {user?.role === 'TenantAdmin' && (
-                            <div className="flex gap-2 w-full md:w-auto">
-                                <button onClick={() => setShowDeployModal(true)} className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors font-bold shadow-lg shadow-blue-900/20 text-xs md:text-sm">
-                                    <Download size={16} /> Deploy
+                            <div className="flex gap-3 w-full md:w-auto">
+                                <button onClick={() => setShowDeployModal(true)} className="flex-1 md:flex-none bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-6 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all font-black shadow-xl shadow-blue-500/30 text-xs uppercase tracking-widest">
+                                    <Download size={14} /> Deploy Node
                                 </button>
-                                <button onClick={() => setShowCapabilities(true)} className="bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors border border-gray-300 dark:border-gray-600 text-xs md:text-sm" title="Feature Matrix">
-                                    <List size={16} /> Features
+                                <button onClick={() => setShowCapabilities(true)} className="glass px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-widest" title="Feature Matrix">
+                                    <List size={14} /> Matrix
                                 </button>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Software Update Management - [v1.8.60] */}
+                {/* Software Update Management - [v1.8.62] */}
                 {hasGlobalUpdate && user?.role === 'TenantAdmin' && (
-                    <div className="bg-gradient-to-r from-blue-600/20 to-indigo-600/10 border border-blue-500/30 rounded-xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 mb-6 shadow-lg shadow-blue-900/10 backdrop-blur-md animate-in fade-in slide-in-from-top duration-500">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-blue-600/20 p-2 rounded-lg text-blue-500 animate-pulse">
-                                <RefreshCw size={24} />
+                    <div className="bg-gradient-to-r from-emerald-600/10 via-blue-600/10 to-indigo-600/5 border border-emerald-500/30 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 mb-6 shadow-2xl shadow-emerald-500/10 backdrop-blur-xl animate-in slide-in-from-top duration-700">
+                        <div className="flex items-center gap-5">
+                            <div className="bg-emerald-500/20 p-3 rounded-2xl text-emerald-500 ring-4 ring-emerald-500/10">
+                                <RefreshCw size={28} className="animate-spin-slow" />
                             </div>
                             <div>
-                                <h3 className="font-bold text-gray-900 dark:text-white">New Software Update Available</h3>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">Version <b>{latestVersion}</b> is ready for deployment. Staggered batch patching recommended.</p>
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white">Enterprise Payload Synchronized</h3>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Version <b className="text-emerald-500">{latestVersion}</b> is verified and ready for fleet-wide distribution.</p>
                             </div>
                         </div>
                         <button 
                             onClick={() => setShowUpdateHub(true)}
-                            className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                            className="w-full md:w-auto bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 rounded-xl font-black text-xs uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-lg"
                         >
-                            Open Update Center
+                            Orchestrate Update
                         </button>
                     </div>
                 )}
@@ -1218,31 +1296,27 @@ export default function Agents() {
                 {/* Fleet Analytics Section */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                     {/* Card 1: Agent Status */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <Server className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Fleet Status</h3>
+                    <div className="glass-card p-5 group relative overflow-hidden">
+                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"></div>
+                        <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase mb-4 tracking-widest flex items-center gap-2"> <Server className="w-3.5 h-3.5 text-blue-500" /> Fleet Resilience</h3>
                         <div className="flex items-end justify-between">
                             <div>
-                                <span className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.agents?.total || 0}</span>
-                                <span className="text-xs text-gray-500 block">Total Agents</span>
+                                <span className="text-4xl font-black text-slate-900 dark:text-white leading-none">{stats?.agents?.total || 0}</span>
+                                <span className="text-[10px] text-slate-500 font-bold uppercase block mt-1">Total Nodes</span>
                             </div>
                             <div className="text-right">
-                                <span className="text-lg font-bold text-green-500 dark:text-green-400">{stats?.agents?.online || 0}</span>
-                                <span className="text-xs text-gray-500 block">Online</span>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-lg font-bold text-red-500 dark:text-red-400">{stats?.agents?.offline || 0}</span>
-                                <span className="text-xs text-gray-500 block">Offline</span>
+                                <span className="text-xl font-black text-emerald-500">{stats?.agents?.online || 0}</span>
+                                <span className="text-[9px] text-slate-500 font-bold uppercase block">Active</span>
                             </div>
                         </div>
-                        <div className="w-full bg-gray-100 dark:bg-gray-700 h-1 mt-3 rounded-full overflow-hidden flex">
-                            <div className="bg-green-500 h-full" style={{ width: `${((stats?.agents?.online || 0) / (stats?.agents?.total || 1)) * 100}%` }}></div>
-                            <div className="bg-red-500 h-full flex-1"></div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800/50 h-1.5 mt-4 rounded-full overflow-hidden flex p-0.5 border border-slate-200 dark:border-slate-700/30">
+                            <div className="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full transition-all duration-1000" style={{ width: `${((stats?.agents?.online || 0) / (stats?.agents?.total || 1)) * 100}%` }}></div>
                         </div>
                     </div>
 
                     {/* Card 2: Resource Trends */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg col-span-2 relative overflow-hidden group transition-colors">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 flex items-center gap-2"> <Activity className="w-4 h-4 text-purple-500 dark:text-purple-400" /> Resource Trends (Avg)</h3>
+                    <div className="glass-card p-4 col-span-2 relative overflow-hidden group">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 flex items-center gap-2"> <Activity className="w-4 h-4 text-purple-500 dark:text-purple-400" /> Infrastructure Telemetry</h3>
                         <div className="h-24 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={stats?.resources?.trend || []}>
@@ -1265,8 +1339,8 @@ export default function Agents() {
                     </div>
 
                     {/* Card 3: Security Events */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg transition-colors">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <AlertTriangle className="w-4 h-4 text-yellow-500" /> Security Events</h3>
+                    <div className="glass-card p-4">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <AlertTriangle className="w-4 h-4 text-yellow-500" /> Security Intelligence</h3>
                         <div className="flex flex-col gap-2">
                             <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 p-2 rounded border border-gray-200 dark:border-gray-700/50">
                                 <span className="text-xs text-gray-500 dark:text-gray-400">Total (Period)</span>
@@ -1283,8 +1357,8 @@ export default function Agents() {
                     </div>
 
                     {/* Card 4: Recent Activity Feed (New) */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg col-span-1 md:col-span-4 max-h-48 overflow-hidden flex flex-col transition-colors">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <List className="w-4 h-4 text-cyan-500 dark:text-cyan-400" /> Recent Activities</h3>
+                    <div className="glass-card p-4 col-span-1 md:col-span-4 max-h-48 overflow-hidden flex flex-col">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <List className="w-4 h-4 text-cyan-500 dark:text-cyan-400" /> Behavioral Audit Trail</h3>
                         <div className="flex-1 overflow-y-auto pr-2 space-y-2">
                             {stats?.recentLogs && stats.recentLogs.length > 0 ? (
                                 stats.recentLogs.map((log: any, idx: number) => (
@@ -1306,7 +1380,7 @@ export default function Agents() {
 
 
 
-                <div className="flex flex-col md:flex-row bg-white dark:bg-gray-800 p-3 md:p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm items-center justify-between gap-4 transition-colors">
+                <div className="flex flex-col md:flex-row glass-card p-3 md:p-4 items-center justify-between gap-4">
                     <div className="relative flex-1 w-full md:max-w-md">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
                         <input
@@ -1330,6 +1404,12 @@ export default function Agents() {
                                 >
                                     <Trash2 size={12} /> Delete
                                 </button>
+                                <button
+                                    onClick={handleBulkSovereignLockdown}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-slate-900 hover:bg-black px-2.5 py-1 rounded-md transition-colors shadow-lg shadow-black/20"
+                                >
+                                    <Lock size={12} /> Lock Selected
+                                </button>
                                 <button onClick={() => setSelectedAgents(new Set())} className="text-red-400 hover:text-red-600 transition-colors" title="Clear selection">
                                     <X size={14} />
                                 </button>
@@ -1345,6 +1425,115 @@ export default function Agents() {
 
 
 
+            {isLockdownModalOpen && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-gray-900 border border-red-500/30 rounded-2xl max-w-md w-full p-8 shadow-2xl shadow-red-500/20">
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-red-500/10 rounded-2xl text-red-500 ring-1 ring-red-500/20">
+                                    <ShieldAlert size={28} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Monitorix Lockdown</h2>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{lockdownTargetIds.length} Nodes Targeted</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsLockdownModalOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-6">
+                            <div className="p-4 bg-red-500/5 rounded-xl border border-red-500/10">
+                                <p className="text-xs text-red-500/80 leading-relaxed font-medium">
+                                    <b>CRITICAL ACTION:</b> Selected systems will enter a <b>Hard Hibernate</b> state. 
+                                    Kernel-level persistence will remain active across reboots. 
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1">Justification (Audit Log)</label>
+                                <textarea 
+                                    value={lockdownReason}
+                                    onChange={(e) => setLockdownReason(e.target.value)}
+                                    placeholder="Explain why this lockdown is necessary..."
+                                    className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-red-500/50 outline-none transition-all min-h-[80px]"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-red-500 uppercase tracking-widest ml-1">Step-Up Confirmation</label>
+                                <input 
+                                    type="text"
+                                    value={confirmationText}
+                                    onChange={(e) => setConfirmationText(e.target.value)}
+                                    placeholder='Type "LOCK" to confirm'
+                                    className="w-full bg-red-50 dark:bg-red-500/5 border border-red-200 dark:border-red-500/30 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-red-500/50 outline-none transition-all placeholder:text-red-300"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest ml-1 flex justify-between items-center">
+                                    Establish Unlock Key
+                                    <button 
+                                        onClick={() => {
+                                            const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+                                            let key = "";
+                                            for(let i=0; i<16; i++) {
+                                                if (i > 0 && i % 4 === 0) key += "-";
+                                                key += chars.charAt(Math.floor(Math.random() * chars.length));
+                                            }
+                                            setLockdownKey(key);
+                                            toast.success("16-Char Secure Key Generated", { icon: "🔑" });
+                                        }}
+                                        className="text-blue-500 hover:text-blue-600 font-bold hover:underline"
+                                    >
+                                        Generate
+                                    </button>
+                                </label>
+                                <div className="relative">
+                                    <input 
+                                        type="text"
+                                        value={lockdownKey}
+                                        onChange={(e) => setLockdownKey(e.target.value)}
+                                        placeholder="Enter secure unlock password..."
+                                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-red-500/50 outline-none transition-all dark:text-white"
+                                    />
+                                    {lockdownKey && (
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(lockdownKey);
+                                                toast.success("Key copied to clipboard");
+                                            }}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-blue-500 hover:text-blue-600 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded"
+                                        >
+                                            Copy
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button 
+                                    onClick={() => { setIsLockdownModalOpen(false); setLockdownKey(""); setLockdownReason(""); setConfirmationText(""); }}
+                                    className="flex-1 px-4 py-3 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={executeLockdown}
+                                    disabled={!lockdownKey || !lockdownReason || confirmationText !== "LOCK"}
+                                    className={`flex-1 px-4 py-3 bg-red-600 text-white rounded-xl font-black text-sm hover:bg-red-700 shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2 uppercase tracking-tight ${(!lockdownKey || !lockdownReason || confirmationText !== "LOCK") ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                >
+                                    <Lock size={16} /> Force Lock
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
             {showDeployModal && createPortal(
                 <div className="fixed inset-0 bg-gray-500/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]">
                     <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden transition-colors">
@@ -1356,12 +1545,13 @@ export default function Agents() {
                         </div>
                         <div className="p-6 space-y-5">
                             {/* Platform Tabs */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 {([
                                     { id: 'windows', label: 'Windows', icon: '🪟' },
                                     { id: 'linux-x64', label: 'Linux x64', icon: '🐧' },
-                                    { id: 'linux-arm64', label: 'Linux ARM64', icon: '🐧' },
-
+                                    { id: 'linux-arm64', label: 'Linux ARM', icon: '🐧' },
+                                    { id: 'mac-x64', label: 'macOS Intel', icon: '🍎' },
+                                    { id: 'mac-arm64', label: 'macOS Silicon', icon: '🍎' },
                                 ] as const).map(({ id, label, icon }) => (
                                     <button key={id} onClick={() => setDeployOS(id)}
                                         className={`py-2 px-3 rounded-lg border font-bold flex items-center justify-center gap-1.5 text-sm transition-all ${deployOS === id
@@ -1388,7 +1578,7 @@ export default function Agents() {
                                         </button>
                                     </>
                                 )}
-                                {(deployOS === 'linux-x64' || deployOS === 'linux-arm64') && (
+                                {(deployOS === 'linux-x64' || deployOS === 'linux-arm64' || deployOS.startsWith('mac')) && (
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as root / sudo)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
@@ -1414,6 +1604,7 @@ export default function Agents() {
                                         </span>
                                     )}
                                     {(deployOS === 'linux-x64' || deployOS === 'linux-arm64') && <span>The command downloads and installs the agent as a <strong>systemd service</strong> that starts automatically on boot. Requires root or sudo access.</span>}
+                                    {(deployOS.startsWith('mac')) && <span>The command downloads and installs the agent as a <strong>LaunchAgent daemon</strong> that starts automatically on boot. Requires root or sudo access.</span>}
 
                                 </div>
                             </div>
@@ -1447,10 +1638,10 @@ export default function Agents() {
 
 
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg transition-colors">
+            <div className="glass-card overflow-hidden">
                 {/* Desktop View */}
                 <div className="hidden lg:block overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full text-left data-table">
                         <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
                             <tr>
                                 <th className="p-4 w-10">
@@ -1523,7 +1714,23 @@ export default function Agents() {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="p-4 text-sm font-mono text-gray-600 dark:text-gray-400"> {agent.hostname || 'Unknown'} </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-mono text-gray-600 dark:text-gray-400">
+                                                {agent.hostname || 'Unknown'}
+                                            </span>
+                                            {(agent as any).agentRole === 'Primary' && (
+                                                <span className="px-1.5 py-0.5 bg-purple-500/10 text-purple-500 text-[9px] font-black uppercase rounded border border-purple-500/20">
+                                                    Parent
+                                                </span>
+                                            )}
+                                            {(agent as any).agentRole === 'Replica' && (
+                                                <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 text-[9px] font-black uppercase rounded border border-blue-500/20">
+                                                    Replica
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="p-4">
                                         <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
                                             {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
@@ -1752,7 +1959,6 @@ export default function Agents() {
                                             </div>
                                         );
                                     }
-
                                     if (agent.version === latestVersion) {
                                         return (
                                             <div className="px-2 md:px-3 py-1 bg-green-600/20 text-green-400 rounded border border-green-600/50 text-[10px] md:text-xs font-bold flex items-center gap-1">
@@ -1760,13 +1966,12 @@ export default function Agents() {
                                             </div>
                                         );
                                     }
-
                                     return (
                                         <div className="flex gap-2">
                                             <button onClick={() => handleUpdateAgent(agent.agentId)} className="px-2 md:px-3 py-1 bg-amber-600 text-white rounded hover:bg-amber-700 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-amber-900/20">
                                                 <Download size={10} /> Update (Scheduled)
                                             </button>
-                                            {(user?.role === 'SuperAdmin' || user?.role === 'TenantAdmin') && (
+                                            {(user?.role === "SuperAdmin" || user?.role === "TenantAdmin") && (
                                                 <button onClick={() => handlePatchNow(agent.agentId)} className="px-2 md:px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-red-900/20" title="Bypass Maintenance Window">
                                                     <Zap size={10} /> Patch Now
                                                 </button>
@@ -1774,6 +1979,12 @@ export default function Agents() {
                                         </div>
                                     );
                                 })()}
+
+                                {(user?.role === 'SuperAdmin' || user?.role === 'TenantAdmin') && (
+                                    <button onClick={() => handleSovereignLockdown(selectedAgentId)} className="px-2 md:px-3 py-1 bg-slate-900 text-white rounded hover:bg-black text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-black/20" title="Full System Freeze">
+                                        <Lock size={10} /> Monitorix Lockdown
+                                    </button>
+                                )}
                                 {viewMode === 'logs' && (
                                     <button onClick={handleSimulateEvent} className="px-2 md:px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-[10px] md:text-xs font-bold border border-red-600/50"> Simulate </button>
                                 )}
@@ -2298,6 +2509,37 @@ export default function Agents() {
                                                             <div className="bg-gray-100 dark:bg-gray-700/50 p-3 rounded text-sm border border-gray-200 dark:border-transparent">
                                                                 <span className="text-gray-500 dark:text-gray-400 block text-xs">Agent ID</span>
                                                                 <span className="font-mono text-gray-900 dark:text-white truncate font-bold" title={currentAgent?.agentId}>{currentAgent?.agentId}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* [NEW] BIOS & Firmware Integrity Section */}
+                                                    <div className="mt-8 border-t border-gray-100 dark:border-gray-700 pt-6">
+                                                        <label className="text-xs font-black text-blue-500 uppercase tracking-widest block mb-4 flex items-center gap-2">
+                                                            <Shield size={14} /> Firmware & Root-of-Trust
+                                                        </label>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="bg-gray-50 dark:bg-gray-900/40 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+                                                                <div className="flex justify-between items-center mb-2">
+                                                                    <span className="text-[10px] text-gray-500 uppercase font-bold">BIOS Vendor</span>
+                                                                    <span className="text-xs text-gray-900 dark:text-white font-mono">{hw.Bios?.Vendor || 'Unknown'}</span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] text-gray-500 uppercase font-bold">Version</span>
+                                                                    <span className="text-xs text-gray-900 dark:text-white font-mono">{hw.Bios?.Version || 'Unknown'}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="bg-gray-50 dark:bg-gray-900/40 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
+                                                                <div className="flex justify-between items-center mb-2">
+                                                                    <span className="text-[10px] text-gray-500 uppercase font-bold">Secure Boot</span>
+                                                                    <span className={`text-[10px] px-2 py-0.5 rounded font-black uppercase ${hw.Bios?.SecureBoot === 'Enabled' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                                                                        {hw.Bios?.SecureBoot || 'Unknown'}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="text-[10px] text-gray-500 uppercase font-bold">Last Release</span>
+                                                                    <span className="text-xs text-gray-900 dark:text-white font-mono">{hw.Bios?.ReleaseDate || 'Unknown'}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>

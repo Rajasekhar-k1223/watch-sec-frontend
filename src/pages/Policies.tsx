@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Plus, Trash2, Save, X, Activity } from 'lucide-react';
+import { Shield, Plus, Trash2, Save, X, Activity, Users } from 'lucide-react';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -16,6 +16,10 @@ interface Policy {
     bandwidthJson?: string;
     screenshotInterval?: number;
     GeolocationEnabled?: boolean; // [NEW] v1.8.27
+    autonomousRemediationEnabled?: boolean; // [v2.6.8]
+    threatScoreThreshold?: number; // [v2.6.8]
+    exclusionsJson?: string; // [v2.6.9]
+    productivityJson?: string; // [v2.7.5]
 }
 
 export default function Policies() {
@@ -34,7 +38,11 @@ export default function Policies() {
         remediationJson: '[]',
         bandwidthJson: '{}',
         screenshotInterval: 60,
-        GeolocationEnabled: true // Default to ON
+        GeolocationEnabled: true,
+        autonomousRemediationEnabled: false,
+        threatScoreThreshold: 90,
+        exclusionsJson: '[]',
+        productivityJson: '{}'
     });
 
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
@@ -45,7 +53,10 @@ export default function Policies() {
 
     const fetchPolicies = async () => {
         try {
-            const res = await fetch(`${API_URL}/policies?tenantId=1`, {
+            const query = new URLSearchParams(window.location.search);
+            const targetTenantId = query.get('tenantId') || user?.tenantId || 1;
+            
+            const res = await fetch(`${API_URL}/policies?tenantId=${targetTenantId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
@@ -92,7 +103,11 @@ export default function Policies() {
             remediationJson: '[]',
             bandwidthJson: '{}',
             screenshotInterval: 60,
-            GeolocationEnabled: true
+            GeolocationEnabled: true,
+            autonomousRemediationEnabled: false,
+            threatScoreThreshold: 90,
+            exclusionsJson: '[]',
+            productivityJson: '{}'
         });
     };
 
@@ -425,6 +440,204 @@ export default function Policies() {
                                     </div>
                                 </div>
 
+                                {/* [v2.6.8] Autonomous Defense Section */}
+                                <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                            <Shield size={16} className="text-red-500" />
+                                            Autonomous AI Defense
+                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${newPolicy.autonomousRemediationEnabled ? 'text-red-500' : 'text-gray-400'}`}>
+                                                {newPolicy.autonomousRemediationEnabled ? 'Active' : 'Disabled'}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setNewPolicy({ ...newPolicy, autonomousRemediationEnabled: !newPolicy.autonomousRemediationEnabled })}
+                                                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${newPolicy.autonomousRemediationEnabled ? 'bg-red-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                                            >
+                                                <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${newPolicy.autonomousRemediationEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {newPolicy.autonomousRemediationEnabled && (
+                                        <div className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 p-4 rounded-xl space-y-3 animate-in fade-in zoom-in-95 duration-300">
+                                            <div className="flex justify-between items-center text-[10px] uppercase font-bold text-red-700 dark:text-red-400">
+                                                <span>Remediation Sensitivity Threshold</span>
+                                                <span className="text-red-600 dark:text-red-500 font-black">{newPolicy.threatScoreThreshold || 90}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" 
+                                                min="10" 
+                                                max="100" 
+                                                step="5"
+                                                value={newPolicy.threatScoreThreshold || 90}
+                                                onChange={(e) => setNewPolicy({ ...newPolicy, threatScoreThreshold: parseInt(e.target.value) })}
+                                                className="w-full h-1.5 bg-red-200 dark:bg-red-900/40 rounded-lg appearance-none cursor-pointer accent-red-600"
+                                            />
+                                            <p className="text-[10px] text-red-900/60 dark:text-red-400/60 leading-relaxed italic">
+                                                * If an agent's AI Threat Score reaches or exceeds this threshold, the platform will automatically trigger a Monitorix Lockdown.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* [v2.6.9] AI Threat Intelligence & Exclusions Section */}
+                                <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+                                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <Activity size={16} className="text-blue-500" />
+                                        AI Threat Intelligence & Whitelisting
+                                    </h3>
+                                    
+                                    <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 p-4 rounded-xl space-y-4">
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Active Exclusions</label>
+                                                <span className="text-[10px] bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full font-bold">
+                                                    {JSON.parse(newPolicy.exclusionsJson || "[]").length} RULES
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                                                {JSON.parse(newPolicy.exclusionsJson || "[]").map((ex: any, idx: number) => (
+                                                    <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 text-[10px]">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded font-black uppercase">{ex.type}</span>
+                                                            <span className="text-gray-600 dark:text-gray-400 font-mono truncate max-w-[200px]">{ex.value}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const current = JSON.parse(newPolicy.exclusionsJson || "[]");
+                                                                const updated = current.filter((_: any, i: number) => i !== idx);
+                                                                setNewPolicy({ ...newPolicy, exclusionsJson: JSON.stringify(updated) });
+                                                            }}
+                                                            className="text-gray-400 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {JSON.parse(newPolicy.exclusionsJson || "[]").length === 0 && (
+                                                    <p className="text-center py-4 text-gray-400 text-[10px] italic">No exclusions defined. AI will analyze all events.</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <select 
+                                                id="exType"
+                                                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-1.5 text-[10px] outline-none focus:border-blue-500"
+                                            >
+                                                <option value="path">PATH</option>
+                                                <option value="hash">SHA256</option>
+                                                <option value="ip">IP/CIDR</option>
+                                            </select>
+                                            <input 
+                                                id="exValue"
+                                                type="text"
+                                                placeholder="Enter value..."
+                                                className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-1.5 text-[10px] outline-none focus:border-blue-500"
+                                            />
+                                            <button 
+                                                onClick={() => {
+                                                    const type = (document.getElementById('exType') as HTMLSelectElement).value;
+                                                    const val = (document.getElementById('exValue') as HTMLInputElement).value;
+                                                    if (!val) return;
+                                                    const current = JSON.parse(newPolicy.exclusionsJson || "[]");
+                                                    const updated = [...current, { type, value: val }];
+                                                    setNewPolicy({ ...newPolicy, exclusionsJson: JSON.stringify(updated) });
+                                                    (document.getElementById('exValue') as HTMLInputElement).value = "";
+                                                }}
+                                                className="px-3 bg-blue-600 text-white rounded text-[10px] font-bold hover:bg-blue-500 transition-colors"
+                                            >
+                                                ADD
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* [v2.7.5] Workforce Productivity & Behavioral Mapping Section */}
+                                <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+                                    <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <Users size={16} className="text-emerald-500" />
+                                        Workforce Productivity & Behavioral Mapping
+                                    </h3>
+                                    
+                                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 p-4 rounded-xl space-y-4">
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] text-gray-500 uppercase font-black tracking-widest">Productivity Benchmarks</label>
+                                                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">
+                                                    {Object.keys(JSON.parse(newPolicy.productivityJson || "{}")).length} MAPPINGS
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                                                {Object.entries(JSON.parse(newPolicy.productivityJson || "{}")).map(([app, cat]: [string, any], idx: number) => (
+                                                    <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 text-[10px]">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`px-1.5 py-0.5 rounded font-black uppercase ${
+                                                                cat === 'Productive' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                                cat === 'Distraction' ? 'bg-red-500/10 text-red-500' :
+                                                                'bg-gray-500/10 text-gray-500'
+                                                            }`}>{cat}</span>
+                                                            <span className="text-gray-600 dark:text-gray-400 font-mono truncate max-w-[200px]">{app}</span>
+                                                        </div>
+                                                        <button 
+                                                            onClick={() => {
+                                                                const current = JSON.parse(newPolicy.productivityJson || "{}");
+                                                                delete current[app];
+                                                                setNewPolicy({ ...newPolicy, productivityJson: JSON.stringify(current) });
+                                                            }}
+                                                            className="text-gray-400 hover:text-red-500 transition-colors"
+                                                        >
+                                                            <X size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {Object.keys(JSON.parse(newPolicy.productivityJson || "{}")).length === 0 && (
+                                                    <p className="text-center py-4 text-gray-400 text-[10px] italic">No productivity rules defined. Behavior is marked as Neutral.</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-2">
+                                            <input 
+                                                id="prodApp"
+                                                type="text"
+                                                placeholder="Application/Process Name (e.g. excel.exe)"
+                                                className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-1.5 text-[10px] outline-none focus:border-emerald-500"
+                                            />
+                                            <select 
+                                                id="prodCat"
+                                                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-1.5 text-[10px] outline-none focus:border-emerald-500"
+                                            >
+                                                <option value="Productive">PRODUCTIVE</option>
+                                                <option value="Neutral">NEUTRAL</option>
+                                                <option value="Distraction">DISTRACTION</option>
+                                            </select>
+                                            <button 
+                                                onClick={() => {
+                                                    const app = (document.getElementById('prodApp') as HTMLInputElement).value;
+                                                    const cat = (document.getElementById('prodCat') as HTMLSelectElement).value;
+                                                    if (!app) return;
+                                                    const current = JSON.parse(newPolicy.productivityJson || "{}");
+                                                    current[app] = cat;
+                                                    setNewPolicy({ ...newPolicy, productivityJson: JSON.stringify(current) });
+                                                    (document.getElementById('prodApp') as HTMLInputElement).value = "";
+                                                }}
+                                                className="px-3 bg-emerald-600 text-white rounded text-[10px] font-bold hover:bg-emerald-500 transition-colors"
+                                            >
+                                                ADD
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 mt-2 italic px-1 leading-relaxed">
+                                        * These benchmarks power the AI Behavioral Analytics to calculate Focus Scores and identify Burnout risks.
+                                    </p>
+                                </div>
+
                                 {/* Remediation Playbooks Section */}
                                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
                                     <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">Automated Remediation Playbooks</h3>
@@ -462,6 +675,7 @@ export default function Policies() {
                                                             <option value="LockSession">Lock Session</option>
                                                             <option value="SecurityPopup">Show Warning</option>
                                                             <option value="IsolateNetwork">Isolate Network</option>
+                                                            <option value="SOVEREIGN_LOCKDOWN">Monitorix Lockdown (Deep)</option>
                                                         </select>
                                                     </div>
                                                 </div>
