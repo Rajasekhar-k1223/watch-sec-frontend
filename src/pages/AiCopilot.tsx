@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Brain, Sparkles, Send, Bot, User, Zap, ArrowRight } from 'lucide-react';
+import { Brain, Sparkles, Send, Bot, User, Zap, ArrowRight, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { API_URL } from '../config';
 import { apiPost } from '../services/api';
 import toast from 'react-hot-toast';
@@ -217,6 +217,77 @@ export default function AiCopilot() {
                                             msg.text
                                         )}
                                     </div>
+                                    
+                                    {/* Interactive Reinforcement Feedback Loops (RLHF) */}
+                                    {isCopilot && index > 0 && (
+                                        <div className="flex items-center gap-2 pt-1 text-[9px] font-black uppercase text-slate-400 dark:text-slate-500">
+                                            <span>Was this classification correct?</span>
+                                            <button
+                                                onClick={async () => {
+                                                    try {
+                                                        const precedingUserMsg = messages[index - 1];
+                                                        if (precedingUserMsg && precedingUserMsg.sender === 'user') {
+                                                            await apiPost(`${API_URL}/ai/train`, {
+                                                                text: precedingUserMsg.text,
+                                                                category: "General/Safe"
+                                                            });
+                                                            toast.success("Feedback saved! Model reinforced successfully.");
+                                                        }
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        toast.error("Feedback transmission failed.");
+                                                    }
+                                                }}
+                                                className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-emerald-500 transition-colors cursor-pointer"
+                                                title="Correct Classification"
+                                            >
+                                                <ThumbsUp className="w-3.5 h-3.5" />
+                                            </button>
+                                            <div className="relative group/correction">
+                                                <button
+                                                    className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer flex items-center gap-0.5"
+                                                    title="Correct Threat Class"
+                                                >
+                                                    <ThumbsDown className="w-3.5 h-3.5" />
+                                                </button>
+                                                
+                                                {/* Dropdown with classification correction choices */}
+                                                <div className="absolute left-0 bottom-6 hidden group-hover/correction:block bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-2 z-50 min-w-[170px] space-y-1">
+                                                    <p className="text-[7px] text-slate-400 uppercase tracking-widest font-black p-1 border-b border-slate-100 dark:border-slate-800/80">
+                                                        Select Correct Intent
+                                                    </p>
+                                                    {[
+                                                        "Authentication Failure",
+                                                        "Data Exfiltration",
+                                                        "Privilege Escalation",
+                                                        "Network Anomaly"
+                                                    ].map((cat) => (
+                                                        <button
+                                                            key={cat}
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const precedingUserMsg = messages[index - 1];
+                                                                    if (precedingUserMsg && precedingUserMsg.sender === 'user') {
+                                                                        await apiPost(`${API_URL}/ai/train`, {
+                                                                            text: precedingUserMsg.text,
+                                                                            category: cat
+                                                                        });
+                                                                        toast.success(`Reinforced model as: ${cat}`);
+                                                                    }
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    toast.error("Feedback transmission failed.");
+                                                                }
+                                                            }}
+                                                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-[9px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white transition-colors cursor-pointer"
+                                                        >
+                                                            {cat}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Suggested Actions inside message bubble (Copilot only) */}
                                     {isCopilot && msg.suggestedActions && msg.suggestedActions.length > 0 && (
