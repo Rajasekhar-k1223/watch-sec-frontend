@@ -351,6 +351,49 @@ export default function AiCopilot() {
                         ))}
                     </div>
                 </div>
+
+                {/* Chat History Panel */}
+                <div className="glass-card p-6 border border-blue-500/10 relative overflow-hidden group">
+                    <div className="absolute top-[-20%] right-[-20%] w-24 h-24 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform duration-1000"></div>
+
+                    <div className="flex items-center gap-3 mb-6 relative z-10">
+                        <div className="p-2.5 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                            <Brain className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Chat History</h3>
+                            <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Prompt Audit Ledger</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar relative z-10 pr-1">
+                        {messages.filter(m => m.sender === 'user').length > 0 ? (
+                            messages
+                                .filter(m => m.sender === 'user')
+                                .map((msg, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => {
+                                            toast.success("Recalling prompt...");
+                                            handleSend(msg.text);
+                                        }}
+                                        className="w-full flex flex-col p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50 hover:bg-slate-900/5 dark:hover:bg-white/5 hover:-translate-y-0.5 active:translate-y-0 transition-all text-left cursor-pointer"
+                                    >
+                                        <span className="text-[10px] text-slate-700 dark:text-slate-200 font-semibold line-clamp-2 leading-relaxed">
+                                            {msg.text}
+                                        </span>
+                                        <span className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-2">
+                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    </button>
+                                ))
+                        ) : (
+                            <p className="text-[10px] text-slate-400 font-medium italic text-center py-4">
+                                No prompts logged in this session yet.
+                            </p>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );
