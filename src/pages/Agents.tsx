@@ -2581,7 +2581,7 @@ export default function Agents() {
                         )}
 
                         {viewMode === 'apps' && (
-                            <div className="flex-1 overflow-hidden relative">
+                            <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
                                 {isFeatureLocked('app_blocker') && (
                                     <div className="absolute inset-0 z-50 bg-gray-900/90 backdrop-blur-md flex flex-col items-center justify-center text-center p-6">
                                         <div className="p-4 bg-blue-500/10 rounded-full mb-4 ring-4 ring-blue-500/20">
@@ -2599,7 +2599,7 @@ export default function Agents() {
                                         </button>
                                     </div>
                                 )}
-                                <div className="flex-1 overflow-hidden relative">
+                                <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
                                     <AgentAppsList agentId={selectedAgentId!} apiUrl={API_URL} token={token!} />
                                 </div>
                             </div>
