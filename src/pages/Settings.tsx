@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Lock, Bell, User, Check, AlertCircle, Building2 } from 'lucide-react';
+import { Lock, Bell, User, Check, AlertCircle, Building2, Shield, Key } from 'lucide-react';
 import MaintenanceSettings from '../components/MaintenanceSettings';
+import SystemSettingsPanel from '../components/SystemSettingsPanel';
+import ApiKeysPanel from '../components/ApiKeysPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
@@ -100,11 +102,27 @@ export default function Settings() {
                         <Bell size={16} /> Notifications
                     </button>
                     {(user?.role === 'TenantAdmin' || user?.role === 'SuperAdmin') && (
+                        <>
+                            <button
+                                onClick={() => setActiveTab('organization')}
+                                className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'organization' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                            >
+                                <Building2 size={16} /> Organization
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('developer_keys')}
+                                className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'developer_keys' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                            >
+                                <Key size={16} /> Developer Keys
+                            </button>
+                        </>
+                    )}
+                    {user?.role === 'SuperAdmin' && (
                         <button
-                            onClick={() => setActiveTab('organization')}
-                            className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'organization' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                            onClick={() => setActiveTab('global_security')}
+                            className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'global_security' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
                         >
-                            <Building2 size={16} /> Organization
+                            <Shield size={16} /> Global Security
                         </button>
                     )}
                 </div>
@@ -200,6 +218,24 @@ export default function Settings() {
                                 <Building2 className="text-blue-500" size={16} /> Organization Protocol
                             </h2>
                             <MaintenanceSettings />
+                        </div>
+                    )}
+
+                    {activeTab === 'developer_keys' && (user?.role === 'TenantAdmin' || user?.role === 'SuperAdmin') && (
+                        <div className="max-w-5xl relative z-10">
+                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
+                                <Key className="text-blue-500" size={16} /> Developer API Keys
+                            </h2>
+                            <ApiKeysPanel />
+                        </div>
+                    )}
+
+                    {activeTab === 'global_security' && user?.role === 'SuperAdmin' && (
+                        <div className="max-w-xl relative z-10">
+                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
+                                <Shield className="text-red-500" size={16} /> Global System Security
+                            </h2>
+                            <SystemSettingsPanel />
                         </div>
                     )}
                 </div>

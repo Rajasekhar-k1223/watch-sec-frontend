@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import type { ReactNode } from 'react';
 
 type Theme = 'dark' | 'light';
@@ -11,8 +11,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [theme, setTheme] = useState<Theme>('light');
-
+    // Theme is locked to light. Architecture page manages its own dark overlay.
     useEffect(() => {
         const root = window.document.documentElement;
         root.classList.remove('dark');
@@ -20,19 +19,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('theme', 'light');
     }, []);
 
-    const toggleTheme = () => {
-        setTheme(prev => {
-            const next = prev === 'dark' ? 'light' : 'dark';
-            const root = window.document.documentElement;
-            root.classList.remove('dark', 'light');
-            root.classList.add(next);
-            localStorage.setItem('theme', next);
-            return next;
-        });
-    };
+    // No-op: theme toggling is disabled app-wide
+    const toggleTheme = () => {};
 
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme: 'light', toggleTheme }}>
             {children}
         </ThemeContext.Provider>
     );

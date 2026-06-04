@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, Bell, Search, Menu, LayoutDashboard, Users, FileText, List, LogOut, ArrowRight as ArrowRightIcon, Activity, AlertTriangle, Info } from 'lucide-react';
+import { Bell, Search, Menu, LayoutDashboard, Users, FileText, List, LogOut, ArrowRight as ArrowRightIcon, Activity, AlertTriangle, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,7 +20,7 @@ interface Notification {
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
-    const { theme, toggleTheme } = useTheme();
+    const { } = useTheme();
     const { user, logout, token } = useAuth();
     const role = user?.role || 'VIEWER';
     const navigate = useNavigate();
@@ -58,7 +58,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
         { id: 'nav-reports', label: 'Go to Reports', icon: FileText, action: () => navigate('/reports'), type: 'Navigation' },
         { id: 'nav-events', label: 'Go to Event Log', icon: List, action: () => navigate('/events'), type: 'Navigation' },
         { id: 'nav-activities', label: 'Go to Activities', icon: Activity, action: () => navigate('/events'), type: 'Navigation' },
-        { id: 'act-theme', label: `Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`, icon: theme === 'dark' ? Sun : Moon, action: toggleTheme, type: 'Action' },
         { id: 'act-logout', label: 'Logout', icon: LogOut, action: logout, type: 'Action' },
     ];
 
@@ -191,14 +190,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
             {/* Right Actions */}
             <div className="flex items-center gap-4">
-                {/* Theme Toggle */}
-                <button
-                    onClick={toggleTheme}
-                    className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-blue-500 hover:border-blue-500/30 transition-all duration-500 shadow-xl"
-                    title={`Protocol: ${theme === 'dark' ? 'Standard' : 'Tactical'} Mode`}
-                >
-                    {theme === 'dark' ? <Sun size={18} className="animate-spin-slow" /> : <Moon size={18} />}
-                </button>
 
                 {/* Notifications */}
                 <div className="relative" ref={notifRef}>

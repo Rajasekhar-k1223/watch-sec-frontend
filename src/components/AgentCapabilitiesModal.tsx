@@ -53,7 +53,7 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
         if (isOpen) {
             const fetchPlan = async () => {
                 try {
-                    const token = localStorage.getItem('token');
+                    const token = sessionStorage.getItem('token');
                     const res = await fetch(`${API_URL}/tenants/`, {
                         headers: { Authorization: `Bearer ${token}` }
                     });

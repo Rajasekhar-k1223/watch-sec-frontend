@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
+
 import { API_URL, SOCKET_URL } from '../config';
 
 type ConnectionState = 'stable' | 'interrupted' | 'critical';
@@ -25,7 +25,6 @@ interface AgentReport {
 
 const Architecture = () => {
     const { token, user } = useAuth();
-    const { theme } = useTheme();
     const [connState, setConnState] = useState<ConnectionState>('stable');
     const [showDiagnostic, setShowDiagnostic] = useState(false);
     const [isLive, setIsLive] = useState(true);
@@ -420,11 +419,10 @@ const Architecture = () => {
     const SOC_CENTER_Y = 390;
 
     return (
-        // <div className="fixed inset-0 w-screen h-screen overflow-hidden flex items-center justify-center bg-[#020408]">
-        <div>
+        <div className="w-full overflow-x-auto scrollbar-none pb-8 flex justify-start md:justify-center">
 
             {/* 3D ISOMETRIC WORKSPACE */}
-            <div className={`relative w-full max-w-[1800px] h-[800px] bg-white dark:bg-[#020617] border transition-all duration-1000 rounded-[60px] shadow-2xl ring-1 ring-black/5 dark:ring-white/10 flex items-center justify-center perspective-[2000px] pr-40 ${connState === 'critical' ? 'border-red-500/30' : connState === 'interrupted' ? 'border-amber-500/30' : 'border-slate-200 dark:border-slate-800'}`}>
+            <div className={`relative w-full max-w-[1800px] h-[800px] bg-[#020617] border transition-all duration-1000 rounded-[60px] shadow-2xl ring-1 ring-white/10 flex items-center justify-center perspective-[2000px] pr-40 ${connState === 'critical' ? 'border-red-500/30' : connState === 'interrupted' ? 'border-amber-500/30' : 'border-slate-800'}`}>
 
                 {/* INTERNAL HEADER - Integrated inside 3D Container */}
                 <div className="absolute top-0 left-0 w-full p-12 z-50 flex justify-between items-start pointer-events-auto">
@@ -438,22 +436,22 @@ const Architecture = () => {
                         <h1 className="text-6xl font-black tracking-tighter">
                             <span className="text-gradient">Fleet Architecture</span>
                         </h1>
-                        <p className="text-slate-500 dark:text-slate-400 mt-4 text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-4">
+                        <p className="text-slate-400 mt-4 text-[10px] font-black uppercase tracking-[0.4em] flex items-center gap-4">
                             <Activity className="w-5 h-5 text-blue-500 animate-pulse" />
                             {isLive ? 'Real-time Production Instance' : 'Diagnostic Simulation Active'}
                         </p>
                     </div>
 
-                    <div className="flex bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-2 shadow-2xl backdrop-blur-xl">
+                    <div className="flex bg-white/5 border border-white/10 rounded-3xl p-2 shadow-2xl backdrop-blur-xl">
                         <button
                             onClick={() => setIsLive(true)}
-                            className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${isLive ? 'bg-blue-600 text-white shadow-2xl shadow-blue-500/40 scale-105' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                            className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${isLive ? 'bg-blue-600 text-white shadow-2xl shadow-blue-500/40 scale-105' : 'text-slate-400 hover:text-white'}`}
                         >
                             <Radio className={`w-4 h-4 ${isLive ? 'animate-pulse' : ''}`} /> LIVE HUB
                         </button>
                         <button
                             onClick={() => setIsLive(false)}
-                            className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${!isLive ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl scale-105' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
+                            className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${!isLive ? 'bg-white text-slate-900 shadow-2xl scale-105' : 'text-slate-400 hover:text-white'}`}
                         >
                             <CircleDashed className="w-4 h-4" /> LOCAL TWIN
                         </button>
@@ -728,7 +726,7 @@ const Architecture = () => {
                     {/* --- NODE 4: 3D SOC COMMAND (BACK RIGHT) --- */}
                     {/* FLATTENED TO Z=50px, SHIFTED TO X=1250 */}
                     <div className="absolute top-[65px] left-[1100px] w-[350px] h-[520px] transition-all duration-1000" style={{ transform: 'translateZ(50px)' }}>
-                        <div className="w-full h-full bg-white dark:bg-[#0d1117] border-4 border-gray-200 dark:border-white/10 rounded-[50px] p-8 flex flex-col gap-6 shadow-[0_50px_100px_rgba(0,0,0,0.2)] dark:shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative group overflow-hidden">
+                        <div className="w-full h-full bg-[#0d1117] border-4 border-white/10 rounded-[50px] p-8 flex flex-col gap-6 shadow-[0_50px_100px_rgba(0,0,0,0.8)] relative group overflow-hidden">
                             <div className="absolute top-0 right-0 p-8">
                                 <Activity className="w-12 h-12 text-indigo-500/30" />
                             </div>
@@ -830,12 +828,12 @@ const Architecture = () => {
                                     top: `${top + 10}px`
                                 }}
                             >
-                                {/* Background Layer - THEME AWARE */}
+                                {/* Background Layer - Always dark canvas, so tooltip is always light */}
                                 <div
                                     className="absolute inset-0 w-[240px] rounded-xl border-2 shadow-[0_30px_60px_rgba(0,0,0,0.8)]"
                                     style={{
-                                        backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 1)' : 'rgba(15, 23, 42, 1)',
-                                        background: theme === 'dark' ? '#FFFFFF' : '#0F172A',
+                                        backgroundColor: 'rgba(255, 255, 255, 1)',
+                                        background: '#FFFFFF',
                                         opacity: '1',
                                         zIndex: 1,
                                         backdropFilter: 'none',
@@ -850,20 +848,20 @@ const Architecture = () => {
                                     {!availableModules.includes(mod.id) ? (
                                         // Locked Module - Upgrade Required
                                         <>
-                                            <div className={`flex items-center gap-3 mb-2 pb-2 ${theme === 'dark' ? 'border-b border-red-200' : 'border-b border-red-700'}`}>
-                                                <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-red-100' : 'bg-red-900'}`}>
+                                            <div className="flex items-center gap-3 mb-2 pb-2 border-b border-red-200">
+                                                <div className="p-1.5 rounded-lg bg-red-100">
                                                     <Lock className="w-5 h-5 text-red-500" />
                                                 </div>
                                                 <span className="text-xs font-black uppercase tracking-wider text-red-500">{mod.id}</span>
                                             </div>
-                                            <h4 className={`font-bold text-sm mb-1 ${theme === 'dark' ? 'text-gray-900' : 'text-gray-100'}`}>{mod.name}</h4>
-                                            <p className={`text-xs leading-relaxed font-medium mb-3 ${theme === 'dark' ? 'text-gray-700' : 'text-gray-300'}`}>{mod.desc}</p>
-                                            <div className={`mt-3 p-2 rounded-lg ${theme === 'dark' ? 'bg-red-50' : 'bg-red-900/30'}`}>
+                                            <h4 className="font-bold text-sm mb-1 text-gray-900">{mod.name}</h4>
+                                            <p className="text-xs leading-relaxed font-medium mb-3 text-gray-700">{mod.desc}</p>
+                                            <div className="mt-3 p-2 rounded-lg bg-red-50">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <Lock className="w-3 h-3 text-red-500" />
                                                     <span className="text-[10px] font-black uppercase tracking-widest text-red-600">Upgrade Required</span>
                                                 </div>
-                                                <p className={`text-[10px] leading-relaxed ${theme === 'dark' ? 'text-gray-600' : 'text-gray-400'}`}>
+                                                <p className="text-[10px] leading-relaxed text-gray-600">
                                                     This module requires <b>{MODULE_PLAN_REQUIREMENTS[mod.id]} Plan</b> or higher.
                                                 </p>
                                             </div>
@@ -871,15 +869,15 @@ const Architecture = () => {
                                     ) : (
                                         // Available Module - Normal Info
                                         <>
-                                            <div className={`flex items-center gap-3 mb-2 pb-2 ${theme === 'dark' ? 'border-b border-gray-200' : 'border-b border-gray-700'}`}>
-                                                <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-gray-100' : 'bg-gray-800'}`}>
+                                            <div className="flex items-center gap-3 mb-2 pb-2 border-b border-gray-200">
+                                                <div className="p-1.5 rounded-lg bg-gray-100">
                                                     <mod.icon className={`w-5 h-5 ${mod.color}`} />
                                                 </div>
                                                 <span className={`text-xs font-black uppercase tracking-wider ${mod.color}`}>{mod.id}</span>
                                             </div>
-                                            <h4 className={`font-bold text-sm mb-1 ${theme === 'dark' ? 'text-gray-900' : 'text-gray-100'}`}>{mod.name}</h4>
-                                            <p className={`text-xs leading-relaxed font-medium ${theme === 'dark' ? 'text-gray-700' : 'text-gray-300'}`}>{mod.desc}</p>
-                                            <div className={`mt-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${activeModules.has(mod.id) ? (theme === 'dark' ? 'text-emerald-600' : 'text-emerald-400') : (theme === 'dark' ? 'text-red-600' : 'text-red-400')}`}>
+                                            <h4 className="font-bold text-sm mb-1 text-gray-900">{mod.name}</h4>
+                                            <p className="text-xs leading-relaxed font-medium text-gray-700">{mod.desc}</p>
+                                            <div className={`mt-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 ${activeModules.has(mod.id) ? 'text-emerald-600' : 'text-red-600'}`}>
                                                 <div className={`w-2 h-2 rounded-full ${activeModules.has(mod.id) ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
                                                 {activeModules.has(mod.id) ? 'ACTIVE • COLLECTING' : 'INACTIVE • NO SIGNAL'}
                                             </div>

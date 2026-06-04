@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert, Lock, Activity, Wifi, Mail } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert, Lock, Activity, Wifi, Mail, Package } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -41,9 +41,11 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { name: 'AI Security Copilot', path: '/ai-copilot', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
 
         { name: 'Billing', path: '/billing', icon: CreditCard, roles: ['TenantAdmin'], minTier: 1 },
+        { name: 'Software Requests', path: '/software-requests', icon: Package, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Settings', path: '/settings', icon: Settings, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'DLP Policies', path: '/policies', icon: Shield, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 2 }, // Pro
         { name: 'Threat Resilience', path: '/vulnerabilities', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
+        { name: 'YARA Malware Scanner', path: '/yara-scanner', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
         { name: 'Visual Intelligence', path: '/image-recognition', icon: Image, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Acoustic Forensic', path: '/speech-recognition', icon: Mic, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
     ];

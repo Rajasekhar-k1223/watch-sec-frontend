@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, ShieldCheck, Shield, ChevronDown, Check, Camera, MapPin, Battery, ShieldAlert, Bell, Globe } from 'lucide-react';
+import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, Unlock, ShieldCheck, Shield, ChevronDown, Check, Camera, MapPin, Battery, ShieldAlert, Bell, Globe } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -64,6 +64,7 @@ interface AgentReport {
     publicIp?: string;
     localIp?: string;
     behavioralMetadataJson?: string; // [v2.7.5] Human Intelligence
+    diskEncrypted?: boolean; // [NEW] MDM
 }
 
 interface DashStats {
@@ -361,6 +362,7 @@ export default function Agents() {
                         country: a.country || a.Country || undefined,
                         publicIp: a.publicIp || a.PublicIp || undefined,
                         localIp: a.localIp || a.LocalIp || undefined,
+                        diskEncrypted: a.diskEncrypted ?? a.DiskEncrypted ?? false,
                     };
                 });
 
@@ -545,6 +547,32 @@ export default function Agents() {
         }
     };
 
+    const handleRemoteUnlock = async (agentId: string) => {
+        if (!window.confirm("Are you sure you want to remotely release the sovereign lockdown for this agent?")) return;
+
+        try {
+            const res = await fetch(`${API_URL}/agents/${agentId}/unlock`, {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reason: "Remote admin unlock" })
+            });
+
+            if (res.ok) {
+                toast.success("Remote Unlock command dispatched!");
+                fetchAgents();
+            } else {
+                const data = await res.json();
+                toast.error(`Unlock failed: ${data.detail || 'Unknown error'}`);
+            }
+        } catch (e) {
+            console.error(e);
+            toast.error("Network error triggering unlock.");
+        }
+    };
+
     // [v1.8.60] Update Hub Logic
     const hasGlobalUpdate = useMemo(() => {
         return agents.some(a => a.version !== latestVersion);
@@ -600,9 +628,7 @@ export default function Agents() {
     const [showDeployModal, setShowDeployModal] = useState(false);
     const [deployOS, setDeployOS] = useState<'windows' | 'linux-x64' | 'linux-arm64' | 'mac-x64' | 'mac-arm64'>('windows');
 
-    // const [showOtpModal, setShowOtpModal] = useState(false);
-    // const [otpToken, setOtpToken] = useState<string | null>(null);
-    const [tenantApiKey, setTenantApiKey] = useState<string | null>(null);
+    const [otpToken, setOtpToken] = useState<string | null>(null);
 
     const [showCapabilities, setShowCapabilities] = useState(false); // [NEW]
 
@@ -610,15 +636,25 @@ export default function Agents() {
 
 
     useEffect(() => {
-        if (showDeployModal && !tenantApiKey && token) {
-            fetch(`${API_URL}/tenants/api-key`, {
+        if (showDeployModal && !otpToken && token) {
+            fetch(`${API_URL}/agents/generate-pin`, {
+                method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             })
-                .then(res => res.json())
-                .then(data => setTenantApiKey(data.apiKey))
-                .catch(e => console.error("Failed to fetch API key", e));
+                .then(async res => {
+                    if (res.status === 429) {
+                        toast.error("Too many attempts. Please wait 60 seconds.");
+                        return null;
+                    }
+                    if (!res.ok) throw new Error("Failed to generate OTP");
+                    return res.json();
+                })
+                .then(data => {
+                    if (data && data.pin) setOtpToken(data.pin);
+                })
+                .catch(e => console.error("Failed to generate OTP", e));
         }
-    }, [showDeployModal, token, tenantApiKey]);
+    }, [showDeployModal, token, otpToken]);
 
     // WebRTC Refs
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -1649,10 +1685,10 @@ export default function Agents() {
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">PowerShell (Run as Administrator)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=windows' | iex"`}
+                                            {`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=guest&os_type=windows' | iex"`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=${tenantApiKey}&os_type=windows' | iex"`).then(() => toast.success('Copied!'))}
+                                            onClick={() => navigator.clipboard.writeText(`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=guest&os_type=windows' | iex"`).then(() => toast.success('Copied!'))}
                                             className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
                                             <FileText size={14} />
                                         </button>
@@ -1662,16 +1698,42 @@ export default function Agents() {
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as root / sudo)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'YOUR_API_KEY'}&os_type=${deployOS}" | sudo bash`}
+                                            {`curl -sL "${fullApiUrl}/downloads/public/agent?key=guest&os_type=${deployOS}" | sudo bash`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey}&os_type=${deployOS}" | sudo bash`).then(() => toast.success('Copied!'))}
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${fullApiUrl}/downloads/public/agent?key=guest&os_type=${deployOS}" | sudo bash`).then(() => toast.success('Copied!'))}
                                             className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
                                             <FileText size={14} />
                                         </button>
                                     </>
                                 )}
 
+                            </div>
+
+                            {/* Secure API Key Prompt UI */}
+                            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-800/50">
+                                <p className="text-gray-700 dark:text-gray-300 mb-3 text-sm">
+                                    <strong className="text-blue-600 dark:text-blue-400">Step 2:</strong> Run the command above. When prompted, securely paste your one-time Installation PIN:
+                                    <span className="block text-xs text-red-500 mt-1 font-bold">⚠️ This PIN expires in 15 minutes and can only be used once.</span>
+                                </p>
+                                <div className="flex gap-2 relative">
+                                    <input 
+                                        type="text" 
+                                        readOnly 
+                                        value={otpToken ? `${otpToken.substring(0, 3)}-${otpToken.substring(3)}` : 'Generating secure PIN...'} 
+                                        className="w-full bg-white dark:bg-black/60 border border-gray-200 dark:border-gray-700 rounded-lg py-2 px-3 text-lg font-mono font-bold tracking-widest focus:outline-none focus:border-blue-500 transition-colors text-center text-blue-600 dark:text-blue-400"
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            if(otpToken) {
+                                                navigator.clipboard.writeText(otpToken).then(() => toast.success('PIN Copied to Clipboard!'));
+                                            }
+                                        }}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-md shadow-blue-500/20 transition-all flex items-center gap-2"
+                                    >
+                                        <FileText size={16} /> Copy PIN
+                                    </button>
+                                </div>
                             </div>
 
                             {/* Requirement notes */}
@@ -1753,6 +1815,11 @@ export default function Agents() {
                                         <div className="flex items-center gap-2">
                                             <Server className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                             {agent.agentId}
+                                            {agent.diskEncrypted ? (
+                                                <span title="Disk Encrypted (MDM Compliant)"><Lock size={12} className="text-green-500" /></span>
+                                            ) : (
+                                                <span title="Disk Unencrypted (Non-Compliant)"><Unlock size={12} className="text-red-500" /></span>
+                                            )}
                                         </div>
                                         <div className="mt-1 flex flex-col gap-1">
                                             {updateProgressMap[agent.agentId] !== undefined && updateProgressMap[agent.agentId] < 100 ? (
@@ -2061,9 +2128,14 @@ export default function Agents() {
                                 })()}
 
                                 {(user?.role === 'SuperAdmin' || user?.role === 'TenantAdmin') && (
-                                    <button onClick={() => handleSovereignLockdown(selectedAgentId)} className="px-2 md:px-3 py-1 bg-slate-900 text-white rounded hover:bg-black text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-black/20" title="Full System Freeze">
-                                        <Lock size={10} /> Monitorix Lockdown
-                                    </button>
+                                    <>
+                                        <button onClick={() => handleSovereignLockdown(selectedAgentId)} className="px-2 md:px-3 py-1 bg-slate-900 text-white rounded hover:bg-black text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-black/20" title="Full System Freeze">
+                                            <Lock size={10} /> Monitorix Lockdown
+                                        </button>
+                                        <button onClick={() => handleRemoteUnlock(selectedAgentId)} className="px-2 md:px-3 py-1 bg-teal-600 text-white rounded hover:bg-teal-700 text-[10px] md:text-xs font-bold flex items-center gap-1 shadow-lg shadow-teal-900/20" title="Remotely release lockdown">
+                                            <Unlock size={10} /> Remote Unlock
+                                        </button>
+                                    </>
                                 )}
                                 {viewMode === 'logs' && (
                                     <button onClick={handleSimulateEvent} className="px-2 md:px-3 py-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/30 text-[10px] md:text-xs font-bold border border-red-600/50"> Simulate </button>

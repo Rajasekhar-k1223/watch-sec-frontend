@@ -27,6 +27,8 @@ import Landing from './pages/Landing';
 import NetworkAnalytics from './pages/NetworkAnalytics';
 import Architecture from './pages/Architecture';
 import AiCopilot from './pages/AiCopilot';
+import SoftwareRequests from './pages/SoftwareRequests';
+import YaraScanner from './pages/YaraScanner';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -58,10 +60,13 @@ function AnalyticsTracker() {
 
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Toaster } from 'react-hot-toast';
+import AntiTamper from './components/AntiTamper';
 
 function App() {
   return (
+    <>
     <AuthProvider>
+      <AntiTamper />
       <ThemeProvider>
         <Toaster position="top-right"
           containerStyle={{ zIndex: 10001 }}
@@ -93,6 +98,7 @@ function App() {
                 <Route path="/image-recognition" element={<ImageRecognition />} />
                 <Route path="/speech-recognition" element={<SpeechRecognition />} />
                 <Route path="/vulnerabilities" element={<Vulnerabilities />} />
+                <Route path="/yara-scanner" element={<YaraScanner />} />
                 <Route path="/fleet-inventory" element={<FleetInventory />} />
                 <Route path="/events" element={<LiveMonitor />} />
                 <Route path="/policies" element={<Policies />} />
@@ -107,12 +113,14 @@ function App() {
                 <Route path="/bandwidth" element={<NetworkAnalytics />} />
                 <Route path="/architecture" element={<Architecture />} />
                 <Route path="/ai-copilot" element={<AiCopilot />} />
+                <Route path="/software-requests" element={<SoftwareRequests />} />
               </Route>
             </Route>
           </Routes>
         </BrowserRouter>
       </ThemeProvider>
     </AuthProvider >
+    </>
   );
 }
 
