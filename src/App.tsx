@@ -29,6 +29,10 @@ import Architecture from './pages/Architecture';
 import AiCopilot from './pages/AiCopilot';
 import SoftwareRequests from './pages/SoftwareRequests';
 import YaraScanner from './pages/YaraScanner';
+import ThreatHunting from './pages/ThreatHunting';
+import RansomwareDashboard from './pages/RansomwareDashboard';
+import ZeroTrustDashboard from './pages/ZeroTrustDashboard';
+import BandwidthSettings from './pages/BandwidthSettings';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -114,6 +118,10 @@ function App() {
                 <Route path="/architecture" element={<Architecture />} />
                 <Route path="/ai-copilot" element={<AiCopilot />} />
                 <Route path="/software-requests" element={<SoftwareRequests />} />
+                <Route path="/threat-hunting" element={<ThreatHunting />} />
+                <Route path="/ransomware" element={<RansomwareDashboard />} />
+                <Route path="/zero-trust" element={<ZeroTrustDashboard />} />
+                <Route path="/bandwidth-settings" element={<BandwidthSettings />} />
               </Route>
             </Route>
           </Routes>
