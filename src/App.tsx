@@ -33,6 +33,7 @@ import ThreatHunting from './pages/ThreatHunting';
 import RansomwareDashboard from './pages/RansomwareDashboard';
 import ZeroTrustDashboard from './pages/ZeroTrustDashboard';
 import BandwidthSettings from './pages/BandwidthSettings';
+import AgentlessDashboard from './pages/AgentlessDashboard';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -121,6 +122,7 @@ function App() {
                 <Route path="/threat-hunting" element={<ThreatHunting />} />
                 <Route path="/ransomware" element={<RansomwareDashboard />} />
                 <Route path="/zero-trust" element={<ZeroTrustDashboard />} />
+                <Route path="/agentless" element={<AgentlessDashboard />} />
                 <Route path="/bandwidth-settings" element={<BandwidthSettings />} />
               </Route>
             </Route>

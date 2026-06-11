@@ -19,19 +19,19 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
         { id: 'clipboard', name: 'Data Transfer Audit', win: true, linux: true, mac: true, perm: 'DLP Active', domain: 'DLP', tier: 'Professional', price: 10, description: 'Monitors volatile memory transfers to prevent sensitive data leakage.' },
         { id: 'app_blocker', name: 'Application Governance', win: true, linux: true, mac: true, perm: 'Policy Enforced', domain: 'Security', tier: 'Professional', price: 10, description: 'Enforces corporate software policies by preventing unauthorized application execution.' },
         { id: 'browser', name: 'Web Content Governance', win: true, linux: true, mac: true, perm: 'Policy Enforced', domain: 'Security', tier: 'Starter', price: 0, description: 'Ensures secure browsing by enforcing corporate web policies and logging history.' },
-        { id: 'printer', name: 'Print Spooler Audit', win: true, linux: true, mac: false, perm: 'DLP Audit', domain: 'DLP', tier: 'Professional', price: 12, description: 'Audits physical document generation to track hard-copy data exfiltration.' },
-        { id: 'shadow', name: 'Forensic Shadowing', win: true, linux: true, mac: false, perm: 'Forensic Level', domain: 'Forensics', tier: 'Enterprise', price: 25, description: 'Maintains encrypted shadow copies of high-risk file operations for legal evidence.' },
+        { id: 'printer', name: 'Print Spooler Audit', win: true, linux: true, mac: true, perm: 'DLP Audit', domain: 'DLP', tier: 'Professional', price: 12, description: 'Audits physical document generation to track hard-copy data exfiltration.' },
+        { id: 'shadow', name: 'Forensic Shadowing', win: true, linux: true, mac: true, perm: 'Forensic Level', domain: 'Forensics', tier: 'Enterprise', price: 25, description: 'Maintains encrypted shadow copies of high-risk file operations for legal evidence.' },
         { id: 'live_stream', name: 'Live Forensic Audit', win: true, linux: true, mac: true, perm: 'Forensic Live', domain: 'Forensics', tier: 'Enterprise', price: 30, description: 'Encrypted, low-latency visual session auditing for real-time security response.' },
         { id: 'remote_shell', name: 'Remote Remediation', win: true, linux: true, mac: true, perm: 'Privileged Access', domain: 'Admin', tier: 'Enterprise', price: 35, description: 'Secure administrative access for remote troubleshooting and security patching.' },
-        { id: 'mail', name: 'Electronic Mail Audit', win: true, linux: true, mac: false, perm: 'DLP Audit', domain: 'Security', tier: 'Enterprise', price: 20, description: 'Analyzes local mail client transactions for unauthorized data transmission.' },
-        { id: 'speech', name: 'Acoustic Forensic Audit', win: true, linux: true, mac: false, perm: 'Acoustic Audit', domain: 'Forensics', tier: 'Enterprise', price: 15, description: 'Transcribes micro-meetings and analyzes acoustic telemetry for security risks.' },
+        { id: 'mail', name: 'Electronic Mail Audit', win: true, linux: true, mac: true, perm: 'DLP Audit', domain: 'Security', tier: 'Enterprise', price: 20, description: 'Analyzes local mail client transactions for unauthorized data transmission.' },
+        { id: 'speech', name: 'Acoustic Forensic Audit', win: true, linux: true, mac: true, perm: 'Acoustic Audit', domain: 'Forensics', tier: 'Enterprise', price: 15, description: 'Transcribes micro-meetings and analyzes acoustic telemetry for security risks.' },
         { id: 'vuln', name: 'Vulnerability Intelligence', win: true, linux: true, mac: true, perm: 'Threat Intel', domain: 'Intelligence', tier: 'Enterprise', price: 30, description: 'Automated correlation of asset software against global threat databases.' },
         { id: 'screenshots', name: 'Visual Activity Capture', win: true, linux: true, mac: true, perm: 'Visual Audit', domain: 'Forensics', tier: 'Starter', price: 5, description: 'Captures periodic visual telemetry with integrated AI-driven text indexing.' },
         { id: 'location', name: 'Asset Geolocation', win: true, linux: true, mac: true, perm: 'Asset Tracking', domain: 'Asset', tier: 'Professional', price: 8, description: 'Precise asset location tracking for inventory management and theft recovery.' },
         { id: 'usb', name: 'Peripheral Governance', win: true, linux: true, mac: true, perm: 'Policy Enforced', domain: 'Security', tier: 'Professional', price: 10, description: 'Secures hardware interfaces by preventing unauthorized removable media access.' },
         { id: 'network', name: 'Network Intelligence', win: true, linux: true, mac: true, perm: 'Deep Inspection', domain: 'Security', tier: 'Enterprise', price: 25, description: 'Real-time analysis of process-level network interaction and protocol auditing.' },
         { id: 'file_dlp', name: 'Data Loss Prevention', win: true, linux: true, mac: true, perm: 'DLP Protected', domain: 'DLP', tier: 'Enterprise', price: 25, description: 'Protects high-value directories by auditing all file system interactions.' },
-        { id: 'mem_forensic', name: 'Memory Forensic Scan', win: true, linux: true, mac: false, perm: 'Kernel Level', domain: 'Forensics', tier: 'Enterprise', price: 40, description: 'Deep inspection of active process memory to detect fileless malware and reflective injection.' },
+        { id: 'mem_forensic', name: 'Memory Forensic Scan', win: true, linux: true, mac: true, perm: 'Kernel Level', domain: 'Forensics', tier: 'Enterprise', price: 40, description: 'Deep inspection of active process memory to detect fileless malware and reflective injection.' },
         { id: 'zero_trust', name: 'Zero Trust Identity Audit', win: true, linux: true, mac: true, perm: 'OIDC Verified', domain: 'Identity', tier: 'Enterprise', price: 20, description: 'Enforces OIDC identity verification (Azure/Okta) for all privileged administrative actions.' },
     ];
 
@@ -137,6 +137,7 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                     <th className="p-4 font-bold">Feature Name</th>
                                     <th className="p-4 font-bold">Technical Capability Description</th>
                                     <th className="p-4 font-bold text-center">Windows</th>
+                                    <th className="p-4 font-bold text-center">macOS</th>
                                     <th className="p-4 font-bold text-center">Linux</th>
                                     <th className="p-4 font-bold text-center">Sub/Tier</th>
                                     <th className="p-4 font-bold text-right">Unit Price</th>
@@ -172,6 +173,9 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                         <td className="p-4 text-[10px] normal-case text-gray-500 dark:text-gray-400 leading-relaxed max-w-xs">{feat.description}</td>
                                         <td className="p-4 text-center">
                                             {feat.win ? <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-500 mx-auto" /> : <X className="w-4 h-4 text-gray-400 dark:text-gray-800 mx-auto" />}
+                                        </td>
+                                        <td className="p-4 text-center">
+                                            {feat.mac ? <CheckCircle className="w-4 h-4 text-purple-600 dark:text-purple-500 mx-auto" /> : <X className="w-4 h-4 text-gray-400 dark:text-gray-800 mx-auto" />}
                                         </td>
                                         <td className="p-4 text-center">
                                             {feat.linux ? <CheckCircle className="w-4 h-4 text-orange-600 dark:text-orange-500 mx-auto" /> : <X className="w-4 h-4 text-gray-400 dark:text-gray-800 mx-auto" />}
@@ -255,6 +259,7 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                                 <div className="flex flex-wrap gap-2 items-center justify-between mt-auto pt-3 border-t border-gray-100 dark:border-gray-700/50">
                                     <div className="flex gap-1.5">
                                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.win ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400' : 'opacity-20'}`}>WIN</span>
+                                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.mac ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400' : 'opacity-20'}`}>MAC</span>
                                         <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${feat.linux ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'opacity-20'}`}>LIN</span>
                                     </div>
                                     <div className="flex items-center gap-2">

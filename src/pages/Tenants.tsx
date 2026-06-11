@@ -9,6 +9,8 @@ interface Tenant {
     name: string;
     apiKey: string;
     plan: string;
+    AgentlessEnabled?: boolean;
+    agentlessEnabled?: boolean;
 }
 
 function getTenantProp(t: any, key: string) {
@@ -211,6 +213,36 @@ export default function Tenants() {
                                     >
                                         <Lock size={14} className="group-hover:scale-110 transition-transform" />
                                         <span className="text-[10px] font-black uppercase tracking-tighter">Lock All</span>
+                                    </button>
+                                    <button 
+                                        onClick={async () => {
+                                            // The API returns it now because it's a column in Tenant model
+                                            const isCurrentlyEnabled = !!(tenant.AgentlessEnabled ?? tenant.agentlessEnabled);
+                                            const nextState = !isCurrentlyEnabled;
+                                            
+                                            try {
+                                                const res = await fetch(`${API_URL}/tenants/${getTenantProp(tenant, 'id')}/agentless?enabled=${nextState}`, {
+                                                    method: 'PUT',
+                                                    headers: { 'Authorization': `Bearer ${token}` }
+                                                });
+                                                if (res.ok) {
+                                                    toast.success(`Agentless ${nextState ? 'Enabled' : 'Disabled'} for ${getTenantProp(tenant, 'name')}`);
+                                                    fetchTenants();
+                                                } else {
+                                                    toast.error("Failed to toggle feature");
+                                                }
+                                            } catch(e) { toast.error("Network error"); }
+                                        }}
+                                        className={`transition-all flex items-center gap-1 group px-2 py-1 rounded border ${
+                                            (tenant.AgentlessEnabled || tenant.agentlessEnabled) 
+                                                ? 'text-emerald-500 hover:text-emerald-600 bg-emerald-500/10 border-emerald-500/20'
+                                                : 'text-gray-500 hover:text-gray-600 bg-gray-500/10 border-gray-500/20'
+                                        }`}
+                                        title="Toggle Agentless Access"
+                                    >
+                                        <span className="text-[10px] font-black uppercase tracking-tighter">
+                                            {(tenant.AgentlessEnabled || tenant.agentlessEnabled) ? 'Agentless: ON' : 'Agentless: OFF'}
+                                        </span>
                                     </button>
                                 </td>
                             </tr>

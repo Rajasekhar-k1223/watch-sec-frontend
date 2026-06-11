@@ -14,6 +14,7 @@ interface User {
     Role?: string;
     tenantId: number | null;
     plan: string;
+    agentlessEnabled?: boolean;
 }
 
 interface AuthContextType {

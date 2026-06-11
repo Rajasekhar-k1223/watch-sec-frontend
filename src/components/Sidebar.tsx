@@ -29,6 +29,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { name: 'Access Control', path: '/users', icon: Users, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
         { name: 'Tenants', path: '/tenants', icon: Share2, roles: ['SuperAdmin'], minTier: 1 },
         { name: 'Asset Management', path: '/agents', icon: Monitor, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Agentless Matrix', path: '/agentless', icon: Server, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 3 }, // Ent
         { name: 'Email Forensics', path: '/mail', icon: Mail, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Security Logs', path: '/events', icon: List, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'System Audit', path: '/audit', icon: ShieldCheck, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
@@ -107,7 +108,11 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Fleet Operations</p>
                 </div>
                 {navItems.map((item) => {
-                    const isLocked = item.minTier > currentTier && role !== 'SuperAdmin';
+                    let isLocked = item.minTier > currentTier && role !== 'SuperAdmin';
+                    
+                    if (item.path === '/agentless' && role !== 'SuperAdmin') {
+                        isLocked = !user?.agentlessEnabled;
+                    }
 
                     if (isLocked) {
                         return (
