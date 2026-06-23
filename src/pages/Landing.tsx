@@ -7,13 +7,13 @@ import { useEffect } from 'react';
 import logo from '../assets/logo.png';
 
 // New Advanced Marketing Assets
-import hero_bg from '../assets/monitorix_hero_background_1780405175903.png';
-import client_architecture from '../assets/monitorix_client_demo_1780403121247.png';
-import realtime_protection from '../assets/monitorix_feature_realtime_1780405197682.png';
-import endpoint_protection from '../assets/monitorix_feature_endpoint_1780405279101.png';
-import advanced_analytics from '../assets/monitorix_feature_analytics_1780405219779.png';
-import cinematic_topology from '../assets/monitorix_v2_cinematic_1780405089390.png';
-import social_media_bg from '../assets/monitorix_social_media_1780403143642.png';
+import hero_bg from '../assets/realistic_hero_bg.png';
+import client_architecture from '../assets/realistic_client_demo.png';
+import realtime_protection from '../assets/realistic_feature_realtime.png';
+import endpoint_protection from '../assets/realistic_feature_endpoint.png';
+import advanced_analytics from '../assets/realistic_feature_analytics.png';
+import cinematic_topology from '../assets/realistic_cinematic.png';
+import social_media_bg from '../assets/realistic_social_media.png';
 
 export default function Landing() {
     const navigate = useNavigate();
