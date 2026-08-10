@@ -64,11 +64,11 @@ export default function SystemAudit() {
     });
 
     return (
-        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
-            <div className="flex justify-between items-end border-b border-gray-200 dark:border-gray-800 pb-6 mb-8">
+        <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between border-b border-gray-200 dark:border-gray-800 pb-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3 text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-emerald-600 dark:from-teal-400 dark:to-emerald-500">
-                        <ShieldCheck className="text-teal-500 dark:text-teal-400" />
+                    <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-transparent bg-clip-text bg-gradient-to-r from-teal-500 to-emerald-600 dark:from-teal-400 dark:to-emerald-500">
+                        <ShieldCheck className="text-teal-500 dark:text-teal-400 shrink-0" />
                         Unified Audit Trail
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Timeline of Administrative actions and Agent security events.</p>
@@ -77,8 +77,8 @@ export default function SystemAudit() {
                 <div className="mb-2">
                     <BandwidthStatus agentId={filterSource === 'Agent' ? 'Global' : 'Global'} socket={null} />
                 </div>
-                <div className="flex items-center gap-4 w-full justify-end items-end">
-                    <div className="flex items-center gap-4 items-end">
+                <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+                    <div className="flex flex-wrap items-end gap-3">
                         <select
                             value={filterSource}
                             onChange={(e) => setFilterSource(e.target.value as any)}
@@ -95,7 +95,7 @@ export default function SystemAudit() {
                         )}
                     </div>
 
-                    <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-300 dark:border-gray-700 shadow-sm items-center gap-1 self-end">
+                    <div className="flex flex-wrap bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-300 dark:border-gray-700 shadow-sm items-center gap-1 self-end">
                         <div className="flex bg-gray-100 dark:bg-gray-900 rounded p-0.5 border border-gray-200 dark:border-gray-800 mr-2 shadow-inner">
                             <button onClick={() => setQuickFilter(1)} className="px-2 py-1 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-800 rounded transition-all text-gray-600 dark:text-gray-400">24H</button>
                             <button onClick={() => setQuickFilter(7)} className="px-2 py-1 text-[10px] font-bold hover:bg-white dark:hover:bg-gray-800 rounded transition-all text-gray-600 dark:text-gray-400 border-l border-gray-200 dark:border-gray-800">7D</button>
@@ -125,7 +125,7 @@ export default function SystemAudit() {
                 </div>
             </div>
 
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative flex-1 max-w-md">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" size={16} />
                     <input
@@ -143,6 +143,7 @@ export default function SystemAudit() {
 
 
             <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 shadow-xl">
+                <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
                     <thead className="bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-200 uppercase font-bold text-xs">
                         <tr>
@@ -194,6 +195,7 @@ export default function SystemAudit() {
                         )}
                     </tbody>
                 </table>
+                </div>
             </div>
         </div >
     );

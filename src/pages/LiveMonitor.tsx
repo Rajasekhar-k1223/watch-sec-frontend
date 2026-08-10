@@ -132,9 +132,47 @@ export default function LiveMonitor() {
         };
 
         fetchAgents();
-        const interval = setInterval(fetchAgents, 5000);
-        return () => clearInterval(interval);
+        // Polling removed in favor of Socket.IO telemetry
     }, [token, user]);
+
+    // [NEW] Global Socket Connection for Grid Live Updates
+    useEffect(() => {
+        if (!token) return;
+        
+        const globalSocket = io(SOCKET_URL, {
+            path: "/socket.io",
+            transports: ["websocket"],
+            auth: { token }
+        });
+
+        globalSocket.on("connect", () => {
+            console.log("[LiveMonitor] Global Socket Connected");
+            if (user?.tenantId) {
+                globalSocket.emit("join", { room: `tenant_${user.tenantId}` });
+            }
+        });
+
+        globalSocket.on("agent_list_update", (updatedAgent: any) => {
+            setReports((prev: any[]) => {
+                const index = prev.findIndex((a: any) => a.agentId === updatedAgent.agentId);
+                if (index === -1) return prev;
+                
+                const next = [...prev];
+                next[index] = {
+                    ...next[index],
+                    status: updatedAgent.status,
+                    cpuUsage: updatedAgent.cpuUsage,
+                    memoryUsage: updatedAgent.memoryUsage,
+                    timestamp: updatedAgent.timestamp
+                };
+                return next;
+            });
+        });
+
+        return () => {
+            globalSocket.disconnect();
+        };
+    }, [token, user?.tenantId]);
 
     // Socket & History Connection
     useEffect(() => {
@@ -744,9 +782,9 @@ export default function LiveMonitor() {
 
     // --- GRID VIEW (Default) ---
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Live Monitor</h1>
+        <div className="p-4 md:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Live Monitor</h1>
                 <div className="flex gap-2">
                     <span className="bg-green-500/10 text-green-600 dark:text-green-500 px-3 py-1 rounded-full text-sm border border-green-500/20 animate-pulse">
                         System Online
@@ -771,7 +809,7 @@ export default function LiveMonitor() {
                         </div>
 
                         {/* Status Summary */}
-                        <div className="mb-6 grid grid-cols-2 gap-4">
+                        <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="bg-gray-50/50 dark:bg-black/30 rounded p-4 border border-gray-200 dark:border-gray-700/50 text-center">
                                 <span className="text-gray-500 text-xs uppercase">CPU</span>
                                 <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{(report.cpuUsage || 0).toFixed(1)}%</div>

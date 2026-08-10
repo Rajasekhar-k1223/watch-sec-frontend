@@ -68,7 +68,7 @@ export const NetworkTopology = () => {
                         <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">{gw}</span>
                         <span className="text-[10px] text-gray-400 ml-auto">{nodes.length} nodes</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 ml-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 ml-4">
                         {nodes.map(node => {
                             const online = node.status?.toLowerCase() === 'online';
                             return (

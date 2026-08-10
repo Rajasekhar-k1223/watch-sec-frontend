@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Activity, Clock, Users, Briefcase, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Activity, Clock, Users, Briefcase, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 export default function EmployeePulse() {
     const { token } = useAuth();
@@ -30,12 +30,17 @@ export default function EmployeePulse() {
 
     if (!stats) return <div className="p-8 text-center text-gray-500">Failed to load data.</div>;
 
-
-
+    const mockDepartmentData = [
+        { name: 'Engineering', productivity: 92, activeHours: 420 },
+        { name: 'Sales', productivity: 85, activeHours: 380 },
+        { name: 'Marketing', productivity: 78, activeHours: 320 },
+        { name: 'HR', productivity: 88, activeHours: 250 },
+        { name: 'Support', productivity: 95, activeHours: 450 },
+    ];
     return (
-        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
+        <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
             <div className="mb-8 border-b border-gray-200 dark:border-gray-800 pb-6">
-                <h1 className="text-3xl font-bold flex items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
                     <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg shadow-lg shadow-purple-500/20">
                         <Activity className="text-white w-6 h-6" />
                     </div>
@@ -117,18 +122,32 @@ export default function EmployeePulse() {
                 </div>
             </div>
 
-            {/* Bottom Section - Placeholder for more detailed analytics */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm text-center">
-                <div className="inline-flex p-4 bg-gray-100 dark:bg-gray-700 rounded-full mb-4">
-                    <AlertTriangle className="w-8 h-8 text-gray-400" />
+            {/* Detailed Analytics Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                    <TrendingUp className="text-purple-500 w-5 h-5" />
+                    Departmental Productivity Matrix
+                </h3>
+                
+                <div className="h-80 w-full mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                            data={mockDepartmentData}
+                            margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.3} />
+                            <XAxis dataKey="name" stroke="#6B7280" tick={{ fill: '#6B7280' }} />
+                            <YAxis stroke="#6B7280" tick={{ fill: '#6B7280' }} />
+                            <Tooltip 
+                                contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', borderRadius: '8px', color: '#F9FAFB' }}
+                                itemStyle={{ color: '#F9FAFB' }}
+                            />
+                            <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                            <Bar dataKey="productivity" name="Productivity Score (%)" fill="#8B5CF6" radius={[4, 4, 0, 0]} barSize={40} />
+                            <Bar dataKey="activeHours" name="Total Hours Logged" fill="#3B82F6" radius={[4, 4, 0, 0]} barSize={40} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Detailed Team Analytics</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mt-2 mb-6">
-                    Detailed departmental breakdown and interaction graphs are coming soon in the next update.
-                </p>
-                <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg transition-colors">
-                    Download Summary Report
-                </button>
             </div>
         </div>
     );

@@ -3,6 +3,7 @@ import { CredentialModal } from '../components/Agentless/CredentialModal';
 import { EndpointConfigModal } from '../components/Agentless/EndpointConfigModal';
 import { AgentlessTerminalModal } from '../components/Agentless/AgentlessTerminalModal';
 import { AgentlessMetricsModal } from '../components/Agentless/AgentlessMetricsModal';
+import { CspmPanel } from '../components/Agentless/CspmPanel';
 import { agentlessApi } from '../services/agentless_api';
 import { API_URL, SOCKET_URL } from '../config';
 import { io } from 'socket.io-client';
@@ -123,22 +124,24 @@ export default function AgentlessDashboard() {
   };
 
   return (
-    <div className="p-6 bg-slate-50 dark:bg-[#0a0f16] min-h-screen text-slate-800 dark:text-gray-300 font-mono transition-colors">
-      <div className="flex justify-between items-center mb-6 border-b border-emerald-300 dark:border-emerald-900 pb-4">
-        <div>
-          <h1 className="text-3xl font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest">Agentless Control Matrix</h1>
-          <p className="text-xs text-slate-500 mt-1">Remote telemetry pulling, enforcement, and sensor orchestration.</p>
-        </div>
-        <div className="flex space-x-3">
-          <button 
-            onClick={() => setShowCreds(true)}
-            className="px-4 py-2 border border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition rounded shadow-[0_0_10px_rgba(16,185,129,0.1)] dark:shadow-[0_0_10px_rgba(16,185,129,0.2)] bg-white dark:bg-transparent"
-          >
-            [ VAULT CREDENTIALS ]
-          </button>
+    <div className="p-4 md:p-6 bg-slate-50 dark:bg-[#0a0f16] min-h-screen text-slate-800 dark:text-gray-300 font-mono transition-colors">
+      <div className="border-b border-emerald-300 dark:border-emerald-900 pb-4 mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-emerald-700 dark:text-emerald-500 uppercase tracking-widest">Agentless Control Matrix</h1>
+            <p className="text-xs text-slate-500 mt-1">Remote telemetry pulling, enforcement, and sensor orchestration.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => setShowCreds(true)}
+              className="px-4 py-2 border border-emerald-600 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition rounded shadow-[0_0_10px_rgba(16,185,129,0.1)] dark:shadow-[0_0_10px_rgba(16,185,129,0.2)] bg-white dark:bg-transparent"
+            >
+              [ VAULT CREDENTIALS ]
+            </button>
+          </div>
         </div>
         {/* Top Bar: Subnet Scan & Manual Add */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-4 mb-6 flex flex-wrap gap-4 items-end shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded p-4 mb-4 flex flex-wrap gap-4 items-end shadow-sm">
         <div className="flex-1 min-w-[200px]">
           <label className="block text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">TARGET_SUBNET</label>
           <input 
@@ -167,7 +170,7 @@ export default function AgentlessDashboard() {
       </div>
 
       {isAdding && (
-          <div className="bg-slate-50 dark:bg-slate-900/50 border border-blue-200 dark:border-blue-900/50 rounded p-4 mb-6 flex flex-wrap gap-4 items-end animate-fade-in shadow-sm">
+          <div className="bg-slate-50 dark:bg-slate-900/50 border border-blue-200 dark:border-blue-900/50 rounded p-4 mb-4 flex flex-wrap gap-4 items-end animate-fade-in shadow-sm">
               <div>
                   <label className="block text-xs font-mono text-slate-500 dark:text-slate-400 mb-1">STATIC_IP_ADDRESS</label>
                   <input 
@@ -220,6 +223,7 @@ export default function AgentlessDashboard() {
       </div>
 
       <div className="bg-white dark:bg-black border border-slate-200 dark:border-gray-800 rounded overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 dark:bg-[#0f1722] text-slate-500 dark:text-gray-400 border-b border-slate-200 dark:border-gray-800">
             <tr>
@@ -277,7 +281,10 @@ export default function AgentlessDashboard() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
+
+      <CspmPanel />
 
       {showCreds && <CredentialModal onClose={() => setShowCreds(false)} />}
       {configIp && <EndpointConfigModal ip={configIp} osType={osType} onClose={() => setConfigIp(null)} />}

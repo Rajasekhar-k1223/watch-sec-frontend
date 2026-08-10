@@ -21,11 +21,11 @@ export default function IcapServer() {
     };
 
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-8">
+        <div className="p-4 md:p-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Share2 className="text-green-500" />
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Share2 className="text-green-500 shrink-0" />
                         ICAP Server
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
@@ -34,7 +34,7 @@ export default function IcapServer() {
                 </div>
                 <button
                     onClick={refreshStats}
-                    className="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 border border-gray-200 dark:border-gray-600 shadow-sm transition-colors font-bold text-sm"
+                    className="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 border border-gray-200 dark:border-gray-600 shadow-sm transition-colors font-bold text-sm self-start sm:self-auto"
                 >
                     <RefreshCw size={18} />
                     Refresh Stats

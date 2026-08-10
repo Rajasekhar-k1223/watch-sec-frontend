@@ -7,41 +7,57 @@ export default function ZeroTrustDashboard() {
   const [selectedAgent, setSelectedAgent] = useState<any>(null);
 
   useEffect(() => {
-    // In a real app, this would be an API call to /api/v2/risk/tenant
-    // We mock it for the UI demonstration
-    const mockTenantData = [
-      { agent_id: 'AGENT-XDR-1', total_score: 92, level: 'Critical', last_calculated: new Date().toISOString() },
-      { agent_id: 'AGENT-XDR-2', total_score: 75, level: 'High', last_calculated: new Date().toISOString() },
-      { agent_id: 'AGENT-XDR-3', total_score: 45, level: 'Medium', last_calculated: new Date().toISOString() },
-      { agent_id: 'AGENT-XDR-4', total_score: 12, level: 'Low', last_calculated: new Date().toISOString() }
-    ];
-    setTenantRisk(mockTenantData);
-    
-    // Select first critical agent by default
-    fetchAgentDetails('AGENT-XDR-1');
+    const fetchTenantRisk = async () => {
+      try {
+        const token = sessionStorage.getItem('token');
+        const res = await fetch(`http://localhost:8000/api/v2/risk/tenant`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setTenantRisk(data || []);
+          if (data && data.length > 0) {
+            fetchAgentDetails(data[0].agent_id);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchTenantRisk();
   }, []);
 
-  const fetchAgentDetails = (agentId: string) => {
-    // Mock /api/v2/risk/agent/{agentId}
-    setSelectedAgent({
-      agent_id: agentId,
-      total_score: 92,
-      level: 'Critical',
-      vectors: [
-        { subject: 'Threat Intel', A: 95, fullMark: 100 },
-        { subject: 'Behavioral', A: 80, fullMark: 100 },
-        { subject: 'Process', A: 85, fullMark: 100 },
-        { subject: 'Network', A: 70, fullMark: 100 },
-        { subject: 'User', A: 40, fullMark: 100 },
-        { subject: 'Device', A: 20, fullMark: 100 }
-      ],
-      timeline: [
-        { time: '10:00', score: 20 },
-        { time: '11:00', score: 22 },
-        { time: '12:00', score: 45 },
-        { time: '13:00', score: 92 }, // Spike due to IOC match
-      ]
-    });
+  const fetchAgentDetails = async (agentId: string) => {
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`http://localhost:8000/api/v2/risk/agent/${agentId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedAgent({
+          agent_id: data.agent_id,
+          total_score: data.total_score,
+          level: data.level,
+          vectors: [
+            { subject: 'Threat Intel', A: data.vectors.threat_intel || 0, fullMark: 100 },
+            { subject: 'Behavioral', A: data.vectors.behavioral || 0, fullMark: 100 },
+            { subject: 'Process', A: data.vectors.process || 0, fullMark: 100 },
+            { subject: 'Network', A: data.vectors.network || 0, fullMark: 100 },
+            { subject: 'User', A: data.vectors.user || 0, fullMark: 100 },
+            { subject: 'Device', A: data.vectors.device || 0, fullMark: 100 }
+          ],
+          timeline: [
+            { time: 'T-3h', score: Math.max(0, data.total_score - 15) },
+            { time: 'T-2h', score: Math.max(0, data.total_score - 5) },
+            { time: 'T-1h', score: data.total_score },
+            { time: 'Now', score: data.total_score }
+          ]
+        });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const getStatusColor = (level: string) => {
@@ -55,9 +71,9 @@ export default function ZeroTrustDashboard() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-[#0a0a0a] min-h-screen text-white">
+    <div className="p-4 md:p-6 space-y-6 bg-[#0a0a0a] min-h-screen text-white">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[#00ff8e]">Zero Trust Engine</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#00ff8e]">Zero Trust Engine</h1>
         <p className="text-gray-400">Dynamic Risk Assessment & Autonomous Defense</p>
       </div>
 

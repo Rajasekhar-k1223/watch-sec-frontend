@@ -91,8 +91,8 @@ export default function NetworkAnalytics() {
     }, [token, user?.tenantId]);
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-700">
-            
+        <div className="p-4 md:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-700">
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
@@ -102,7 +102,7 @@ export default function NetworkAnalytics() {
                         </div>
                         <span className="text-[10px] font-black tracking-[0.2em] uppercase text-slate-500">Fleet Operations</span>
                     </div>
-                    <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                    <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                         Network <span className="text-indigo-500">Analytics</span>
                     </h1>
                     <p className="text-slate-500 text-sm mt-2 font-medium flex items-center gap-2">

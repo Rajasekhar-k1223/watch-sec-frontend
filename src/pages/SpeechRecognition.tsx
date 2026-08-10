@@ -77,7 +77,7 @@ export default function SpeechRecognition() {
     const isLocked = planLevel < (FEATURE_TIERS["speech"] || 3);
 
     return (
-        <div className="p-8 animate-fade-in transition-colors text-gray-900 dark:text-white relative min-h-screen">
+        <div className="p-4 md:p-8 animate-fade-in transition-colors text-gray-900 dark:text-white relative min-h-screen">
             {isLocked && (
                 <div className="absolute inset-0 z-[60] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl flex flex-col items-center justify-center text-center p-6">
                     <div className="p-6 bg-red-500/10 rounded-full mb-6 ring-8 ring-red-500/5 animate-pulse">
@@ -99,7 +99,7 @@ export default function SpeechRecognition() {
                     </p>
                 </div>
             )}
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-6">
                 <Mic className="text-red-500" />
                 Speech Recognition (Audio Analysis)
             </h1>

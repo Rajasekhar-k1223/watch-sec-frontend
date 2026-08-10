@@ -58,6 +58,8 @@ interface AgentReport {
     updateFailureReason?: string;
     lastUpdateAttempt?: string;
     policyId?: number;
+    activeUser?: string;
+    userLoginTime?: string;
     latitude?: number;
     longitude?: number;
     country?: string;
@@ -82,6 +84,9 @@ interface DashStats {
 
 interface AgentEvent {
     type: string;
+    justStarted?: boolean;
+    activeUser?: string;
+    userLoginTime?: string;
     details: string;
     timestamp: string;
     isMetric?: boolean;
@@ -164,7 +169,24 @@ export default function Agents() {
     const [stats, setStats] = useState<DashStats | null>(null);
     const [selectedDate, setSelectedDate] = useState(''); // Default to empty for rolling 24h
     const [agentSearch, setAgentSearch] = useState('');
+    const [tenantApiKey, setTenantApiKey] = useState<string>('');
 
+    useEffect(() => {
+        const fetchApiKey = async () => {
+            try {
+                const res = await fetch(`${API_URL}/tenants/api-key`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setTenantApiKey(data.apiKey);
+                }
+            } catch (e) {
+                console.error("[Agents] API Key fetch error:", e);
+            }
+        };
+        if (token) fetchApiKey();
+    }, [token]);
     const [latestVersion, setLatestVersion] = useState("v1.8.62"); // [v1.8.62] Latest Enterprise Build
     const [updateProgressMap, setUpdateProgressMap] = useState<Record<string, number>>({});
     const updateTimeouts = useRef<Record<string, any>>({});
@@ -254,12 +276,59 @@ export default function Agents() {
         fetchPolicies();
         fetchStats(selectedDate);
 
-        const interval = setInterval(() => { 
-            fetchAgents(); 
-            fetchStats(selectedDate);
-        }, 10000);
-        return () => clearInterval(interval);
+        // Polling removed in favor of Socket.IO real-time telemetry
     }, [token, user?.tenantId, fetchStats, selectedDate]);
+
+
+    // Global Socket Connection for Grid Live Updates
+    useEffect(() => {
+        if (!token) return;
+        
+        const globalSocket = io(SOCKET_URL, {
+            path: "/socket.io",
+            transports: ["websocket"],
+            auth: { token }
+        });
+
+        globalSocket.on("connect", () => {
+            console.log("[Agents] Global Socket Connected");
+            if (user?.role === 'SuperAdmin') {
+                globalSocket.emit("join_room", { room: "superadmin" });
+            } else if (user?.tenantId) {
+                globalSocket.emit("join_room", { room: `tenant_${user.tenantId}` });
+            }
+        });
+
+        globalSocket.on("agent_list_update", (updatedAgent: any) => {
+            setAgents(prev => {
+                const index = prev.findIndex(a => a.agentId === updatedAgent.agentId);
+                if (index === -1) return prev;
+
+                const next = [...prev];
+                next[index] = {
+                    ...next[index],
+                    status: updatedAgent.status || next[index].status,
+                    hostname: updatedAgent.hostname || next[index].hostname,
+                    version: updatedAgent.version || next[index].version,
+                    targetVersion: updatedAgent.targetVersion || next[index].targetVersion,
+                    cpuUsage: updatedAgent.cpuUsage ?? next[index].cpuUsage,
+                    memoryUsage: updatedAgent.memoryUsage ?? next[index].memoryUsage,
+                    powerStatusJson: updatedAgent.powerStatusJson ?? next[index].powerStatusJson,
+                    timestamp: normalizeTimestamp(updatedAgent.timestamp || next[index].timestamp),
+                    latitude: updatedAgent.latitude ?? next[index].latitude,
+                    longitude: updatedAgent.longitude ?? next[index].longitude,
+                    country: updatedAgent.country ?? next[index].country,
+                    activeUser: updatedAgent.activeUser ?? next[index].activeUser,
+                    userLoginTime: updatedAgent.userLoginTime ?? next[index].userLoginTime
+                };
+                return next;
+            });
+        });
+
+        return () => {
+            globalSocket.disconnect();
+        };
+    }, [token, user?.tenantId, user?.role]);
 
     // [v1.8.60] Scroll Lock for Update Hub
     useEffect(() => {
@@ -309,7 +378,7 @@ export default function Agents() {
 
     const fetchAgents = async () => {
         try {
-            const query = user?.tenantId ? `?tenantId=${user.tenantId}` : '';
+            const query = (user?.tenantId && user?.role !== 'SuperAdmin') ? `?tenantId=${user.tenantId}` : '';
             if (!token) return;
             // Use standard /agents endpoint instead of dashboard status
             const res = await fetch(`${API_URL}/agents${query}`, {
@@ -462,8 +531,6 @@ export default function Agents() {
 
     // [v1.8.42] Patch Now: Administrator Override
     const handlePatchNow = async (agentId: string) => {
-        if (!window.confirm("FORCE immediate patch? This will bypass any maintenance windows.\n\nProceed?")) return;
-        
         try {
             const res = await fetch(`${API_URL}/agents/${agentId}/patch-now`, {
                 method: 'POST',
@@ -471,15 +538,11 @@ export default function Agents() {
             });
 
             if (res.ok) {
-                toast.success("Forced Patch Triggered! Agent will update on next heartbeat.");
+                // Silently refresh agents
                 fetchAgents();
-            } else {
-                const data = await res.json();
-                toast.error(`Failed to trigger patch: ${data.detail || 'Unknown error'}`);
             }
         } catch (e) {
             console.error(e);
-            toast.error("Network error triggering patch.");
         }
     };
 
@@ -1047,84 +1110,27 @@ export default function Agents() {
         }
     }, [liveScreen]);
 
+    // Global Socket Effect
     useEffect(() => {
-        if (!selectedAgentId) return;
-
-        fetchData(0, true);
-
         const socket = io(SOCKET_URL, {
-            auth: { token: token }, // Pass token in auth object for better compatibility
-            query: { token: token }, // Keep query for fallback
+            auth: { token: token },
+            query: { token: token },
             transports: ['polling', 'websocket']
         });
         socketRef.current = socket;
 
         socket.on("connect", () => {
             setSocketStatus('Connected');
-            // [DEBUG] Log user state to backend
             socket.emit("client_debug", { component: 'Agents', user: user, token: token ? 'HAS_TOKEN' : 'NO_TOKEN' });
 
-            socket.emit("client_debug", { component: 'ActivityLogViewer', user: user, agentId: selectedAgentId });
-
-            // Join the tenant room to receive activity updates
-            if (user?.tenantId) {
+            if (user?.role === 'SuperAdmin') {
+                socket.emit("join_room", { room: "superadmin" });
+            } else if (user?.tenantId) {
                 socket.emit("join_room", { room: `tenant_${user.tenantId}` });
             }
         });
 
         socket.on("disconnect", () => setSocketStatus('Disconnected'));
-
-        const handleFrame = (agentId: any, base64?: any) => {
-            let actualAgentId = agentId;
-            let actualBase64 = base64;
-
-            // If data came as a single object {agentId, image}
-            if (agentId && typeof agentId === 'object' && agentId.agentId) {
-                actualAgentId = agentId.agentId;
-                actualBase64 = agentId.image || agentId.base64;
-            }
-
-            if (isStreamingRef.current && selectedAgentId && actualAgentId && (typeof actualAgentId === 'string') && (actualAgentId.toLowerCase() === selectedAgentId.toLowerCase()) && actualBase64) {
-                const prefix = actualBase64.startsWith('data:image') ? '' : 'data:image/jpeg;base64,';
-                const fullBase64 = prefix + actualBase64;
-
-                // Update Image for Display
-                setLiveScreen(fullBase64);
-
-                // Draw to Canvas for Recording
-                const canvas = hiddenCanvasRef.current;
-                if (canvas) {
-                    const ctx = canvas.getContext('2d');
-                    if (ctx) {
-                        const img = new Image();
-                        img.onload = () => {
-                            if (canvas.width !== img.width || canvas.height !== img.height) {
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                            }
-                            ctx.drawImage(img, 0, 0);
-                        };
-                        img.src = fullBase64;
-                    }
-                }
-            } else if (isStreamingRef.current) {
-                console.log(`[DEBUG] Frame ignored. Agent mismatch or invalid payload: ${actualAgentId} vs ${selectedAgentId}`);
-            }
-        };
-
-        socket.on("ReceiveScreen", handleFrame);
-        socket.on("stream_frame", handleFrame);
-
-        socket.on("ReceiveEvent", (data: any) => {
-            const agentId = data.agentId || data.AgentId;
-            const title = data.title || data.Type || 'Info';
-            const details = data.details || data.Details || '';
-            const timestamp = normalizeTimestamp(data.timestamp || data.Timestamp);
-
-            if (agentId && selectedAgentId && typeof agentId === 'string' && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
-                setEvents(prev => [{ type: title, details, timestamp }, ...prev]);
-            }
-        });
 
         socket.on("agent_list_update", (updatedAgent: any) => {
             setAgents(prev => {
@@ -1162,7 +1168,6 @@ export default function Agents() {
             });
         });
 
-        // [v1.7.0] Progress Event
         socket.on("update_progress", (data: { agentId: string, progress: number }) => {
             setUpdateProgressMap(prev => ({ ...prev, [data.agentId]: data.progress }));
         });
@@ -1172,32 +1177,105 @@ export default function Agents() {
                 setStats(prev => {
                     if (!prev) return null;
                     const next = { ...prev };
-
-                    // Append new point to trend
                     const newPoint = {
                         time: payload.data.time,
                         cpu: payload.data.cpu,
                         mem: payload.data.mem
                     };
-
-                    // Update Resource Trend
                     if (next.resources) {
                         next.resources = {
                             ...next.resources,
                             trend: [...(next.resources.trend || []), newPoint]
                         };
                     }
-
-                    // Update Agent Counts dynamically if needed (Online/Offline status requires separate event, but strictly resources here)
-
                     return next;
                 });
             }
         });
 
-        // [v1.8.56] Real-time Activity Streaming
         socket.on("new_client_activity", (data: any) => {
-             // Only update if this is the agent currently being viewed in the modal
+             // Global Dashboard Behavioral Audit Trail
+             setStats(prev => {
+                 if (!prev) return prev;
+                 const newLog = {
+                     type: data.ActivityType || 'Activity',
+                     details: `${data.ProcessName || ''} ${data.WindowTitle || ''}`.trim(),
+                     timestamp: new Date().toISOString(),
+                     agentId: data.AgentId
+                 };
+                 return {
+                     ...prev,
+                     recentLogs: [newLog, ...(prev.recentLogs || [])].slice(0, 15)
+                 };
+             });
+        });
+
+        return () => {
+            socket.disconnect();
+            socketRef.current = null;
+        };
+    }, [token, user?.tenantId, SOCKET_URL]);
+
+    // Local Modal Effect
+    useEffect(() => {
+        if (!selectedAgentId) return;
+
+        fetchData(0, true);
+
+        const socket = socketRef.current;
+        if (!socket) return;
+
+        socket.emit("client_debug", { component: 'ActivityLogViewer', user: user, agentId: selectedAgentId });
+
+        const handleFrame = (agentId: any, base64?: any) => {
+            let actualAgentId = agentId;
+            let actualBase64 = base64;
+
+            if (agentId && typeof agentId === 'object' && agentId.agentId) {
+                actualAgentId = agentId.agentId;
+                actualBase64 = agentId.image || agentId.base64;
+            }
+
+            if (isStreamingRef.current && selectedAgentId && actualAgentId && (typeof actualAgentId === 'string') && (actualAgentId.toLowerCase() === selectedAgentId.toLowerCase()) && actualBase64) {
+                const prefix = actualBase64.startsWith('data:image') ? '' : 'data:image/jpeg;base64,';
+                const fullBase64 = prefix + actualBase64;
+
+                setLiveScreen(fullBase64);
+
+                const canvas = hiddenCanvasRef.current;
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        const img = new Image();
+                        img.onload = () => {
+                            if (canvas.width !== img.width || canvas.height !== img.height) {
+                                canvas.width = img.width;
+                                canvas.height = img.height;
+                            }
+                            ctx.drawImage(img, 0, 0);
+                        };
+                        img.src = fullBase64;
+                    }
+                }
+            }
+        };
+
+        socket.on("ReceiveScreen", handleFrame);
+        socket.on("stream_frame", handleFrame);
+
+        const handleReceiveEvent = (data: any) => {
+            const agentId = data.agentId || data.AgentId;
+            const title = data.title || data.Type || 'Info';
+            const details = data.details || data.Details || '';
+            const timestamp = normalizeTimestamp(data.timestamp || data.Timestamp);
+
+            if (agentId && selectedAgentId && typeof agentId === 'string' && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
+                setEvents(prev => [{ type: title, details, timestamp }, ...prev]);
+            }
+        };
+        socket.on("ReceiveEvent", handleReceiveEvent);
+
+        const handleNewActivity = (data: any) => {
              if (selectedAgentId?.toString() === data.AgentId?.toString()) {
                  const newActivity = {
                      type: data.ActivityType || 'Activity',
@@ -1206,11 +1284,12 @@ export default function Agents() {
                      RiskLevel: data.RiskLevel,
                      Category: data.Category
                  };
-                 setEvents(prev => [newActivity, ...prev].slice(0, 500)); // Keep a healthy limit
+                 setEvents(prev => [newActivity, ...prev].slice(0, 500));
              }
-        });
+        };
+        socket.on("new_client_activity", handleNewActivity);
 
-        socket.on("webrtc_offer", async (data: any) => {
+        const handleWebrtcOffer = async (data: any) => {
             if (pcRef.current) pcRef.current.close();
             const pc = new RTCPeerConnection({
                 iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -1245,19 +1324,26 @@ export default function Agents() {
             } catch (err) {
                 console.error("[Agents.tsx] WebRTC Error:", err);
             }
-        });
+        };
+        socket.on("webrtc_offer", handleWebrtcOffer);
 
-        socket.on('ice_candidate', async (data) => {
+        const handleIceCandidate = async (data: any) => {
             if (pcRef.current) {
                 try {
                     await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
                 } catch (e) { console.error("Error adding ICE:", e); }
             }
-        });
+        };
+        socket.on("ice_candidate", handleIceCandidate);
 
         return () => {
-            socket.disconnect();
-            socketRef.current = null;
+            socket.off("ReceiveScreen", handleFrame);
+            socket.off("stream_frame", handleFrame);
+            socket.off("ReceiveEvent", handleReceiveEvent);
+            socket.off("new_client_activity", handleNewActivity);
+            socket.off("webrtc_offer", handleWebrtcOffer);
+            socket.off("ice_candidate", handleIceCandidate);
+
             if (pcRef.current) {
                 pcRef.current.close();
                 pcRef.current = null;
@@ -1266,7 +1352,7 @@ export default function Agents() {
             setEvents([]);
             setIsStreaming(false);
         };
-    }, [selectedAgentId, token, user?.tenantId, SOCKET_URL, modalStartDate, modalEndDate]);
+    }, [selectedAgentId, modalStartDate, modalEndDate]);
 
     const handleViewLogs = (agentId: string) => {
         setSelectedAgentId(agentId);
@@ -1685,10 +1771,10 @@ export default function Agents() {
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">PowerShell (Run as Administrator)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=guest&os_type=windows' | iex"`}
+                                            {`irm '${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'guest'}&os_type=windows' | iex`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`powershell -c "irm '${fullApiUrl}/downloads/public/agent?key=guest&os_type=windows' | iex"`).then(() => toast.success('Copied!'))}
+                                            onClick={() => navigator.clipboard.writeText(`irm '${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'guest'}&os_type=windows' | iex`).then(() => toast.success('Copied!'))}
                                             className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
                                             <FileText size={14} />
                                         </button>
@@ -1698,10 +1784,10 @@ export default function Agents() {
                                     <>
                                         <p className="text-gray-500 dark:text-gray-400 mb-2 font-bold uppercase tracking-wider">Terminal (Run as root / sudo)</p>
                                         <div className="text-gray-900 dark:text-green-400 break-all pr-10">
-                                            {`curl -sL "${fullApiUrl}/downloads/public/agent?key=guest&os_type=${deployOS}" | sudo bash`}
+                                            {`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'guest'}&os_type=${deployOS}" | sudo bash`}
                                         </div>
                                         <button
-                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${fullApiUrl}/downloads/public/agent?key=guest&os_type=${deployOS}" | sudo bash`).then(() => toast.success('Copied!'))}
+                                            onClick={() => navigator.clipboard.writeText(`curl -sL "${fullApiUrl}/downloads/public/agent?key=${tenantApiKey || 'guest'}&os_type=${deployOS}" | sudo bash`).then(() => toast.success('Copied!'))}
                                             className="absolute top-4 right-3 p-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white rounded transition-colors text-gray-500" title="Copy">
                                             <FileText size={14} />
                                         </button>
@@ -1742,7 +1828,7 @@ export default function Agents() {
                                 <div className="text-xs text-blue-700 dark:text-blue-300">
                                     {deployOS === 'windows' && (
                                         <span>
-                                            The command downloads and installs the agent as a Windows Service with auto-restart. Requires an elevated PowerShell prompt (Run as Administrator).
+                                            The command downloads and installs the agent as a Windows Service with auto-restart. Requires an elevated PowerShell prompt (Run as Administrator). <strong>The script will interactively prompt for the 6-digit PIN shown above to validate the installation securely.</strong>
                                         </span>
                                     )}
                                     {(deployOS === 'linux-x64' || deployOS === 'linux-arm64') && <span>The command downloads and installs the agent as a <strong>systemd service</strong> that starts automatically on boot. Requires root or sudo access.</span>}
@@ -1796,7 +1882,7 @@ export default function Agents() {
                                         title="Select all"
                                     />
                                 </th>
-                                <th className="p-4">Agent ID</th><th className="p-4">Hostname</th><th className="p-4">Status</th><th className="p-4">Power</th><th className="p-4">Location</th><th className="p-4">Resources</th><th className="p-4">Last Seen</th><th className="p-4 text-right pr-8">Actions</th>
+                                <th className="p-4">Agent ID</th><th className="p-4">Hostname</th><th className="p-4">Status</th><th className="p-4">Active User</th><th className="p-4">Power</th><th className="p-4">Location</th><th className="p-4">Resources</th><th className="p-4">Last Seen</th><th className="p-4 text-right pr-8">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="text-gray-700 dark:text-gray-300 divide-y divide-gray-200 dark:divide-gray-700">
@@ -1884,6 +1970,12 @@ export default function Agents() {
                                         </div>
                                     </td>
                                     <td className="p-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-gray-900 dark:text-white font-medium text-[13px]">{agent.activeUser || 'Unknown'}</span>
+                                            <span className="text-gray-500 dark:text-gray-400 text-[11px]">{agent.userLoginTime && agent.userLoginTime !== 'Unknown' ? agent.userLoginTime : ''}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
                                         <div className="flex flex-col items-center justify-center min-w-[70px]">
                                             {(() => {
                                                 try {
@@ -1960,6 +2052,7 @@ export default function Agents() {
                                             <button onClick={() => handleMonitor(agent.agentId)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-colors" title="Monitor"> <Monitor size={16} /> </button>
                                             <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('monitor'); setIsInteractive(true); }} className="p-2 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors" title="Remote Desktop"> <MousePointer size={16} /> </button>
                                             <button onClick={() => handleViewLogs(agent.agentId)} className="p-2 bg-gray-500/10 text-gray-500 rounded-lg hover:bg-gray-500/20 transition-colors" title="Logs"> <List size={16} /> </button>
+                                            <button onClick={() => window.open(`/forensics/${agent.agentId}`, '_blank')} className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg hover:bg-indigo-500/20 transition-colors" title="Forensics"> <Activity size={16} /> </button>
                                             <button onClick={() => handleDelete(agent.id || agent.agentId)} className="p-2 text-gray-400 hover:text-red-500 transition-colors" title="Delete"> <Trash2 size={16} /> </button>
                                         </div>
                                     </td>
@@ -2031,7 +2124,7 @@ export default function Agents() {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4 mb-4 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-lg border border-gray-100 dark:border-gray-800">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 bg-gray-50 dark:bg-gray-900/40 p-3 rounded-lg border border-gray-100 dark:border-gray-800">
                                     <div className="space-y-1">
                                         <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tight">CPU Usage</span>
                                         <div className="flex items-center gap-2">
@@ -2219,7 +2312,7 @@ export default function Agents() {
                                     </div>
                                 </div>
                                 {showGraphs && events.length > 0 && (
-                                    <div className="mb-4 grid grid-cols-2 gap-4 h-48">
+                                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:h-48">
                                         <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 flex flex-col">
                                             <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-400 uppercase"> <Activity className="w-3 h-3 text-cyan-400" /> Event Distribution </div>
                                             <div className="flex-1 w-full text-xs">

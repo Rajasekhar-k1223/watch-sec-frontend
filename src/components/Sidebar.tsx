@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert, Lock, Activity, Wifi, Mail, Package, Target, ShieldOff, Crosshair, SlidersHorizontal } from 'lucide-react';
+import { LayoutDashboard, Users, Shield, Server, Monitor, Share2, List, FileText, Brain, ShieldCheck, CreditCard, Settings, X, Image, Mic, ShieldAlert, Lock, Activity, Wifi, Mail, Package, Target, ShieldOff, Crosshair, SlidersHorizontal, Zap } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -17,8 +17,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         'Starter': 1,
         'Professional': 2,
         'Pro': 2,
-        'Enterprise': 3,
-        'Unlimited': 100
+        'Enterprise': 3
     };
     const currentTier = tierLevels[user?.plan || 'Starter'] || 1;
 
@@ -40,6 +39,7 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { name: 'Executive Reports', path: '/reports', icon: FileText, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
         { name: 'Infrastructure Map', path: '/architecture', icon: Share2, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 1 },
         { name: 'AI Security Copilot', path: '/ai-copilot', icon: Brain, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
+        { name: 'Detection Alerts', path: '/alerts', icon: ShieldAlert, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
 
         { name: 'Billing', path: '/billing', icon: CreditCard, roles: ['TenantAdmin'], minTier: 1 },
         { name: 'Software Requests', path: '/software-requests', icon: Package, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 1 },
@@ -53,9 +53,11 @@ export default function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { name: 'Ransomware Shield', path: '/ransomware', icon: ShieldOff, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
         { name: 'Zero Trust Engine', path: '/zero-trust', icon: Target, roles: ['SuperAdmin', 'TenantAdmin', 'Analyst'], minTier: 3 }, // Ent
         { name: 'Bandwidth Settings', path: '/bandwidth-settings', icon: SlidersHorizontal, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 2 }, // Pro
+        { name: 'SOAR Playbooks', path: '/playbooks', icon: Zap, roles: ['SuperAdmin', 'TenantAdmin'], minTier: 3 }, // Ent
     ];
 
-    const navItems = allNavItems.filter(item => item.roles.includes(role));
+    // SuperAdmin has absolute visibility of all menu items, bypassing role array restrictions
+    const navItems = allNavItems.filter(item => role === 'SuperAdmin' || item.roles.includes(role));
 
     return (
         <aside className={`

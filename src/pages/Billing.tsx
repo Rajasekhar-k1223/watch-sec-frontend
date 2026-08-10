@@ -130,11 +130,11 @@ export default function Billing() {
     const usagePercent = Math.min((info.AgentCount / info.AgentLimit) * 100, 100);
 
     return (
-        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen font-sans animate-fade-in transition-colors">
-            <div className="flex justify-between items-end border-b border-gray-200 dark:border-gray-800 pb-6 mb-8">
+        <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen font-sans animate-fade-in transition-colors">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between border-b border-gray-200 dark:border-gray-800 pb-6 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3 text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-600 dark:from-yellow-400 dark:to-orange-500">
-                        <CreditCard className="text-yellow-500 dark:text-yellow-400" />
+                    <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-600 dark:from-yellow-400 dark:to-orange-500">
+                        <CreditCard className="text-yellow-500 dark:text-yellow-400 shrink-0" />
                         Subscription & Billing
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage your plan, limits, and invoices.</p>

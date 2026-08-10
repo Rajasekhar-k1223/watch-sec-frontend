@@ -180,18 +180,18 @@ export default function Policies() {
     };
 
     return (
-        <div className="p-6 transition-colors">
-            <div className="flex justify-between items-center mb-8">
+        <div className="p-4 md:p-6 transition-colors">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Shield className="text-purple-600 dark:text-purple-500" />
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Shield className="text-purple-600 dark:text-purple-500 shrink-0" />
                         DLP Policies
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Define rules to prevent data leaks and unauthorized activities.</p>
                 </div>
                 <button
                     onClick={handleOpenCreate}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-purple-500/20"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-purple-500/20 self-start sm:self-auto"
                 >
                     <Plus size={18} />
                     New Policy
@@ -372,7 +372,7 @@ export default function Policies() {
                                         Bandwidth Throttling
                                     </h3>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-[10px] text-gray-500 uppercase font-bold mb-1">Max Upload Rate (KB/s)</label>
                                             <input
@@ -407,7 +407,7 @@ export default function Policies() {
                                         </div>
 
                                         {getBandwidth('business_hours.enabled', false) && (
-                                            <div className="grid grid-cols-3 gap-2 mt-2">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
                                                 <div>
                                                     <label className="block text-[9px] text-gray-400 mb-1">Start Time</label>
                                                     <input
@@ -651,7 +651,7 @@ export default function Policies() {
                                                     <Trash2 size={14} />
                                                 </button>
                                                 <div className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase mb-2">Enforcement Rule #{idx + 1}</div>
-                                                <div className="grid grid-cols-2 gap-3">
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                     <div>
                                                         <label className="block text-[9px] text-gray-500 mb-1 font-bold uppercase tracking-wider">Target Trigger</label>
                                                         <select

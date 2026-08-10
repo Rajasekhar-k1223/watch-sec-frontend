@@ -129,7 +129,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
     };
 
     return (
-        <header className="flex items-center justify-between px-8 py-5 sticky top-0 z-40 bg-white/60 dark:bg-[#020617]/60 backdrop-blur-3xl border-b border-slate-200 dark:border-slate-800/50 transition-all duration-500">
+        <header className="flex items-center justify-between px-4 md:px-8 py-5 sticky top-0 z-40 bg-white/60 dark:bg-[#020617]/60 backdrop-blur-3xl border-b border-slate-200 dark:border-slate-800/50 transition-all duration-500">
             {/* Search / Command Area */}
             <div className="flex items-center gap-6 flex-1">
                 <button
@@ -208,7 +208,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
                     {/* Dropdown */}
                     {showNotifications && (
-                        <div className="absolute right-0 mt-4 w-96 glass-card border border-slate-200 dark:border-slate-800 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-300 overflow-hidden">
+                        <div className="absolute right-0 mt-4 w-[min(24rem,calc(100vw-1rem))] glass-card border border-slate-200 dark:border-slate-800 shadow-2xl z-50 animate-in fade-in slide-in-from-top-2 duration-300 overflow-hidden">
                             <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-white/5 flex justify-between items-center">
                                 <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-[0.2em]">Signal Feed</h3>
                                 <button onClick={clearAllNotifications} className="text-[10px] font-black uppercase text-blue-500 hover:text-blue-600 transition-colors tracking-widest">Purge All</button>

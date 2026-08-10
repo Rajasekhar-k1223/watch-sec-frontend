@@ -123,7 +123,7 @@ export default function Vulnerabilities() {
     const isLocked = planLevel < (FEATURE_TIERS["vulnerabilities"] || 3);
 
     return (
-        <div className="p-8 animate-in fade-in duration-700 min-h-screen bg-slate-50 dark:bg-[#020617] transition-colors relative">
+        <div className="p-4 md:p-8 animate-in fade-in duration-700 min-h-screen bg-slate-50 dark:bg-[#020617] transition-colors relative">
             {isLocked && (
                 <div className="absolute inset-0 z-[60] bg-slate-950/95 backdrop-blur-3xl flex flex-col items-center justify-center text-center p-6">
                     <div className="p-10 bg-blue-500/10 rounded-[3rem] mb-10 ring-1 border border-blue-500/20 shadow-2xl shadow-blue-500/20 animate-pulse-slow">
@@ -159,7 +159,7 @@ export default function Vulnerabilities() {
                          </div>
                          <span className="text-[10px] font-black tracking-[0.2em] uppercase text-red-500/80">Threat Surface Audit</span>
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tighter">
+                    <h1 className="text-2xl md:text-5xl font-black tracking-tighter">
                         <span className="text-gradient">Vulnerability Intel</span>
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 text-xs mt-3 font-medium max-w-xl leading-relaxed">
@@ -245,6 +245,7 @@ export default function Vulnerabilities() {
             </div>
 
             <div className="glass-card overflow-hidden shadow-2xl transition-colors">
+                <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
                         <tr>
@@ -293,6 +294,7 @@ export default function Vulnerabilities() {
                         ))}
                     </tbody>
                 </table>
+                </div>
                 {!loading && alerts.length === 0 && (
                     <div className="p-16 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center gap-4">
                         <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full">

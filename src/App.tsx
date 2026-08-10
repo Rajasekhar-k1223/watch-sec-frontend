@@ -34,6 +34,9 @@ import RansomwareDashboard from './pages/RansomwareDashboard';
 import ZeroTrustDashboard from './pages/ZeroTrustDashboard';
 import BandwidthSettings from './pages/BandwidthSettings';
 import AgentlessDashboard from './pages/AgentlessDashboard';
+import SoarPlaybooks from './pages/SoarPlaybooks';
+import ForensicsDashboard from './pages/ForensicsDashboard';
+import DetectionAlerts from './pages/DetectionAlerts';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -111,6 +114,8 @@ function App() {
                 <Route path="/audit" element={<SystemAudit />} />
                 <Route path="/billing" element={<Billing />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/alerts" element={<DetectionAlerts />} />
+                <Route path="/forensics/:agentId" element={<ForensicsDashboard />} />
                 <Route path="/my-dashboard" element={<EmployeeDashboard />} />
                 <Route path="/productivity" element={<Productivity />} />
                 <Route path="/human-intelligence" element={<HumanIntelligence />} />
@@ -124,6 +129,7 @@ function App() {
                 <Route path="/zero-trust" element={<ZeroTrustDashboard />} />
                 <Route path="/agentless" element={<AgentlessDashboard />} />
                 <Route path="/bandwidth-settings" element={<BandwidthSettings />} />
+                <Route path="/playbooks" element={<SoarPlaybooks />} />
               </Route>
             </Route>
           </Routes>

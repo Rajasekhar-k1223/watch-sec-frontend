@@ -131,25 +131,25 @@ export default function Tenants() {
     };
 
     return (
-        <div className="p-8 animate-fade-in transition-colors text-gray-900 dark:text-white">
-            <div className="flex justify-between items-end mb-6">
+        <div className="p-4 md:p-8 animate-fade-in transition-colors text-gray-900 dark:text-white">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Tenant Management</h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage customer organizations and API access.</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <input
                         type="text"
                         placeholder="New Tenant Name"
-                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-3 py-2 rounded focus:outline-none focus:border-blue-500"
+                        className="flex-1 min-w-[160px] bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-3 py-2 rounded focus:outline-none focus:border-blue-500"
                         value={newTenantName}
                         onChange={e => setNewTenantName(e.target.value)}
                     />
                     <button
                         onClick={handleCreate}
                         disabled={isCreating}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50 font-medium"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg disabled:opacity-50 font-medium whitespace-nowrap"
                     >
                         {isCreating ? "Creating..." : "+ Add Tenant"}
                     </button>
@@ -157,6 +157,7 @@ export default function Tenants() {
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden shadow-lg">
+                <div className="overflow-x-auto">
                 <table className="w-full text-left">
                     <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase font-semibold">
                         <tr>
@@ -249,6 +250,7 @@ export default function Tenants() {
                         ))}
                     </tbody>
                 </table>
+                </div>
                 {tenants.length === 0 && (
                     <div className="p-12 text-center text-gray-500 border-t border-dashed border-gray-200 dark:border-gray-700">
                         No tenants found. Create one above!

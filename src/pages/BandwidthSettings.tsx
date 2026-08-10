@@ -93,7 +93,7 @@ export default function BandwidthSettings() {
     };
 
     return (
-        <div className="p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans relative">
+        <div className="p-4 md:p-8 bg-gray-50 dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans relative">
 
             {/* Notification Banner */}
             {notification && (
@@ -104,7 +104,7 @@ export default function BandwidthSettings() {
                 </div>
             )}
 
-            <h1 className="text-3xl font-bold mb-6 flex items-center gap-3">
+            <h1 className="text-2xl md:text-3xl font-bold mb-6 flex items-center gap-3">
                 <Activity className="text-blue-500" />
                 Bandwidth Optimization
             </h1>
@@ -185,7 +185,7 @@ export default function BandwidthSettings() {
                     )}
 
                     <div className={`space-y-4 transition-opacity duration-300 ${!config.business_hours.enabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-bold uppercase text-gray-500 mb-1">Start Time</label>
                                 <input

@@ -7,7 +7,7 @@ export default function MaintenanceSettings() {
     const { token, user } = useAuth();
     const [config, setConfig] = useState({
         enabled: false,
-        mode: 'automatic', // automatic, manual
+        mode: 'manual', // automatic, manual
         days: [0, 1, 2, 3, 4, 5, 6],
         startTime: '00:00',
         endTime: '23:59',

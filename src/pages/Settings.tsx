@@ -65,7 +65,7 @@ export default function Settings() {
     };
 
     return (
-        <div className="p-10 bg-slate-50 dark:bg-[#020617] min-h-screen text-slate-900 dark:text-white transition-colors animate-in fade-in duration-700">
+        <div className="p-4 md:p-10 bg-slate-50 dark:bg-[#020617] min-h-screen text-slate-900 dark:text-white transition-colors animate-in fade-in duration-700">
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-12 pb-8 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-6">
                     <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl">
@@ -78,7 +78,7 @@ export default function Settings() {
                              </div>
                              <span className="text-[10px] font-black tracking-[0.2em] uppercase text-blue-500/80">Identity Control</span>
                         </div>
-                        <h1 className="text-4xl font-black tracking-tighter">
+                        <h1 className="text-2xl md:text-4xl font-black tracking-tighter">
                             <span className="text-gradient">Console Settings</span>
                         </h1>
                         <p className="text-slate-500 dark:text-slate-400 text-xs font-medium mt-2">Protocol configuration and identity security management.</p>

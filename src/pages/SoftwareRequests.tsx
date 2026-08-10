@@ -76,10 +76,10 @@ export default function SoftwareRequests() {
     };
 
     return (
-        <div className="p-6 transition-colors">
-            <div className="flex justify-between items-center mb-8">
+        <div className="p-4 md:p-6 transition-colors">
+            <div className="mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <Package className="text-purple-600 dark:text-purple-500" />
                         Software Requests
                     </h1>

@@ -121,10 +121,10 @@ export default function Productivity() {
 
     return (
         <div className="space-y-6 text-gray-900 dark:text-white">
-            <div className="flex justify-between items-end">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold flex items-center gap-3">
-                        <Activity className="w-8 h-8 text-cyan-400" />
+                    <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                        <Activity className="w-7 h-7 md:w-8 md:h-8 text-cyan-400 shrink-0" />
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Activity Analytics</span>
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Real-time Productivity & Behavior Monitoring</p>

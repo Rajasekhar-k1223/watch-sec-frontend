@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
@@ -44,6 +44,12 @@ interface LogEntry {
 
 interface DashboardStats {
     agents: { total: number; online: number; offline: number };
+    metrics?: {
+        highResourceAgents: number;
+        lowBatteryAgents: number;
+        recentViolations: number;
+        criticalThreats?: number;
+    };
     resources: { avgCpu: number; avgMem: number; trend: { time: string; cpu: number; mem: number }[] };
     threats: {
         total: number;
@@ -140,6 +146,8 @@ const SkeletonTimelineCard = () => (
     </div>
 );
 
+const MAX_LIVE_POINTS = 60;
+
 export default function Dashboard() {
     const [stats, setStats] = useState<DashboardStats | null>(null);
     const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -149,6 +157,29 @@ export default function Dashboard() {
     const [openIncidents, setOpenIncidents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const logContainerRef = useRef<HTMLDivElement>(null);
+    // Holds the last API-fetched trend (historical hourly averages)
+    const apiTrendRef = useRef<{ time: string; cpu: number; mem: number; full_date?: string }[]>([]);
+    // Holds real-time Socket.IO points (rolling window)
+    const livePointsRef = useRef<{ time: string; cpu: number; mem: number; full_date?: string }[]>([]);
+
+    // Merge API trend + live points, deduplicated by time label, keeping last MAX_LIVE_POINTS live points
+    const buildMergedTrend = useCallback(() => {
+        const merged = new Map<string, { time: string; cpu: number; mem: number; full_date?: string }>();
+        // Start with historical (hourly averages)
+        for (const p of apiTrendRef.current) {
+            merged.set(p.time, p);
+        }
+        // Overlay live real-time points (overrides same time bucket)
+        for (const p of livePointsRef.current) {
+            merged.set(p.time, p);
+        }
+        // Sort by full_date or time label ascending
+        return Array.from(merged.values()).sort((a, b) => {
+            const ta = a.full_date || a.time;
+            const tb = b.full_date || b.time;
+            return ta < tb ? -1 : ta > tb ? 1 : 0;
+        });
+    }, []);
 
     const { logout, token, user } = useAuth(); // Import useAuth
     // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
@@ -156,15 +187,22 @@ export default function Dashboard() {
     useEffect(() => {
         if (!token) return;
 
-        const fetchStats = async () => {
+        const fetchStats = async (isInitial = false) => {
+            if (isInitial) setLoading(true);
             try {
-                // 1. Dashboard Aggregate Stats
-                const res = await fetch(`${API_URL}/dashboard/stats?hours=${timeRange}`, {
+                // 1. Dashboard Aggregate Stats (with cache buster for real-time polling)
+                const res = await fetch(`${API_URL}/dashboard/stats?hours=${timeRange}&_t=${Date.now()}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.status === 401) return logout(); // Handle 401
                 if (res.ok) {
                     const data = await res.json();
+                    // Save the API trend separately so live Socket.IO points aren't wiped out on each poll
+                    if (data.resources?.trend) {
+                        apiTrendRef.current = data.resources.trend;
+                        // Merge with any live points we already have
+                        data.resources.trend = buildMergedTrend();
+                    }
                     setStats(data);
                     if (data.recentLogs) setLogs(data.recentLogs);
                 }
@@ -204,8 +242,9 @@ export default function Dashboard() {
             }
         };
 
-        fetchStats();
-        const interval = setInterval(fetchStats, 10000);
+        fetchStats(true);
+        // Polling restored for dynamic real-time data
+        const pollInterval = setInterval(() => fetchStats(false), 5000);
 
         // Socket.IO Connection
         const socket = io(SOCKET_URL, {
@@ -265,38 +304,39 @@ export default function Dashboard() {
 
         socket.on("dashboard_stats_update", (payload: any) => {
             if (payload.type === 'resource' && payload.data) {
+                const newPoint = {
+                    time: payload.data.time,
+                    cpu: payload.data.cpu,
+                    mem: payload.data.mem,
+                    full_date: payload.data.full_date || new Date().toISOString()
+                };
+
+                // Add to rolling live-points window (sliding, max MAX_LIVE_POINTS)
+                livePointsRef.current = [
+                    ...livePointsRef.current.filter(p => p.time !== newPoint.time),
+                    newPoint
+                ].slice(-MAX_LIVE_POINTS);
+
+                // Merge and update the chart — smooth, no reset
+                const mergedTrend = buildMergedTrend();
                 setStats(prev => {
                     if (!prev) return null;
-                    const next = { ...prev };
-
-                    // Append new point to trend
-                    const newPoint = {
-                        time: payload.data.time,
-                        cpu: payload.data.cpu,
-                        mem: payload.data.mem,
-                        full_date: payload.data.full_date
+                    return {
+                        ...prev,
+                        resources: {
+                            ...prev.resources,
+                            trend: mergedTrend
+                        }
                     };
-
-                    // Keep last 50 points to avoid memory issues if graph gets too big? 
-                    // Or just append. The API returns 24h which could be many points.
-                    // Let's just append. Recharts handles it.
-                    next.resources = {
-                        ...next.resources,
-                        trend: [...(next.resources.trend || []), newPoint]
-                    };
-
-                    // Update current averages too? 
-                    // Ideally avg is over 24h, one point won't shift it much, but we can leave it.
-                    return next;
                 });
             }
         });
 
         return () => {
-            clearInterval(interval);
+            clearInterval(pollInterval);
             socket.disconnect();
         };
-    }, [timeRange, token, user?.tenantId]);
+    }, [token, user, timeRange]);
 
     const isFeatureLocked = (featureKey: string) => {
         const req = FEATURE_TIERS[featureKey] || 3;
@@ -304,7 +344,7 @@ export default function Dashboard() {
     };
 
 
-    const totalThreats = stats?.threats.total24h ?? stats?.threats.total ?? 0;
+    const totalThreats = stats?.metrics?.criticalThreats ?? stats?.threats.total24h ?? stats?.threats.total ?? 0;
 
     return (
         <div className="p-3 md:p-8 max-w-[1600px] mx-auto space-y-4 md:space-y-8 animate-in fade-in duration-500 text-gray-900 dark:text-white">
@@ -312,8 +352,8 @@ export default function Dashboard() {
             {/* Header section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-                        <Activity className="w-8 h-8 text-blue-500" />
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight flex items-center gap-3">
+                        <Activity className="w-7 h-7 md:w-8 md:h-8 text-blue-500 shrink-0" />
                         <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
                             Command Center
                         </span>
@@ -351,10 +391,10 @@ export default function Dashboard() {
                     </>
                 ) : (
                     <>
-                        <div className="lg:col-span-1 h-[500px]">
+                        <div className="lg:col-span-1 h-[300px] md:h-[500px]">
                             <AiInsightPanel agents={mapAgents} incidents={openIncidents} />
                         </div>
-                        <div className="lg:col-span-3 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl flex flex-col h-[500px]">
+                        <div className="lg:col-span-3 bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl flex flex-col h-[300px] md:h-[500px]">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                     <Activity className="w-4 h-4 text-red-500" />
@@ -394,12 +434,7 @@ export default function Dashboard() {
                                 <div>
                                     <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Low Battery Warnings</div>
                                     <div className="text-xl font-black text-red-600 dark:text-red-400">
-                                        {mapAgents.filter(a => {
-                                            try {
-                                                const p = a.powerStatusJson ? JSON.parse(a.powerStatusJson) : null;
-                                                return p && p.battery_percent < 20 && !p.power_plugged;
-                                            } catch { return false; }
-                                        }).length} Agents
+                                        {stats?.metrics?.lowBatteryAgents ?? 0} Agents
                                     </div>
                                 </div>
                             </div>
@@ -410,7 +445,7 @@ export default function Dashboard() {
                                 <div>
                                     <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">High Resource Usage</div>
                                     <div className="text-xl font-black text-amber-600 dark:text-amber-400">
-                                        {mapAgents.filter(a => a.cpuUsage > 85).length} Agents
+                                        {stats?.metrics?.highResourceAgents ?? 0} Agents
                                     </div>
                                 </div>
                             </div>
@@ -421,7 +456,7 @@ export default function Dashboard() {
                                 <div>
                                     <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-tighter">Recent Violations</div>
                                     <div className="text-xl font-black text-purple-600 dark:text-purple-400">
-                                        {logs.filter(l => l.type.includes('Alert') || l.type.includes('High')).length} Logged
+                                        {stats?.metrics?.recentViolations ?? 0} Logged
                                     </div>
                                 </div>
                             </div>
@@ -486,9 +521,11 @@ export default function Dashboard() {
                             </div>
                             <div className="flex items-baseline gap-1">
                                 <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">
-                                    {stats?.network.inboundMbps ? stats.network.inboundMbps.toFixed(2) : "0.00"}
+                                    {stats?.network.inboundMbps ? (stats.network.inboundMbps >= 1 ? stats.network.inboundMbps.toFixed(2) : (stats.network.inboundMbps * 1000).toFixed(2)) : "0.00"}
                                 </div>
-                                <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">Mbps</span>
+                                <span className="text-sm md:text-lg text-gray-500 dark:text-gray-500">
+                                    {stats?.network.inboundMbps && stats.network.inboundMbps >= 1 ? "Mbps" : "Kbps"}
+                                </span>
                             </div>
                             <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
                         </div>
@@ -619,7 +656,7 @@ export default function Dashboard() {
             <div className="flex flex-col gap-6 w-full">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                     {/* Network Topology */}
-                    <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 relative overflow-hidden group shadow-lg h-[400px] flex flex-col">
+                    <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 relative overflow-hidden group shadow-lg h-[250px] md:h-[400px] flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <Network className="w-5 h-5 text-blue-400" />
@@ -650,7 +687,7 @@ export default function Dashboard() {
                     </div>
 
                     {/* Live Logs */}
-                    <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col h-[400px] shadow-lg">
+                    <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 flex flex-col h-[250px] md:h-[400px] shadow-lg">
                         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                             <AlertTriangle className="w-5 h-5 text-yellow-500" />
                             Live Security Feed
@@ -685,7 +722,7 @@ export default function Dashboard() {
                 </div>
 
                 {/* Global Threat Map */}
-                <div className="w-full h-[500px]">
+                <div className="w-full h-[250px] md:h-[500px]">
                     <WorldMap agents={mapAgents} />
                 </div>
             </div>

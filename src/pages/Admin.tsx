@@ -2,7 +2,8 @@ import { Shield, Lock, Mail, Users, Activity } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { API_URL } from '../config';
+import { API_URL, SOCKET_URL } from '../config';
+import { io } from 'socket.io-client';
 
 interface UserDto {
     id: number;
@@ -27,8 +28,21 @@ export default function Admin() {
     useEffect(() => {
         fetchUsers();
         fetchHealth();
-        const interval = setInterval(fetchHealth, 10000); // Pulse every 10s
-        return () => clearInterval(interval);
+        
+        // Connect to real-time health stream
+        const socket = io(SOCKET_URL, {
+            path: '/socket.io/',
+            transports: ['websocket'],
+            query: { token }
+        });
+        
+        socket.on('health_update', (newHealth: HealthStatus) => {
+            setHealth(newHealth);
+        });
+        
+        return () => {
+            socket.disconnect();
+        };
     }, []);
 
     const fetchUsers = async () => {
@@ -63,9 +77,9 @@ export default function Admin() {
 
     return (
         <div className="transition-colors">
-            <div className="mb-8 flex justify-between items-end">
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <Shield className="text-purple-600 dark:text-purple-500" />
                         Infrastructure & Access
                     </h1>

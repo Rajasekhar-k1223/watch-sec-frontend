@@ -49,12 +49,12 @@ export default function ImageRecognition() {
     });
 
     return (
-        <div className="p-8 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors animate-in fade-in duration-500">
-            <div className="flex justify-between items-center mb-8">
+        <div className="p-4 md:p-8 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors animate-in fade-in duration-500">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 dark:bg-purple-500/10 rounded-lg">
-                            <ImageIcon className="text-purple-600 dark:text-purple-500 w-8 h-8" />
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-500/10 rounded-lg shrink-0">
+                            <ImageIcon className="text-purple-600 dark:text-purple-500 w-6 h-6 md:w-8 md:h-8" />
                         </div>
                         Image Recognition (OCR)
                     </h1>
@@ -62,13 +62,13 @@ export default function ImageRecognition() {
                         Automatic text extraction and PII/Sensitive data detection from screenshots.
                     </p>
                 </div>
-                <div className="flex gap-3">
-                    <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 items-center shadow-sm">
-                        <Search className="text-gray-400 dark:text-gray-500 ml-2" size={16} />
+                <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-1 min-w-[160px] bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 items-center shadow-sm">
+                        <Search className="text-gray-400 dark:text-gray-500 ml-2 shrink-0" size={16} />
                         <input
                             type="text"
                             placeholder="Filter by Agent ID..."
-                            className="bg-transparent text-gray-900 dark:text-white text-xs px-3 py-1 outline-none w-48 placeholder-gray-400"
+                            className="bg-transparent text-gray-900 dark:text-white text-xs px-3 py-1 outline-none w-full placeholder-gray-400"
                             value={searchAgent}
                             onChange={(e) => setSearchAgent(e.target.value)}
                         />

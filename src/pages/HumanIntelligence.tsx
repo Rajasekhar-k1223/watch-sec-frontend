@@ -75,10 +75,10 @@ export default function HumanIntelligence() {
     ];
 
     return (
-        <div className="space-y-6 text-gray-900 dark:text-white pb-12">
+        <div className="p-4 md:p-6 space-y-6 text-gray-900 dark:text-white pb-12">
             <div>
-                <h1 className="text-3xl font-black flex items-center gap-3">
-                    <Brain className="text-emerald-500 w-10 h-10" />
+                <h1 className="text-2xl md:text-3xl font-black flex items-center gap-3">
+                    <Brain className="text-emerald-500 w-8 h-8 md:w-10 md:h-10 shrink-0" />
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">Human Intelligence</span>
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 uppercase tracking-widest font-bold">Workforce Wellness & Behavioral Insights</p>

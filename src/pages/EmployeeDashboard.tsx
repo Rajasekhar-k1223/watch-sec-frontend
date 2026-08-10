@@ -33,9 +33,9 @@ export default function EmployeeDashboard() {
     ];
 
     return (
-        <div className="p-8 bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
+        <div className="p-4 md:p-8 bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-white font-sans animate-fade-in transition-colors">
             <div className="mb-8 border-b border-gray-200 dark:border-gray-800 pb-6">
-                <h1 className="text-3xl font-bold flex items-center gap-3 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
                     <Activity className="text-blue-400" />
                     My Dashboard
                 </h1>

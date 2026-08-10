@@ -119,18 +119,18 @@ export default function MailProcessing() {
     };
 
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-8">
+        <div className="p-4 md:p-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Mail className="text-yellow-500" />
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Mail className="text-yellow-500 shrink-0" />
                         Mail Processing (SMTP/Agent)
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                         Intercept, inspect, and audit email traffic from Outlook and Webmail.
                     </p>
                 </div>
-                <div className="flex gap-4 items-center">
+                <div className="flex flex-wrap gap-3 items-center">
                     {(startDate || endDate) && (
                         <div className="text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded uppercase inline-block">
                             Showing: {startDate.split('-').reverse().join('-')} - {(endDate || '').split('-').reverse().join('-')}
@@ -188,7 +188,7 @@ export default function MailProcessing() {
 
                         <div className="p-6 overflow-y-auto space-y-6 font-mono text-sm" id="mail-print-area">
                             {/* Header Info */}
-                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 grid grid-cols-2 gap-4">
+                            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1">
                                     <span className="text-xs text-gray-400 dark:text-gray-500 uppercase font-bold">Timestamp</span>
                                     <div className="text-gray-900 dark:text-white">{new Date(selectedLog.Timestamp).toLocaleString()}</div>

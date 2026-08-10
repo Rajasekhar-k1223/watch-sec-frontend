@@ -103,11 +103,11 @@ export default function YaraScanner() {
     };
 
     return (
-        <div className="p-8 space-y-8 animate-in fade-in duration-500">
-            <header className="flex justify-between items-end">
+        <div className="p-4 md:p-8 space-y-6 md:space-y-8 animate-in fade-in duration-500">
+            <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-                        <ShieldAlert className="text-red-500" size={32} />
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+                        <ShieldAlert className="text-red-500 shrink-0" size={28} />
                         YARA Malware Scanner
                     </h1>
                     <p className="text-sm font-medium text-slate-500 mt-2">

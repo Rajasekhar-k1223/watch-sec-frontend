@@ -6,17 +6,67 @@ export default function ThreatHunting() {
   const [results, setResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     setIsSearching(true);
-    // Mock API call to /api/v2/hunting/search
-    setTimeout(() => {
-      setResults([
-        { id: 101, type: 'Process', agent: 'WIN-DESK-01', data: 'powershell.exe -w hidden -enc JAB...', time: '10:42:01 AM' },
-        { id: 102, type: 'Network', agent: 'WIN-DESK-01', data: 'TCP 4444 -> 192.168.1.100', time: '10:42:05 AM' },
-        { id: 103, type: 'DNS', agent: 'WIN-DESK-01', data: 'Query: malicious-c2.internal', time: '10:42:06 AM' },
-      ]);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`http://localhost:8000/api/v2/hunting/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ query: query, time_range: '24h' })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const baseResults = data.results || [];
+        
+        // Enhance results with Threat Intel lookup for IPs or Hashes
+        const enhancedResults = await Promise.all(baseResults.map(async (row: any) => {
+            let malicious = false;
+            let intelMatches = [];
+            // Extract potential IOCs (very basic regex for IP and Hash)
+            const ips = row.data.match(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g) || [];
+            const hashes = row.data.match(/\b[a-fA-F0-9]{64}\b/g) || [];
+            
+            for (const ip of ips) {
+                try {
+                    const tiRes = await fetch(`http://localhost:8000/api/v2/threat-intel/ioc/lookup?value=${ip}&type=IPv4`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (tiRes.ok) {
+                        const tiData = await tiRes.json();
+                        if (tiData.is_malicious) { malicious = true; intelMatches.push(ip); }
+                    }
+                } catch (e) {}
+            }
+            
+            for (const hash of hashes) {
+                try {
+                    const tiRes = await fetch(`http://localhost:8000/api/v2/threat-intel/ioc/lookup?value=${hash}&type=SHA256`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (tiRes.ok) {
+                        const tiData = await tiRes.json();
+                        if (tiData.is_malicious) { malicious = true; intelMatches.push(hash); }
+                    }
+                } catch (e) {}
+            }
+            
+            return { ...row, isMalicious: malicious, intelMatches };
+        }));
+        
+        setResults(enhancedResults);
+      } else {
+        setResults([]);
+      }
+    } catch (e) {
+      console.error(e);
+      setResults([]);
+    } finally {
       setIsSearching(false);
-    }, 800);
+    }
   };
 
   const getIconForType = (type: string) => {
@@ -30,13 +80,13 @@ export default function ThreatHunting() {
   };
 
   return (
-    <div className="p-6 space-y-6 bg-[#0a0a0a] min-h-screen text-white">
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-6 space-y-6 bg-[#0a0a0a] min-h-screen text-white">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[#00ff8e]">Threat Hunting Workspace</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#00ff8e]">Threat Hunting Workspace</h1>
           <p className="text-gray-400">Proactive Telemetry Search & Incident Timeline Reconstruction</p>
         </div>
-        <div className="flex space-x-3">
+        <div className="flex flex-wrap gap-3">
           <button className="bg-[#1a1a1a] border border-gray-700 px-4 py-2 rounded flex items-center hover:bg-[#2a2a2a]">
             <FolderPlus className="w-4 h-4 mr-2" /> New Workspace
           </button>
@@ -49,7 +99,7 @@ export default function ThreatHunting() {
       {/* Query Bar */}
       <div className="bg-[#1a1a1a] border-gray-800">
         <div className="p-4">
-          <div className="flex space-x-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:space-x-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-3 w-5 h-5 text-gray-500" />
               <input 
@@ -95,8 +145,8 @@ export default function ThreatHunting() {
                   </thead>
                   <tbody>
                     {results.map((row, idx) => (
-                      <tr key={idx} className="border-b border-gray-800 hover:bg-[#2a2a2a]">
-                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{row.time}</td>
+                      <tr key={idx} className={`border-b border-gray-800 hover:bg-[#2a2a2a] ${row.isMalicious ? 'bg-red-900/20' : ''}`}>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{row.timestamp}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center space-x-2">
                             {getIconForType(row.type)}
@@ -106,6 +156,11 @@ export default function ThreatHunting() {
                         <td className="px-4 py-3 text-[#00ff8e]">{row.agent}</td>
                         <td className="px-4 py-3 font-mono text-xs truncate max-w-md" title={row.data}>
                           {row.data}
+                          {row.isMalicious && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded bg-red-600/30 text-red-400 text-[10px] font-bold uppercase tracking-wider border border-red-500/50">
+                                Malicious IOC Detected
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <button className="text-xs border border-gray-600 px-2 py-1 rounded hover:bg-gray-700">

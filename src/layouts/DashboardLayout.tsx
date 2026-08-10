@@ -21,7 +21,7 @@ export default function DashboardLayout() {
                 />
             )}
 
-            <div className="flex-1 md:ml-64 flex flex-col w-full md:w-[calc(100%-16rem)] relative z-10 transition-all duration-300">
+            <div className="flex-1 md:ml-72 flex flex-col w-full md:w-[calc(100%-18rem)] relative z-10 transition-all duration-300">
                 <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
                 <main className="flex-1 p-0 md:p-6 overflow-x-hidden">
                     {/* Main Content Area - "The Screen" */}

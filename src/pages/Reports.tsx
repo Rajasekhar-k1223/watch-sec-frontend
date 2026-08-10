@@ -162,7 +162,7 @@ export default function Reports() {
     }
 
     return (
-        <div className="p-10 space-y-10 max-w-6xl mx-auto animate-in fade-in duration-700 min-h-screen bg-slate-50 dark:bg-[#020617]">
+        <div className="p-4 md:p-10 space-y-10 max-w-6xl mx-auto animate-in fade-in duration-700 min-h-screen bg-slate-50 dark:bg-[#020617]">
 
             {/* Header */}
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
@@ -173,7 +173,7 @@ export default function Reports() {
                          </div>
                          <span className="text-[10px] font-black tracking-[0.2em] uppercase text-indigo-500/80">Compliance Orchestration</span>
                     </div>
-                    <h1 className="text-5xl font-black tracking-tighter">
+                    <h1 className="text-2xl md:text-5xl font-black tracking-tighter">
                         <span className="text-gradient">Intelligence Reports</span>
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400 mt-4 text-xs font-medium max-w-xl leading-relaxed">
