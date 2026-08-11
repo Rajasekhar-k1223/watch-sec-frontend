@@ -236,6 +236,18 @@ export default function Agents() {
             const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
             if (res.ok) {
                 const data = await res.json();
+                if (data.resources?.trend) {
+                    data.resources.trend = data.resources.trend.map((t: any) => {
+                        let dStr = t.full_date;
+                        if (dStr && !dStr.includes('T')) dStr = dStr.replace(' ', 'T');
+                        if (dStr && !dStr.includes('Z') && !dStr.match(/[+-]\d{2}/)) dStr += 'Z';
+                        const d = new Date(dStr);
+                        if (!isNaN(d.getTime())) {
+                            t.time = t.full_date.length <= 10 ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        }
+                        return t;
+                    });
+                }
                 console.log("[Agents] Dashboard Stats (24h Data):", data);
                 setStats(data);
             }
@@ -1180,8 +1192,15 @@ export default function Agents() {
                     const newPoint = {
                         time: payload.data.time,
                         cpu: payload.data.cpu,
-                        mem: payload.data.mem
+                        mem: payload.data.mem,
+                        full_date: payload.data.full_date
                     };
+                    if (newPoint.full_date) {
+                        const d = new Date(newPoint.full_date);
+                        if (!isNaN(d.getTime())) {
+                            newPoint.time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        }
+                    }
                     if (next.resources) {
                         next.resources = {
                             ...next.resources,
