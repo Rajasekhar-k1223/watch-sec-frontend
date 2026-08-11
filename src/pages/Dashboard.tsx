@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
-    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Brush,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts';
 import { io } from 'socket.io-client';
@@ -23,6 +23,26 @@ const PLAN_LEVELS: Record<string, number> = {
     "pro": 2,
     "enterprise": 3,
     "unlimited": 100
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-gray-900/95 backdrop-blur-md border border-gray-700 p-4 rounded-xl shadow-2xl flex flex-col gap-2 min-w-[150px]">
+                <p className="text-gray-300 text-sm font-medium mb-1 border-b border-gray-700 pb-2">{label}</p>
+                {payload.map((entry: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+                            <span className="text-gray-400 text-sm font-medium uppercase tracking-wider">{entry.name}</span>
+                        </div>
+                        <span className="text-white text-sm font-bold">{entry.value}%</span>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    return null;
 };
 
 const FEATURE_TIERS: Record<string, number> = {
@@ -630,12 +650,10 @@ export default function Dashboard() {
                                         <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
                                         <XAxis dataKey="time" stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} tickLine={false} axisLine={false} />
                                         <YAxis stroke="#4b5563" tick={{ fill: '#9ca3af', fontSize: 12 }} tickLine={false} axisLine={false} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '0.5rem', color: '#fff' }}
-                                            itemStyle={{ color: '#fff' }}
-                                        />
-                                        <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorCpu)" />
-                                        <Area type="monotone" dataKey="mem" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorMem)" />
+                                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#4b5563', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                                        <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorCpu)" activeDot={{ r: 6, strokeWidth: 0, fill: '#8b5cf6', style: { filter: 'drop-shadow(0px 0px 4px rgba(139, 92, 246, 0.8))' } }} />
+                                        <Area type="monotone" dataKey="mem" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMem)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6', style: { filter: 'drop-shadow(0px 0px 4px rgba(59, 130, 246, 0.8))' } }} />
+                                        <Brush dataKey="time" height={30} stroke="#6b7280" fill="#1f2937" tickFormatter={() => ''} travellerWidth={10} />
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>

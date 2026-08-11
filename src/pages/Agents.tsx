@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 // import { useTheme } from '../contexts/ThemeContext';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, Brush } from 'recharts';
 import { API_URL, SOCKET_URL } from '../config';
 import { Analytics } from '../services/analytics';
 
@@ -96,6 +96,26 @@ interface AgentEvent {
     RiskLevel?: string;
     Category?: string;
 }
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="bg-gray-900/95 backdrop-blur-md border border-gray-700 p-4 rounded-xl shadow-2xl flex flex-col gap-2 min-w-[150px]">
+                <p className="text-gray-300 text-sm font-medium mb-1 border-b border-gray-700 pb-2">{label}</p>
+                {payload.map((entry: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: entry.color }} />
+                            <span className="text-gray-400 text-sm font-medium uppercase tracking-wider">{entry.name}</span>
+                        </div>
+                        <span className="text-white text-sm font-bold">{entry.value}%</span>
+                    </div>
+                ))}
+            </div>
+        );
+    }
+    return null;
+};
 
 // Helper for consistent date parsing (SQL -> ISO UTC -> Local)
 const normalizeTimestamp = (ts: any) => {
@@ -1565,9 +1585,10 @@ export default function Agents() {
                                             <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
-                                    <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', fontSize: '12px' }} itemStyle={{ color: '#fff' }} />
-                                    <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} />
-                                    <Area type="monotone" dataKey="mem" stroke="#10b981" fillOpacity={1} fill="url(#colorMem)" strokeWidth={2} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#4b5563', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                                    <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} activeDot={{ r: 4, strokeWidth: 0, fill: '#8b5cf6', style: { filter: 'drop-shadow(0px 0px 4px rgba(139, 92, 246, 0.8))' } }} />
+                                    <Area type="monotone" dataKey="mem" stroke="#10b981" fillOpacity={1} fill="url(#colorMem)" strokeWidth={2} activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981', style: { filter: 'drop-shadow(0px 0px 4px rgba(16, 185, 129, 0.8))' } }} />
+                                    <Brush dataKey="time" height={15} stroke="#6b7280" fill="#1f2937" tickFormatter={() => ''} travellerWidth={6} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
