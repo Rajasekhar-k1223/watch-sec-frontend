@@ -80,6 +80,7 @@ interface DashStats {
     agents?: { online: number; total: number; offline: number };
     resources?: { trend: any[] };
     threats?: { total: number; total24h: number; trend: any[] };
+    network?: { inboundMbps: number; outboundMbps: number };
 }
 
 interface AgentEvent {
@@ -244,7 +245,7 @@ export default function Agents() {
                         if (dStr && !dStr.endsWith('Z') && !dStr.match(/[+-]\d{2}(?::?\d{2})?$/)) dStr += 'Z';
                         const d = new Date(dStr);
                         if (!isNaN(d.getTime())) {
-                            t.time = t.full_date.length <= 10 ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            t.time = (t.full_date && t.full_date.length <= 10) ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                         }
                         return t;
                     });
