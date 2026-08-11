@@ -206,7 +206,7 @@ export default function Dashboard() {
                         if (dStr && !dStr.endsWith('Z') && !dStr.match(/[+-]\d{2}(?::?\d{2})?$/)) dStr += 'Z';
                         const d = new Date(dStr);
                             if (!isNaN(d.getTime())) {
-                                t.time = (t.full_date && t.full_date.length <= 10) ? d.toLocaleDateString([], { month: 'short', day: 'numeric' }) : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                t.time = d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                             }
                             return t;
                         });
@@ -329,7 +329,7 @@ export default function Dashboard() {
                 
                 const d = new Date(dStr);
                 if (!isNaN(d.getTime())) {
-                    newPoint.time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    newPoint.time = d.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 }
 
                 // Add to rolling live-points window (sliding, max MAX_LIVE_POINTS)
@@ -337,6 +337,10 @@ export default function Dashboard() {
                     ...livePointsRef.current.filter(p => p.time !== newPoint.time),
                     newPoint
                 ].slice(-MAX_LIVE_POINTS);
+
+                if (apiTrendRef.current.length > 0) {
+                    apiTrendRef.current.shift();
+                }
 
                 // Merge and update the chart — smooth, no reset
                 const mergedTrend = buildMergedTrend();
