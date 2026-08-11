@@ -239,7 +239,8 @@ export default function Agents() {
                 if (data.resources?.trend) {
                     data.resources.trend = data.resources.trend.map((t: any) => {
                         let dStr = t.full_date;
-                        if (dStr && !dStr.includes('T')) dStr = dStr.replace(' ', 'T');
+                        if (dStr && !dStr.includes('T') && dStr.includes(' ')) dStr = dStr.replace(' ', 'T');
+                        if (dStr && dStr.length === 16) dStr += ':00';
                         if (dStr && !dStr.endsWith('Z') && !dStr.match(/[+-]\d{2}(?::?\d{2})?$/)) dStr += 'Z';
                         const d = new Date(dStr);
                         if (!isNaN(d.getTime())) {
@@ -1196,7 +1197,11 @@ export default function Agents() {
                         full_date: payload.data.full_date
                     };
                     if (newPoint.full_date) {
-                        const d = new Date(newPoint.full_date);
+                        let dStr = newPoint.full_date;
+                        if (dStr && !dStr.includes('T') && dStr.includes(' ')) dStr = dStr.replace(' ', 'T');
+                        if (dStr && dStr.length === 16) dStr += ':00';
+                        if (dStr && !dStr.endsWith('Z') && !dStr.match(/[+-]\d{2}(?::?\d{2})?$/)) dStr += 'Z';
+                        const d = new Date(dStr);
                         if (!isNaN(d.getTime())) {
                             newPoint.time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                         }
