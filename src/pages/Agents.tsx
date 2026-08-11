@@ -1188,6 +1188,13 @@ export default function Agents() {
                             trend: [...(next.resources.trend || []), newPoint]
                         };
                     }
+                    if (payload.data.net_in !== undefined && payload.data.net_out !== undefined) {
+                        next.network = {
+                            ...next.network,
+                            inboundMbps: payload.data.net_in,
+                            outboundMbps: payload.data.net_out
+                        };
+                    }
                     return next;
                 });
             }
@@ -1198,10 +1205,11 @@ export default function Agents() {
              setStats(prev => {
                  if (!prev) return prev;
                  const newLog = {
-                     type: data.ActivityType || 'Activity',
-                     details: `${data.ProcessName || ''} ${data.WindowTitle || ''}`.trim(),
+                     type: data.ActivityType || data.type || 'Activity',
+                     details: `${data.ProcessName || ''} ${data.WindowTitle || data.Url || data.details || ''}`.trim(),
                      timestamp: new Date().toISOString(),
-                     agentId: data.AgentId
+                     agentId: data.AgentId || data.agentId,
+                     id: Math.random().toString()
                  };
                  return {
                      ...prev,
@@ -1564,7 +1572,7 @@ export default function Agents() {
                         <div className="flex-1 overflow-y-auto pr-2 space-y-2">
                             {stats?.recentLogs && stats.recentLogs.length > 0 ? (
                                 stats.recentLogs.map((log: any, idx: number) => (
-                                    <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700/50 text-xs hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                                    <div key={log.id || `${log.timestamp}-${idx}`} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700/50 text-xs hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
                                         <div className="flex items-center gap-3 overflow-hidden">
                                             <span className="text-blue-600 dark:text-blue-400 font-bold shrink-0 w-24 truncate" title={log.agentId}>{log.agentId}</span>
                                             <span className={`font-bold shrink-0 ${['Critical', 'High', 'Error'].includes(log.type) ? 'text-red-500 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>{log.type}</span>

@@ -321,13 +321,22 @@ export default function Dashboard() {
                 const mergedTrend = buildMergedTrend();
                 setStats(prev => {
                     if (!prev) return null;
-                    return {
-                        ...prev,
-                        resources: {
-                            ...prev.resources,
-                            trend: mergedTrend
-                        }
+                    const next = { ...prev };
+                    
+                    next.resources = {
+                        ...prev.resources,
+                        trend: mergedTrend
                     };
+
+                    if (payload.data.net_in !== undefined && payload.data.net_out !== undefined) {
+                        next.network = {
+                            ...next.network,
+                            inboundMbps: payload.data.net_in,
+                            outboundMbps: payload.data.net_out
+                        };
+                    }
+                    
+                    return next;
                 });
             }
         });
