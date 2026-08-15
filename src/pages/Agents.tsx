@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 // import { useTheme } from '../contexts/ThemeContext';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, Brush } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
 import { API_URL, SOCKET_URL } from '../config';
 import { Analytics } from '../services/analytics';
 
@@ -80,7 +80,8 @@ interface DashStats {
     agents?: { online: number; total: number; offline: number };
     resources?: { trend: any[] };
     threats?: { total: number; total24h: number; trend: any[] };
-    network?: { inboundMbps: number; outboundMbps: number };
+    network?: { inboundMbps: number; outboundMbps: number; activeConnections?: number };
+    osDistribution?: { name: string; value: number }[];
 }
 
 interface AgentEvent {
@@ -466,6 +467,8 @@ export default function Agents() {
                         publicIp: a.publicIp || a.PublicIp || undefined,
                         localIp: a.localIp || a.LocalIp || undefined,
                         diskEncrypted: a.diskEncrypted ?? a.DiskEncrypted ?? false,
+                        activeUser: a.activeUser || a.ActiveUser || undefined,
+                        userLoginTime: a.userLoginTime || a.UserLoginTime || undefined,
                     };
                 });
 
@@ -572,11 +575,15 @@ export default function Agents() {
             });
 
             if (res.ok) {
+                toast.success("Patch Now triggered. The agent will update on its next heartbeat.");
                 // Silently refresh agents
                 fetchAgents();
+            } else {
+                toast.error("Failed to trigger Patch Now.");
             }
         } catch (e) {
             console.error(e);
+            toast.error("Network error triggering Patch Now.");
         }
     };
 
@@ -1549,7 +1556,7 @@ export default function Agents() {
                 )}
 
                 {/* Fleet Analytics Section */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-4">
                     {/* Card 1: Agent Status */}
                     <div className="glass-card p-5 group relative overflow-hidden">
                         <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"></div>
@@ -1574,7 +1581,7 @@ export default function Agents() {
                         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 flex items-center gap-2"> <Activity className="w-4 h-4 text-purple-500 dark:text-purple-400" /> Infrastructure Telemetry</h3>
                         <div className="h-24 w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={stats?.resources?.trend || []}>
+                                <AreaChart data={(stats?.resources?.trend || []).slice(-60)}>
                                     <defs>
                                         <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
                                             <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
@@ -1588,7 +1595,6 @@ export default function Agents() {
                                     <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#4b5563', strokeWidth: 1, strokeDasharray: '4 4' }} />
                                     <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} activeDot={{ r: 4, strokeWidth: 0, fill: '#8b5cf6', style: { filter: 'drop-shadow(0px 0px 4px rgba(139, 92, 246, 0.8))' } }} />
                                     <Area type="monotone" dataKey="mem" stroke="#10b981" fillOpacity={1} fill="url(#colorMem)" strokeWidth={2} activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981', style: { filter: 'drop-shadow(0px 0px 4px rgba(16, 185, 129, 0.8))' } }} />
-                                    <Brush dataKey="time" height={15} stroke="#6b7280" fill="#1f2937" tickFormatter={() => ''} travellerWidth={6} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -1612,8 +1618,50 @@ export default function Agents() {
                         </div>
                     </div>
 
+                    {/* Card 3.5: Active Connections */}
+                    <div className="glass-card p-4">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <Activity className="w-4 h-4 text-cyan-500" /> Active Connections</h3>
+                        <div className="flex flex-col gap-2 justify-center h-full pb-4">
+                            <div className="text-4xl font-black text-slate-900 dark:text-white leading-none text-center">{stats?.network?.activeConnections || 0}</div>
+                            <span className="text-[10px] text-slate-500 font-bold uppercase text-center mt-1">Live Network Conns</span>
+                        </div>
+                    </div>
+
+                    {/* Card 3.6: OS Distribution */}
+                    <div className="glass-card p-4">
+                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <Server className="w-4 h-4 text-blue-400" /> OS Distribution</h3>
+                        <div className="h-16 w-full">
+                            {stats?.osDistribution && stats.osDistribution.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={stats.osDistribution}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={15}
+                                            outerRadius={30}
+                                            paddingAngle={2}
+                                            dataKey="value"
+                                        >
+                                            {stats.osDistribution.map((_, index) => {
+                                                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+                                                return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                            })}
+                                        </Pie>
+                                        <Tooltip 
+                                            contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '4px', padding: '4px' }}
+                                            itemStyle={{ color: '#fff', fontSize: '10px' }}
+                                        />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="text-[10px] text-gray-500 italic flex items-center justify-center h-full">No OS Data</div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Card 4: Recent Activity Feed (New) */}
-                    <div className="glass-card p-4 col-span-1 md:col-span-4 max-h-48 overflow-hidden flex flex-col">
+                    <div className="glass-card p-4 col-span-2 md:col-span-6 max-h-48 overflow-hidden flex flex-col">
                         <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <List className="w-4 h-4 text-cyan-500 dark:text-cyan-400" /> Behavioral Audit Trail</h3>
                         <div className="flex-1 overflow-y-auto pr-2 space-y-2">
                             {stats?.recentLogs && stats.recentLogs.length > 0 ? (

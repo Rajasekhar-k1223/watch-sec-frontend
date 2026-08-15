@@ -1,4 +1,4 @@
-import { Shield, Lock, Mail, Users, Activity } from 'lucide-react';
+import { Shield, Lock, Mail, Users, Activity, Key, Copy } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -6,11 +6,11 @@ import { API_URL, SOCKET_URL } from '../config';
 import { io } from 'socket.io-client';
 
 interface UserDto {
-    id: number;
-    username: string;
-    role: string;
-    tenantId: number | null;
-    tenantName?: string;
+    Id: number;
+    Username: string;
+    Role: string;
+    TenantId: number | null;
+    TenantName?: string;
 }
 
 interface HealthStatus {
@@ -18,16 +18,28 @@ interface HealthStatus {
     services: Record<string, { status: string; latency_ms: number }>;
 }
 
+interface TenantDto {
+    Id: number;
+    Name: string;
+    Plan: string;
+    AgentLimit: number;
+    NextBillingDate: string;
+    ActiveStatus: boolean;
+    ApiKey?: string;
+}
+
 export default function Admin() {
     const [users, setUsers] = useState<UserDto[]>([]);
     const [health, setHealth] = useState<HealthStatus | null>(null);
+    const [tenant, setTenant] = useState<TenantDto | null>(null);
     const [loading, setLoading] = useState(true);
-    const { token } = useAuth();
+    const { token, user } = useAuth();
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchUsers();
         fetchHealth();
+        fetchTenant();
         
         // Connect to real-time health stream
         const socket = io(SOCKET_URL, {
@@ -71,7 +83,23 @@ export default function Admin() {
                 setHealth(data);
             }
         } catch (error) {
-            console.error("Failed to fetch health", error);
+            console.error("Failed to fetch system health", error);
+        }
+    };
+
+    const fetchTenant = async () => {
+        try {
+            const res = await fetch(`${API_URL}/tenants`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    setTenant(data[0]);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch tenant details", error);
         }
     };
 
@@ -120,32 +148,32 @@ export default function Admin() {
                                 {loading ? (
                                     <tr><td colSpan={4} className="p-4 text-center">Loading users...</td></tr>
                                 ) : users.map(user => (
-                                    <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <tr key={user.Id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs shadow-md">
-                                                    {(user.username || '?').charAt(0).toUpperCase()}
+                                                    {(user.Username || '?').charAt(0).toUpperCase()}
                                                 </div>
                                                 <div>
-                                                    <p className="text-gray-900 dark:text-white font-medium text-sm">{user.username}</p>
+                                                    <p className="text-gray-900 dark:text-white font-medium text-sm">{user.Username}</p>
                                                     <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-500">
                                                         <Mail size={10} />
-                                                        {user.username}@watch-sec.com
+                                                        {user.Username}@watch-sec.com
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs border ${user.role === 'SuperAdmin' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20' :
-                                                user.role === 'TenantAdmin' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20' :
+                                            <span className={`px-2 py-1 rounded text-xs border ${user.Role === 'SuperAdmin' ? 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20' :
+                                                user.Role === 'TenantAdmin' ? 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20' :
                                                     'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'
                                                 }`}>
-                                                {user.role}
+                                                {user.Role}
                                             </span>
                                         </td>
                                         <td className="p-4">
                                             <div className="text-sm text-gray-600 dark:text-gray-300">
-                                                {user.tenantName || (user.role === 'SuperAdmin' ? 'Global' : 'Unknown')}
+                                                {user.TenantName || (user.Role === 'SuperAdmin' ? 'Global' : 'Unknown')}
                                             </div>
                                         </td>
                                         <td className="p-4 text-gray-500 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white cursor-pointer transition-colors font-medium text-sm">
@@ -159,6 +187,7 @@ export default function Admin() {
                 </div>
 
                 {/* System Health & Security Panel */}
+                {(user?.role === 'SuperAdmin' || user?.Role === 'SuperAdmin') && (
                 <div className="space-y-6">
                     {/* Health Diagnostics */}
                     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg p-6 transition-all">
@@ -226,6 +255,81 @@ export default function Admin() {
                         </div>
                     </div>
                 </div>
+                )}
+
+                {/* Tenant Overview Panel */}
+                {(user?.role === 'TenantAdmin' || user?.Role === 'TenantAdmin') && tenant && (
+                <div className="space-y-6">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg p-6 transition-all">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                            <Shield className="text-blue-500" size={20} />
+                            Tenant Overview
+                        </h2>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tenant Name</span>
+                                <span className="text-sm text-gray-900 dark:text-white font-semibold">{tenant.Name}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Current Plan</span>
+                                <span className="px-2 py-1 rounded text-xs border bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20 font-bold">
+                                    {tenant.Plan}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Agent Limit</span>
+                                <span className="text-sm text-gray-900 dark:text-white font-mono">{tenant.AgentLimit}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Status</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${tenant.ActiveStatus ? 'bg-green-100 text-green-700 border-green-200 dark:bg-green-500/10 dark:text-green-400 dark:border-green-500/20' : 'bg-red-100 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20'}`}>
+                                    {tenant.ActiveStatus ? 'Active' : 'Inactive'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* API Key & Integration Panel */}
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg p-6 transition-all">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                            <Key className="text-blue-500" size={20} />
+                            API Key & Integration
+                        </h2>
+                        <div className="space-y-4">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                Use your API Key to deploy agents or integrate via SDK. Keep this key secure.
+                            </p>
+                            
+                            <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block">Primary Agent Key</span>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-sm px-3 py-2 font-mono text-gray-800 dark:text-gray-200 overflow-hidden text-ellipsis">
+                                        {tenant.ApiKey ? tenant.ApiKey : "••••••••••••••••••••••••••••••"}
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            if (tenant.ApiKey) navigator.clipboard.writeText(tenant.ApiKey);
+                                        }}
+                                        title="Copy API Key"
+                                        className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 border border-blue-200 dark:border-blue-500/20 rounded transition-colors"
+                                    >
+                                        <Copy size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
+                                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2 block">Quick Start Snippet</span>
+                                <div className="bg-gray-900 rounded p-3 overflow-x-auto">
+                                    <code className="text-xs font-mono text-green-400 whitespace-pre">
+                                        curl -sSL https://get.monitorix.co.in/agent.sh | sudo bash -s -- --key {tenant.ApiKey || "YOUR_API_KEY"}
+                                    </code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                )}
             </div>
         </div>
     );

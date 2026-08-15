@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import {
-    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, Brush,
+    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts';
 import { io } from 'socket.io-client';
@@ -88,6 +88,7 @@ interface DashboardStats {
         globalScore: number;
         breakdown?: { name: string; value: number; color: string }[];
     };
+    osDistribution?: { name: string; value: number }[];
 }
 
 
@@ -173,7 +174,7 @@ export default function Dashboard() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [mapAgents, setMapAgents] = useState<any[]>([]);
     const [planLevel, setPlanLevel] = useState<number>(1);
-    const [timeRange, setTimeRange] = useState(24);
+    const [timeRange, setTimeRange] = useState(1);
     const [openIncidents, setOpenIncidents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const logContainerRef = useRef<HTMLDivElement>(null);
@@ -418,7 +419,7 @@ export default function Dashboard() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3 bg-white dark:bg-gray-800/50 p-1 rounded-xl border border-gray-200 dark:border-gray-700/50 backdrop-blur-sm shadow-sm">
-                    {[24, 168, 720].map((h) => (
+                    {[1, 24, 168, 720].map((h) => (
                         <button
                             key={h}
                             onClick={() => setTimeRange(h)}
@@ -426,7 +427,7 @@ export default function Dashboard() {
                                 ? 'bg-blue-600/90 text-white shadow-lg shadow-blue-500/25 ring-1 ring-blue-400/50'
                                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50'}`}
                         >
-                            {h === 24 ? '24H' : (h / 24) + 'D'}
+                            {h === 1 ? '1H' : h === 24 ? '24H' : (h / 24) + 'D'}
                         </button>
                     ))}
                 </div>
@@ -520,9 +521,10 @@ export default function Dashboard() {
             </div>
 
             {/* Top Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6">
                 {loading ? (
                     <>
+                        <SkeletonCard />
                         <SkeletonCard />
                         <SkeletonCard />
                         <SkeletonCard />
@@ -584,6 +586,22 @@ export default function Dashboard() {
                             <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Inbound Traffic</div>
                         </div>
 
+                        {/* Active Connections Card */}
+                        <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-5 md:p-6 rounded-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all shadow-lg hover:shadow-cyan-500/10">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-3 bg-cyan-500/20 rounded-xl text-cyan-400 border border-cyan-500/20">
+                                    <Activity className="w-6 h-6" />
+                                </div>
+                                <span className="flex items-center gap-1.5 text-xs font-semibold bg-cyan-500/10 text-cyan-400 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></div>
+                                    Live
+                                </span>
+                            </div>
+                            <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2 tracking-tight">{stats?.network.activeConnections || 0}</div>
+                            <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium">Active Network Connections</div>
+                        </div>
+
                         {/* Productivity / Custom Card */}
                         <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all shadow-lg hover:shadow-emerald-500/10">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 blur-xl"></div>
@@ -606,10 +624,13 @@ export default function Dashboard() {
             </div>
 
             {/* Middle Section: Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {loading ? (
                     <>
                         <div className="lg:col-span-2">
+                            <SkeletonChartCard />
+                        </div>
+                        <div className="lg:col-span-1">
                             <SkeletonChartCard />
                         </div>
                         <div className="lg:col-span-1">
@@ -653,7 +674,7 @@ export default function Dashboard() {
                                         <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#4b5563', strokeWidth: 1, strokeDasharray: '4 4' }} />
                                         <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorCpu)" activeDot={{ r: 6, strokeWidth: 0, fill: '#8b5cf6', style: { filter: 'drop-shadow(0px 0px 4px rgba(139, 92, 246, 0.8))' } }} />
                                         <Area type="monotone" dataKey="mem" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorMem)" activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6', style: { filter: 'drop-shadow(0px 0px 4px rgba(59, 130, 246, 0.8))' } }} />
-                                        <Brush dataKey="time" height={30} stroke="#6b7280" fill="#1f2937" tickFormatter={() => ''} travellerWidth={10} />
+
                                     </AreaChart>
                                 </ResponsiveContainer>
                             </div>
@@ -698,6 +719,45 @@ export default function Dashboard() {
                                     <div className="text-2xl font-black text-gray-900 dark:text-white">{stats?.productivity.globalScore}%</div>
                                     <div className="text-[10px] text-gray-500 uppercase font-black">Score</div>
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Pie Chart: OS Distribution */}
+                        <div className="bg-white dark:bg-gray-900/40 backdrop-blur-xl border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-lg lg:col-span-1">
+                            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                <Server className="w-5 h-5 text-blue-400" />
+                                OS Distribution
+                            </h2>
+                            <div className="h-[250px] relative">
+                                {stats?.osDistribution && stats.osDistribution.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={stats.osDistribution}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={50}
+                                                outerRadius={75}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {stats.osDistribution.map((_, index) => {
+                                                    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
+                                                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                                })}
+                                            </Pie>
+                                            <Tooltip 
+                                                contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '8px' }}
+                                                itemStyle={{ color: '#fff', fontSize: '12px' }}
+                                            />
+                                            <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-gray-500 text-xs italic">
+                                        No OS data.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </>
