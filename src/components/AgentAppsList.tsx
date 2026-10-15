@@ -6,6 +6,8 @@ import { SOCKET_URL } from '../config';
 interface SoftwareItem {
     Name: string;
     Version: string;
+    FileVersion?: string;
+    ProductVersion?: string;
     Publisher?: string;
     InstallDate?: string;
     Type?: string;
@@ -184,6 +186,7 @@ export default function AgentAppsList({ agentId, apiUrl, token }: Props) {
                                     <tr>
                                         <th className="px-4 py-3">Software</th>
                                         <th className="px-4 py-3">Version Details</th>
+                                        <th className="px-4 py-3">Target Patch</th>
                                         <th className="px-4 py-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -230,13 +233,19 @@ export default function AgentAppsList({ agentId, apiUrl, token }: Props) {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-3 align-middle">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="text-xs font-mono bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 shadow-sm">
-                                                        v{app.Version}
-                                                    </span>
-                                                    {app.LatestVersion && (
+                                                <span className="text-xs font-mono bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 shadow-sm">
+                                                    {app.ProductVersion || app.Version || 'Unknown'}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 align-middle">
+                                                <div className="flex items-center">
+                                                    {app.HasPatchAvailable ? (
                                                         <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded border border-emerald-200 dark:border-emerald-500/20">
-                                                            → v{app.LatestVersion}
+                                                            <ArrowUpCircle size={14} /> v{app.LatestVersion === 'Unknown' ? 'Unknown' : app.LatestVersion}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs font-mono text-gray-500 dark:text-gray-400 flex items-center gap-1 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded border border-gray-200 dark:border-gray-700">
+                                                            <CheckCircle size={12} className="opacity-50" /> v{app.LatestVersion === 'Unknown' ? 'Unknown' : app.LatestVersion} <span className="opacity-70 ml-1">(Up to date)</span>
                                                         </span>
                                                     )}
                                                 </div>

@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Tenants from './pages/Tenants';
 import Admin from './pages/Admin';
 import Agents from './pages/Agents';
+import LocationMap from './pages/LocationMap';
 import SystemAudit from './pages/SystemAudit';
 import Billing from './pages/Billing';
 import Settings from './pages/Settings';
@@ -37,6 +38,22 @@ import AgentlessDashboard from './pages/AgentlessDashboard';
 import SoarPlaybooks from './pages/SoarPlaybooks';
 import ForensicsDashboard from './pages/ForensicsDashboard';
 import DetectionAlerts from './pages/DetectionAlerts';
+import SandboxDashboard from './pages/SandboxDashboard';
+import Incidents from './pages/Incidents';
+import ThreatIntelligence from './pages/ThreatIntelligence';
+import SecurityLogs from './pages/SecurityLogs';
+import UebaIdentity from './pages/UebaIdentity';
+import XdrConnectors from './pages/XdrConnectors';
+import SecurityGraph from './pages/SecurityGraph';
+import CorrelationChains from './pages/CorrelationChains';
+import DlpDashboard from './pages/DlpDashboard';
+import EmailForensics from './pages/EmailForensics';
+import AuditTrail from './pages/AuditTrail';
+import PerformanceAnalytics from './pages/PerformanceAnalytics';
+import ExecutiveIntelligence from './pages/ExecutiveIntelligence';
+import RuntimeScope from './pages/RuntimeScope';
+import PlatformStatus from './pages/PlatformStatus';
+import CyberRange from './pages/CyberRange';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProtectedRoute() {
@@ -74,7 +91,7 @@ function App() {
   return (
     <>
     <AuthProvider>
-      <AntiTamper />
+      {/* <AntiTamper /> */}
       <ThemeProvider>
         <Toaster position="top-right"
           containerStyle={{ zIndex: 10001 }}
@@ -101,6 +118,7 @@ function App() {
                 <Route path="/users" element={<Admin />} />
                 <Route path="/tenants" element={<Tenants />} />
                 <Route path="/agents" element={<Agents />} />
+                <Route path="/fleet-map" element={<LocationMap />} />
                 <Route path="/mail" element={<MailProcessing />} />
                 <Route path="/icap" element={<IcapServer />} />
                 <Route path="/image-recognition" element={<ImageRecognition />} />
@@ -130,6 +148,27 @@ function App() {
                 <Route path="/agentless" element={<AgentlessDashboard />} />
                 <Route path="/bandwidth-settings" element={<BandwidthSettings />} />
                 <Route path="/playbooks" element={<SoarPlaybooks />} />
+                <Route path="/sandbox" element={<SandboxDashboard />} />
+                <Route path="/incidents" element={<Incidents />} />
+                <Route path="/attack-chains" element={<CorrelationChains />} />
+                <Route path="/correlation" element={<CorrelationChains />} />
+                
+                {/* New Routes Mapped to Coming Soon */}
+                <Route path="/infrastructure-map" element={<SecurityGraph />} />
+                <Route path="/threat-intelligence" element={<ThreatIntelligence />} />
+                <Route path="/security-logs" element={<SecurityLogs />} />
+                <Route path="/email-forensics" element={<EmailForensics />} />
+                <Route path="/dlp" element={<DlpDashboard />} />
+                <Route path="/incident-forensics" element={<ForensicsDashboard />} />
+                <Route path="/identity" element={<UebaIdentity />} />
+                <Route path="/user-identity" element={<UebaIdentity />} />
+                <Route path="/automation" element={<XdrConnectors />} />
+                <Route path="/audit-trail" element={<AuditTrail />} />
+                <Route path="/performance" element={<PerformanceAnalytics />} />
+                <Route path="/executive" element={<ExecutiveIntelligence />} />
+                <Route path="/runtime-scope" element={<RuntimeScope />} />
+                <Route path="/platform-status" element={<PlatformStatus />} />
+                <Route path="/cyber-range" element={<CyberRange />} />
               </Route>
             </Route>
           </Routes>

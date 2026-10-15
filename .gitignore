@@ -4,3 +4,9 @@ coverage/
 .env
 .DS_Store
 *.local
+*.log
+fix_*.py
+replace*.py
+update_*.py
+scratch/
+

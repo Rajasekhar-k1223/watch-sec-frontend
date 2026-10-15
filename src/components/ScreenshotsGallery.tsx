@@ -20,6 +20,16 @@ const normalizeTimestamp = (ts: any) => {
 };
 
 export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }: Props) {
+    const getFullUrl = (path: string) => {
+        if (!path) return '';
+        if (path.startsWith('http')) return `${path}?token=${token}`;
+        let baseUrl = apiUrl.replace(/\/api\/?$/, '');
+        if (!baseUrl) {
+             baseUrl = 'https://monitorix-apis.elsea.co.in';
+        }
+        return `${baseUrl}${path}?token=${token}`;
+    };
+
     const [images, setImages] = useState<any[]>([]);
     const [isEnabled, setIsEnabled] = useState(false);
     const [loadingSettings, setLoadingSettings] = useState(true);
@@ -73,7 +83,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                             quality: agent.ScreenshotQuality || 80,
                             resolution: agent.ScreenshotResolution || 'Original',
                             maxSize: agent.MaxScreenshotSize || 0,
-                            interval: agent.ScreenshotInterval || 60
+                            interval: agent.screenshotInterval ?? agent.ScreenshotInterval ?? 60
                         });
                     }
                 }
@@ -190,6 +200,9 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                 })
             });
             setShowSettings(false);
+            if (onUpdate) {
+                onUpdate();
+            }
         } catch (e) { console.error("Failed settings save", e); }
     };
 
@@ -313,7 +326,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                             <div key={i} className={`group relative bg-gray-50 dark:bg-white/5 backdrop-blur-md rounded-2xl md:rounded-3xl overflow-hidden border transition-all duration-500 hover:shadow-2xl ${isMatched ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-[0_0_30px_rgba(59,130,246,0.3)]' : 'border-gray-200 dark:border-white/10'}`}>
                                 <div className="aspect-video bg-gray-100 dark:bg-black relative">
                                     <img 
-                                        src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                        src={img.dataUri || (img.ThumbnailUrl ? getFullUrl(img.ThumbnailUrl) : getFullUrl(img.Url))}
                                         alt={img.Filename} 
                                         className={`w-full h-full object-cover transition-all duration-700 ${isMatched ? 'opacity-100' : 'opacity-80 group-hover:opacity-100 group-hover:scale-110'}`} 
                                     />
@@ -340,7 +353,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                         <p className="text-[9px] text-gray-400 font-bold uppercase">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleString()}</p>
                                     </div>
                                 </div>
-                                <a href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-blue-600/20 backdrop-blur-[2px] transition-all duration-300">
+                                <a href={getFullUrl(img.Url)} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-blue-600/20 backdrop-blur-[2px] transition-all duration-300">
                                     <span className="bg-white text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-2xl translate-y-4 group-hover:translate-y-0 transition-transform">Inspect</span>
                                 </a>
                             </div>
@@ -352,9 +365,9 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
             {viewMode === 'small' && (
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 lg:grid-cols-12 gap-2">
                     {images.map((img, i) => (
-                        <a key={i} href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="group relative aspect-square bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden hover:border-blue-500 transition-all hover:scale-110 active:scale-95 z-0 hover:z-10 shadow-sm">
+                        <a key={i} href={getFullUrl(img.Url)} target="_blank" rel="noreferrer" className="group relative aspect-square bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden hover:border-blue-500 transition-all hover:scale-110 active:scale-95 z-0 hover:z-10 shadow-sm">
                             <img 
-                                src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                src={img.dataUri || (img.ThumbnailUrl ? getFullUrl(img.ThumbnailUrl) : getFullUrl(img.Url))}
                                 alt={img.Filename} 
                                 className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" 
                             />
@@ -383,7 +396,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                     <td className="px-6 py-3">
                                         <div className="w-16 h-10 bg-gray-100 dark:bg-black rounded-lg overflow-hidden border border-gray-200 dark:border-white/10 relative">
                                             <img 
-                                                src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                                src={img.dataUri || (img.ThumbnailUrl ? getFullUrl(img.ThumbnailUrl) : getFullUrl(img.Url))}
                                                 className="w-full h-full object-cover opacity-80 group-hover:opacity-100" 
                                             />
                                             {img.IsAlert && <div className="absolute inset-0 border-2 border-red-500/50 pointer-events-none" />}
@@ -400,7 +413,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                         <span className="text-[10px] font-mono bg-white/5 border border-white/5 px-2 py-1 rounded-lg text-cyan-400 font-bold">{formatSize(img.Size)}</span>
                                     </td>
                                     <td className="px-6 py-3 text-right">
-                                        <a href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase tracking-tighter text-blue-400 hover:text-blue-300 transition-colors">Inspect</a>
+                                        <a href={getFullUrl(img.Url)} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase tracking-tighter text-blue-400 hover:text-blue-300 transition-colors">Inspect</a>
                                     </td>
                                 </tr>
                             ))}
@@ -413,7 +426,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                             <div key={i} className="p-4 flex gap-4 items-center">
                                 <div className="w-20 h-14 bg-gray-100 dark:bg-black rounded-xl overflow-hidden border border-gray-200 dark:border-white/10 relative flex-shrink-0">
                                     <img 
-                                        src={img.dataUri || (img.ThumbnailUrl ? `${img.ThumbnailUrl}?token=${token}` : `${img.Url}?token=${token}`)} 
+                                        src={img.dataUri || (img.ThumbnailUrl ? getFullUrl(img.ThumbnailUrl) : getFullUrl(img.Url))}
                                         className="w-full h-full object-cover" 
                                     />
                                     {img.IsAlert && <div className="absolute inset-0 border-2 border-red-500/50" />}
@@ -422,7 +435,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
                                     <div className={`text-[11px] font-mono truncate ${img.IsAlert ? 'text-red-400 font-bold' : 'text-gray-900 dark:text-white/90'}`}>{img.Filename}</div>
                                     <div className="text-[9px] text-gray-500 font-black uppercase mt-1">{new Date(normalizeTimestamp(img.Timestamp || img.Date)).toLocaleTimeString()} • {formatSize(img.Size)}</div>
                                 </div>
-                                <a href={`${img.Url}?token=${token}`} target="_blank" rel="noreferrer" className="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
+                                <a href={getFullUrl(img.Url)} target="_blank" rel="noreferrer" className="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
                                     <Layers size={14} />
                                 </a>
                             </div>

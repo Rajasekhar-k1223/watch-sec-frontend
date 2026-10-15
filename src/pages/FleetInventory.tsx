@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface SoftwareItem {
     Name: string;
-    Version: string;
+    InstalledVersion: string;
     AgentCount: number;
     Agents: string[];
 }
@@ -23,7 +23,8 @@ export default function FleetInventory() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
-                setInventory(await res.json());
+                const data = await res.json();
+                setInventory(data.software || []);
             }
         } catch (e) {
             console.error(e);
@@ -38,7 +39,7 @@ export default function FleetInventory() {
 
     const filtered = inventory.filter(item =>
         item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.Version.toLowerCase().includes(searchTerm.toLowerCase())
+        (item.InstalledVersion && item.InstalledVersion.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -91,12 +92,12 @@ export default function FleetInventory() {
                         {loading ? (
                             <tr><td colSpan={4} className="p-12 text-center text-gray-500 dark:text-gray-400 animate-pulse">Scanning fleet inventory...</td></tr>
                         ) : filtered.map((item, idx) => (
-                            <tr key={`${item.Name}-${item.Version}-${idx}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+                            <tr key={`${item.Name}-${item.InstalledVersion}-${idx}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
                                 <td className="p-4">
                                     <span className="font-bold text-gray-900 dark:text-white">{item.Name}</span>
                                 </td>
                                 <td className="p-4">
-                                    <span className="text-gray-500 dark:text-gray-400 font-mono text-xs">{item.Version}</span>
+                                    <span className="text-gray-500 dark:text-gray-400 font-mono text-xs">{item.InstalledVersion}</span>
                                 </td>
                                 <td className="p-4 text-center">
                                     <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-xs font-bold">

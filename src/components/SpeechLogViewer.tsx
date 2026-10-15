@@ -1,6 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { Mic, Play, Clock } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config';
 
 interface SpeechLog {
     Id: number;
@@ -39,8 +41,58 @@ export default function SpeechLogViewer({ agentId, apiUrl, token }: SpeechLogVie
         }
     };
 
+    const playAudio = async (audioUrl: string) => {
+        try {
+            const baseUrl = apiUrl.replace(/\/api$/, '');
+            const res = await fetch(`${baseUrl}${audioUrl}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                const audio = new Audio(blobUrl);
+                audio.play();
+            } else {
+                console.error("Failed to fetch audio");
+            }
+        } catch (e) {
+            console.error("Error playing audio", e);
+        }
+    };
+
     useEffect(() => {
         fetchLogs();
+        
+        const socket = io(SOCKET_URL, {
+            auth: { token: token },
+            query: { token: token },
+            transports: ['websocket', 'polling']
+        });
+
+        socket.on('connect', () => {
+            console.log("SpeechViewer Connected to Socket");
+        });
+
+        socket.on('new_speech_transcription', (data: any) => {
+            if (data.agent_id === agentId) {
+                const newLog: SpeechLog = {
+                    Id: Date.now(), // Optimistic ID
+                    AgentId: data.agent_id,
+                    AudioUrl: data.audio_url,
+                    TranscribedText: data.text,
+                    Confidence: 0.95,
+                    DurationSeconds: 30, // Approx
+                    FlaggedKeywordsJson: JSON.stringify(data.keywords || []),
+                    Timestamp: data.timestamp
+                };
+                setLogs(prev => [newLog, ...prev]);
+            }
+        });
+
+        return () => {
+            socket.off('new_speech_transcription');
+            socket.disconnect();
+        };
     }, [agentId]);
 
     return (
@@ -94,7 +146,9 @@ export default function SpeechLogViewer({ agentId, apiUrl, token }: SpeechLogVie
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button className="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors border border-blue-500/30">
+                                        <button 
+                                            onClick={() => playAudio(log.AudioUrl)}
+                                            className="p-2 bg-blue-600/20 hover:bg-blue-600/40 text-blue-400 rounded-lg transition-colors border border-blue-500/30">
                                             <Play size={12} />
                                         </button>
                                     </td>
@@ -118,7 +172,9 @@ export default function SpeechLogViewer({ agentId, apiUrl, token }: SpeechLogVie
                                     <span className="text-[10px] text-gray-600 font-bold flex items-center gap-1">
                                         <Clock size={10} /> {log.DurationSeconds.toFixed(1)}s
                                     </span>
-                                    <button className="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
+                                    <button 
+                                        onClick={() => playAudio(log.AudioUrl)}
+                                        className="p-2 bg-blue-600/20 text-blue-400 rounded-lg border border-blue-500/30">
                                         <Play size={12} />
                                     </button>
                                 </div>

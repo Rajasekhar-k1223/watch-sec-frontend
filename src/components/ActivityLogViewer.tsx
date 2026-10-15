@@ -1,12 +1,13 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 
-import { RefreshCw, Download, BarChart2, Clock, Zap, Monitor, LineChart, Calendar, Search } from 'lucide-react';
+import { RefreshCw, Download, BarChart2, Clock, Zap, Monitor, LineChart, Calendar, Search, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config';
 import toast from 'react-hot-toast';
+import InputAuditViewer from './InputAuditViewer';
 
 interface Props {
     agentId: string | null;
@@ -93,9 +94,11 @@ export default function ActivityLogViewer({
     const [showInsights, setShowInsights] = useState(true);
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const [liveSession, setLiveSession] = useState<{ process_name: string, window_title: string } | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [summaryMode, setSummaryMode] = useState(false);
     const [showDetailed, setShowDetailed] = useState(false);
+    const [showInputAudit, setShowInputAudit] = useState(false);
     const [offset, setOffset] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const LIMIT = 500;
@@ -177,68 +180,51 @@ export default function ActivityLogViewer({
             }, 30000);
             return () => clearInterval(interval);
         } else {
-            // we could fetch stats for custom range if backend supports it, 
-            // for now stats endpoint uses fixed ranges.
-            setStats(null); // Clear paged stats to avoid confusion
+            setStats(null);
         }
     }, [fetchLogs, fetchStats, startDate, endDate, currentRange]);
 
-    // Data Processing for Charts
     const { volumeData, topApps, timeMetrics } = useMemo(() => {
         if (!logs.length) return { volumeData: [], topApps: [], timeMetrics: { total: 0, active: 0, idle: 0 } };
 
-        // 1. Volume Data (Group by hour/time)
         const volMap = new Map<string, number>();
-        // 2. Type Data
         const typeMap = new Map<string, number>();
-        // 3. App Data (Group by ProcessName)
         const appMap = new Map<string, number>();
 
         let totalDuration = 0;
         let totalIdle = 0;
 
         logs.forEach(l => {
-            // Volume
             const date = new Date(normalizeTimestamp(l.timestamp || l.Timestamp));
             const key = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             volMap.set(key, (volMap.get(key) || 0) + 1);
 
-            // Type
             const type = l.activityType || l.ActivityType || 'Other';
             typeMap.set(type, (typeMap.get(type) || 0) + 1);
 
-            // Metrics & Apps
             const duration = Number(l.durationSeconds || l.DurationSeconds || 0);
             const idle = Number(l.idleSeconds || l.IdleSeconds || 0);
-            // Ensure data sanity
             const active = Math.max(0, duration - idle);
 
             totalDuration += duration;
             totalIdle += idle;
 
-            // App Usage (Active Time Only)
-            if (type !== 'System' && type !== 'Web') { // Focus on apps for 'Top Apps', or include Web? Let's include non-system.
+            if (type !== 'System' && type !== 'Web') {
                 const name = l.processName || l.ProcessName || l.windowTitle || l.WindowTitle || 'Unknown';
                 appMap.set(name, (appMap.get(name) || 0) + active);
             } else if (type === 'Web') {
-                // aggregate web as 'Browser' or specific domain if available, for now 'Browser Activity'
                 appMap.set('Web Browsing', (appMap.get('Web Browsing') || 0) + active);
             }
         });
 
-        // Format Volume
         const volumeData = Array.from(volMap.entries())
             .map(([time, count]) => ({ time, count }))
             .reverse().slice(0, 20).reverse();
 
-        // Format Type
-        const typeData = Array.from(typeMap.entries()).map(([name, value]) => ({ name, value }));
-
-        // Format Top Apps
         const topApps = Array.from(appMap.entries())
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value)
-            .slice(0, 5); // Top 5
+            .slice(0, 5);
 
         const timeMetrics = {
             total: totalDuration,
@@ -246,7 +232,7 @@ export default function ActivityLogViewer({
             active: Math.max(0, totalDuration - totalIdle)
         };
 
-        return { volumeData, typeData, topApps, timeMetrics };
+        return { volumeData, topApps, timeMetrics };
     }, [logs]);
 
     const filteredLogs = useMemo(() => {
@@ -266,13 +252,12 @@ export default function ActivityLogViewer({
                 ProcessName: log.processName || log.ProcessName || 'Unknown',
                 WindowTitle: log.windowTitle || log.WindowTitle || '',
                 ActivityType: log.activityType || log.ActivityType || 'Other',
-                StartTime: log.startTime || log.timestamp || log.Timestamp,
-                EndTime: log.endTime || log.timestamp || log.Timestamp
+                StartTime: log.StartTime || log.startTime || log.Timestamp || log.timestamp,
+                EndTime: log.EndTime || log.endTime || log.Timestamp || log.timestamp
             }));
         }
 
         if (summaryMode) {
-            // mode: Non-contiguous aggregation (Total time per App/Site)
             const summaryMap = new Map<string, any>();
 
             filteredLogs.forEach(log => {
@@ -285,7 +270,6 @@ export default function ActivityLogViewer({
                     const existing = summaryMap.get(key);
                     existing.DurationSeconds += (Number(log.durationSeconds || log.DurationSeconds) || 0);
                     existing.IdleSeconds += (Number(log.idleSeconds || log.IdleSeconds) || 0);
-                    // Update bounds
                     const logTs = new Date(normalizeTimestamp(log.timestamp || log.Timestamp)).getTime();
                     if (logTs < existing.MinTs) existing.MinTs = logTs;
                     if (logTs > existing.MaxTs) existing.MaxTs = logTs;
@@ -310,33 +294,28 @@ export default function ActivityLogViewer({
                     StartTime: new Date(s.MinTs).toISOString(),
                     EndTime: new Date(s.MaxTs).toISOString()
                 }))
-                .sort((a, b) => b.DurationSeconds - a.DurationSeconds); // Sort by most used
+                .sort((a, b) => b.DurationSeconds - a.DurationSeconds);
         }
 
         const groups: any[] = [];
         let currentGroup: any = null;
 
-        // Expecting newest first from backend/socket
         filteredLogs.forEach((log) => {
             const proc = log.processName || log.ProcessName || 'Unknown';
             const title = log.windowTitle || log.WindowTitle || '';
             const type = log.activityType || log.ActivityType || 'Other';
             
-            // Server-side support: use provided startTime/endTime if they exist
-            const logStart = log.startTime || log.Timestamp || log.timestamp;
-            const logEnd = log.endTime || log.Timestamp || log.timestamp;
+            const logStart = log.StartTime || log.startTime || log.Timestamp || log.timestamp;
+            const logEnd = log.EndTime || log.endTime || log.Timestamp || log.timestamp;
 
             if (currentGroup &&
                 currentGroup.ProcessName === proc &&
                 currentGroup.WindowTitle === title &&
                 currentGroup.ActivityType === type
             ) {
-                // Contiguous Match: Merge
                 currentGroup.DurationSeconds = (currentGroup.DurationSeconds || 0) + (Number(log.durationSeconds || log.DurationSeconds) || 0);
                 currentGroup.IdleSeconds = (currentGroup.IdleSeconds || 0) + (Number(log.idleSeconds || log.IdleSeconds) || 0);
                 
-                // Since logs are newest first, this log's startTime is EARLIER than currentGroup.StartTime
-                // and its endTime might be LATER if it came from a different batch (unlikely but safe)
                 const existingStart = new Date(currentGroup.StartTime).getTime();
                 const newStart = new Date(logStart).getTime();
                 if (newStart < existingStart) currentGroup.StartTime = logStart;
@@ -345,7 +324,6 @@ export default function ActivityLogViewer({
                 const newEnd = new Date(logEnd).getTime();
                 if (newEnd > existingEnd) currentGroup.EndTime = logEnd;
             } else {
-                // New Session Break
                 if (currentGroup) groups.push(currentGroup);
                 currentGroup = {
                     ...log,
@@ -366,11 +344,9 @@ export default function ActivityLogViewer({
 
     const APP_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899'];
 
-    // Real-time updates via Socket.IO
     useEffect(() => {
-        if (!agentId || startDate || endDate) return; // Disable live updates if filtering history
+        if (!agentId || startDate || endDate) return;
 
-        // [FIX] Use central SOCKET_URL and pass auth token
         const socket = io(SOCKET_URL, {
             auth: { token: token },
             query: { token: token },
@@ -379,10 +355,7 @@ export default function ActivityLogViewer({
 
         socket.on('connect', () => {
             console.log("ActivityViewer Connected to Socket");
-            // [DEBUG] Log user state to backend
             socket.emit("client_debug", { component: 'ActivityLogViewer', user: user, agentId: agentId });
-
-            // Join the tenant room to receive activity updates
             if (user?.tenantId) {
                 socket.emit("join_room", { room: `tenant_${user.tenantId}` });
             }
@@ -397,16 +370,9 @@ export default function ActivityLogViewer({
                         (first.WindowTitle || first.windowTitle) === (data.WindowTitle || data.windowTitle) &&
                         (first.ActivityType || first.activityType) === (data.ActivityType || data.activityType)
                     ) {
-                        // User is still doing the same thing. Update duration of the TOP item.
-                        // NOTE: Backend sends strict chunks (e.g. 60s).
-                        // If we just replace 'first' with 'data', we only see the latest chunk (e.g. 60s).
-                        // We want TOTAL TIME.
-                        // So we add the new duration to the existing accumulated duration.
-
                         const newDuration = (Number(first.DurationSeconds || first.durationSeconds) || 0) + (Number(data.DurationSeconds || data.durationSeconds) || 0);
                         const newIdle = (Number(first.IdleSeconds || first.idleSeconds) || 0) + (Number(data.IdleSeconds || data.idleSeconds) || 0);
 
-                        // Create updated item
                         const updatedItem = { 
                             ...first, 
                             DurationSeconds: newDuration, 
@@ -415,21 +381,29 @@ export default function ActivityLogViewer({
                             idleSeconds: newIdle
                         };
 
-                        // Return new array with updated first item
                         return [updatedItem, ...prev.slice(1)];
                     } else {
-                        // Different activity, prepend as new
                         return [data, ...prev];
                     }
+                });
+            }
+        });
+        
+        socket.on('live_session_telemetry', (data: any) => {
+            if (data.agent_id === agentId) {
+                setLiveSession({
+                    process_name: data.process_name,
+                    window_title: data.window_title
                 });
             }
         });
 
         return () => {
             socket.off('new_client_activity');
+            socket.off('live_session_telemetry');
             socket.disconnect();
         };
-    }, [agentId, startDate, endDate, user, token, SOCKET_URL]);
+    }, [agentId, startDate, endDate, user, token]);
 
     const handleDownloadReport = async () => {
         try {
@@ -454,10 +428,12 @@ export default function ActivityLogViewer({
     };
 
     const formatDuration = (seconds: number) => {
-        const d = Number(seconds || 0);
-        if (d < 60) return `${d.toFixed(1)}s`;
-        const m = Math.floor(d / 60);
-        const s = Math.floor(d % 60);
+        const d = Math.round(Number(seconds || 0));
+        if (d < 60) return `${d}s`;
+        const h = Math.floor(d / 3600);
+        const m = Math.floor((d % 3600) / 60);
+        const s = d % 60;
+        if (h > 0) return `${h}h ${m}m`;
         return `${m}m ${s}s`;
     };
 
@@ -482,22 +458,28 @@ export default function ActivityLogViewer({
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full md:w-auto">
                     <div className="flex bg-gray-100 dark:bg-gray-700/50 p-0.5 rounded-lg border border-gray-200 dark:border-gray-600">
                         <button
-                            onClick={() => { setSummaryMode(false); setShowDetailed(false); }}
-                            className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${!summaryMode && !showDetailed ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                            onClick={() => { setSummaryMode(false); setShowDetailed(false); setShowInputAudit(false); }}
+                            className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${!summaryMode && !showDetailed && !showInputAudit ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                         >
                             Timeline
                         </button>
                         <button
-                            onClick={() => { setSummaryMode(true); setShowDetailed(false); }}
+                            onClick={() => { setSummaryMode(true); setShowDetailed(false); setShowInputAudit(false); }}
                             className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${summaryMode ? 'bg-white dark:bg-gray-600 text-cyan-600 dark:text-cyan-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                         >
                             Summary
                         </button>
                         <button
-                            onClick={() => { setShowDetailed(true); setSummaryMode(false); }}
+                            onClick={() => { setShowDetailed(true); setSummaryMode(false); setShowInputAudit(false); }}
                             className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${showDetailed ? 'bg-white dark:bg-gray-600 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
                         >
                             Detailed
+                        </button>
+                        <button
+                            onClick={() => { setShowInputAudit(true); setSummaryMode(false); setShowDetailed(false); }}
+                            className={`px-3 py-1.5 text-[9px] md:text-[10px] font-bold rounded transition-all ${showInputAudit ? 'bg-white dark:bg-gray-600 text-purple-600 dark:text-purple-400 shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                        >
+                            Live Audit
                         </button>
                     </div>
 
@@ -646,8 +628,38 @@ export default function ActivityLogViewer({
                     Showing {filteredLogs.length} of {logs.length} entries
                 </div>
             </div>
-
-            {/* Desktop Table */}
+            
+            {showInputAudit ? (
+                <div className="p-4 bg-gray-50 dark:bg-[#0a0a0a] min-h-[500px]">
+                    <InputAuditViewer agentId={agentId} token={token} />
+                </div>
+            ) : (
+                <>
+                {liveSession && (
+                    <div className="mb-4 p-4 rounded-xl border border-blue-500/30 bg-blue-50 dark:bg-blue-900/10 shadow-sm animate-fade-in relative overflow-hidden">
+                        <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-400/5 animate-pulse"></div>
+                        <div className="relative z-10 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-500/10 rounded-lg">
+                                    <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-pulse" />
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-1">Live Active Session</div>
+                                    <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                                        {liveSession.process_name}
+                                        <span className="text-gray-400">|</span>
+                                        <span className="text-gray-600 dark:text-gray-300 text-sm truncate max-w-md">{liveSession.window_title}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-green-500 animate-ping"></div>
+                                <span className="text-xs font-bold text-green-600 dark:text-green-400">LIVE</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                    {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-sm">
                     <thead className="bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs sticky top-0">
@@ -698,21 +710,35 @@ export default function ActivityLogViewer({
                                             )}
                                         </td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs ${(log.activityType || log.ActivityType) === 'Web' ? 'bg-blue-500/10 text-blue-400' : 'bg-purple-500/10 text-purple-400'}`}>
-                                                {log.activityType || log.ActivityType}
-                                            </span>
+                                            {(() => {
+                                                const type = log.activityType || log.ActivityType;
+                                                const colorMap: Record<string, string> = {
+                                                    'Web': 'bg-blue-500/10 text-blue-400',
+                                                    'AppFocus': 'bg-cyan-500/10 text-cyan-400',
+                                                    'SystemIdle': 'bg-gray-500/10 text-gray-400',
+                                                    'Idle': 'bg-gray-500/10 text-gray-400',
+                                                    'UrlVisit': 'bg-indigo-500/10 text-indigo-400',
+                                                };
+                                                const color = colorMap[type] || 'bg-purple-500/10 text-purple-400';
+                                                return <span className={`px-2 py-1 rounded text-xs font-bold ${color}`}>{type}</span>;
+                                            })()}
                                         </td>
                                         <td className="p-4 break-all">
-                                            {(log.activityType || log.ActivityType) === 'Web' ? (
-                                                <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{log.url || log.Url}</a>
-                                            ) : (<span>{log.processName || log.ProcessName} - {log.windowTitle || log.WindowTitle}</span>)}
+                                            {(() => {
+                                                const type = log.activityType || log.ActivityType;
+                                                const proc = log.processName || log.ProcessName || '';
+                                                const title = log.windowTitle || log.WindowTitle || '';
+                                                if (type === 'Web') return <a href={log.url || log.Url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">{log.url || log.Url}</a>;
+                                                if (type === 'SystemIdle' || type === 'Idle') return <span className="text-gray-500 italic">System — Idle</span>;
+                                                return <span>{proc}{title && proc ? ' — ' : ''}{title}</span>;
+                                            })()}
                                         </td>
                                         <td className="p-4">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${(log.riskLevel === 'High' || log.RiskLevel === 'High') ? 'bg-red-500/20 text-red-500' : 'bg-green-500/20 text-green-500'}`}>
                                                 {log.riskLevel || log.RiskLevel || 'Normal'}
                                             </span>
                                         </td>
-                                        <td className="p-4 font-bold text-cyan-500">{formatDuration(log.DurationSeconds)}</td>
+                                        <td className="p-4 font-bold text-cyan-500">{formatDuration(log.DurationSeconds ?? log.durationSeconds ?? 0)}</td>
                                     </tr>
                                 );
                             })
@@ -793,6 +819,8 @@ export default function ActivityLogViewer({
                         )}
                     </div>
                 </div>
+            )}
+            </>
             )}
         </div>
     );

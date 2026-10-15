@@ -4,7 +4,7 @@ import {
     LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend
 } from 'recharts';
-import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, Calendar, Folder } from 'lucide-react';
+import { ArrowLeft, Monitor, ShieldAlert, Cpu, Play, Square, BarChart2, Video, Calendar, Folder, Camera } from 'lucide-react';
 import { API_URL, SOCKET_URL } from '../config';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,8 +13,7 @@ import toast from 'react-hot-toast';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
-
-// ... (Rest of imports or interfaces if needed, keeping AgentReport)
+import ScreenCaptureTimeline from '../components/ScreenCaptureTimeline';
 
 interface AgentReport {
     agentId: string;
@@ -37,7 +36,7 @@ export default function LiveMonitor() {
     const [history] = useState<any[]>([]);
     const [screens] = useState<Record<string, boolean>>({});
     const [isStreamActive, setIsStreamActive] = useState(false);
-    const [activeTab, setActiveTab] = useState<'stream' | 'analytics' | 'terminal' | 'files'>('stream');
+    const [activeTab, setActiveTab] = useState<'stream' | 'analytics' | 'terminal' | 'files' | 'screenshots'>('stream');
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
 
@@ -469,12 +468,22 @@ export default function LiveMonitor() {
                         >
                             <BarChart2 size={16} /> Analytics
                         </button>
+                        <button
+                            onClick={() => setActiveTab('screenshots')}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${activeTab === 'screenshots' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
+                        >
+                            <Camera size={16} /> DVR Screenshots
+                        </button>
                     </div>
                 </div>
 
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-h-0">
 
-                    {activeTab === 'files' ? (
+                    {activeTab === 'screenshots' ? (
+                        <div className="lg:col-span-3 flex flex-col gap-4">
+                            <ScreenCaptureTimeline agentId={selectedAgentId} />
+                        </div>
+                    ) : activeTab === 'files' ? (
                         <div className="lg:col-span-2 flex flex-col gap-4">
                             <div className="bg-white dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex-1 flex flex-col min-h-0 min-w-0">
                                 <div className="flex items-center gap-2 mb-4 font-mono text-sm overflow-hidden whitespace-nowrap">
@@ -583,6 +592,18 @@ export default function LiveMonitor() {
                                             className={`px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all ${!isStreamActive ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-500 shadow-lg'}`}
                                         >
                                             <Square size={14} fill={isStreamActive ? "currentColor" : "none"} /> Disconnect
+                                        </button>
+                                        <button
+                                            onClick={() => { if (socketRef.current) socketRef.current.emit("StartPcap", { agentId: selectedAgentId }); toast.success("PCAP Capture Started") }}
+                                            className="px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all bg-purple-600 text-white hover:bg-purple-500 shadow-lg"
+                                        >
+                                            Start PCAP
+                                        </button>
+                                        <button
+                                            onClick={() => { if (socketRef.current) socketRef.current.emit("StopPcap", { agentId: selectedAgentId }); toast.success("PCAP Capture Stopped") }}
+                                            className="px-3 py-1.5 rounded flex items-center gap-2 text-xs font-bold transition-all bg-gray-600 text-white hover:bg-gray-500 shadow-lg"
+                                        >
+                                            Stop PCAP
                                         </button>
                                     </div>
                                 </div>

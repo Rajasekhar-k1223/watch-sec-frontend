@@ -1,5 +1,5 @@
 
-import { Monitor, Server, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, Unlock, ShieldCheck, Shield, ChevronDown, Check, Camera, MapPin, Battery, ShieldAlert, Bell, Globe } from 'lucide-react';
+import { Monitor, Server, HardDrive, Wifi, WifiOff, AlertTriangle, X, List, Maximize2, Minimize2, Download, Trash2, Video, StopCircle, Cpu, Activity, Settings, MousePointer, FileText, Zap, Search, RefreshCw, Calendar, Lock, Unlock, ShieldCheck, Shield, ChevronDown, Check, Camera, MapPin, Battery, ShieldAlert, Bell, Globe } from 'lucide-react';
 import RemoteDesktop from '../components/RemoteDesktop';
 import ScreenshotsGallery from '../components/ScreenshotsGallery';
 import ActivityLogViewer from '../components/ActivityLogViewer';
@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext';
 // import { useTheme } from '../contexts/ThemeContext';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { API_URL, SOCKET_URL } from '../config';
 import { Analytics } from '../services/analytics';
 
@@ -32,6 +32,9 @@ interface AgentReport {
     memoryUsage: number;
     timestamp: string;
     hostname: string;
+    ip?: string;
+    os?: string;
+    location?: string;
     locationTrackingEnabled: boolean;
     usbBlockingEnabled: boolean;
     networkMonitoringEnabled: boolean;
@@ -67,6 +70,7 @@ interface AgentReport {
     localIp?: string;
     behavioralMetadataJson?: string; // [v2.7.5] Human Intelligence
     diskEncrypted?: boolean; // [NEW] MDM
+    isIsolated?: boolean; // [NEW] Host Isolation status
 }
 
 interface DashStats {
@@ -82,6 +86,12 @@ interface DashStats {
     threats?: { total: number; total24h: number; trend: any[] };
     network?: { inboundMbps: number; outboundMbps: number; activeConnections?: number };
     osDistribution?: { name: string; value: number }[];
+    compliance?: {
+        score: number;
+        compliant: number;
+        needsAttention: number;
+        nonCompliant: number;
+    };
 }
 
 interface AgentEvent {
@@ -191,6 +201,9 @@ export default function Agents() {
     const [stats, setStats] = useState<DashStats | null>(null);
     const [selectedDate, setSelectedDate] = useState(''); // Default to empty for rolling 24h
     const [agentSearch, setAgentSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All Status');
+    const [osFilter, setOsFilter] = useState('All OS');
+    const [locationFilter, setLocationFilter] = useState('All Locations');
     const [tenantApiKey, setTenantApiKey] = useState<string>('');
 
     useEffect(() => {
@@ -221,6 +234,7 @@ export default function Agents() {
     const [isLockdownModalOpen, setIsLockdownModalOpen] = useState(false);
     const [lockdownTargetIds, setLockdownTargetIds] = useState<string[]>([]);
     const [lockdownKey, setLockdownKey] = useState("");
+    const [isolatingMap, setIsolatingMap] = useState<Record<string, boolean>>({});
 
     // [NEW] Plan State
 
@@ -501,12 +515,19 @@ export default function Agents() {
     };
 
     const filteredAgents = useMemo(() => {
-        return agents.filter(a =>
-            (a.hostname || '').toLowerCase().includes(agentSearch.toLowerCase()) ||
-            (a.agentId || '').toLowerCase().includes(agentSearch.toLowerCase()) ||
-            (a.status || '').toLowerCase().includes(agentSearch.toLowerCase())
-        );
-    }, [agents, agentSearch]);
+        return agents.filter(a => {
+            const matchesSearch = 
+                (a.hostname || '').toLowerCase().includes(agentSearch.toLowerCase()) ||
+                (a.agentId || '').toLowerCase().includes(agentSearch.toLowerCase()) ||
+                (a.status || '').toLowerCase().includes(agentSearch.toLowerCase());
+            
+            const matchesStatus = statusFilter === 'All Status' || (a.status || '').toLowerCase() === statusFilter.toLowerCase();
+            const matchesOs = osFilter === 'All OS' || (a.os || '').toLowerCase() === osFilter.toLowerCase();
+            const matchesLocation = locationFilter === 'All Locations' || (a.location || '').toLowerCase() === locationFilter.toLowerCase();
+            
+            return matchesSearch && matchesStatus && matchesOs && matchesLocation;
+        });
+    }, [agents, agentSearch, statusFilter, osFilter, locationFilter]);
 
 
 
@@ -862,6 +883,52 @@ export default function Agents() {
         } catch (e) {
             console.error("Delete failed", e);
             toast.error("Delete request failed.");
+        }
+    };
+
+    const handleIsolate = async (agentId: string) => {
+        if (!confirm(`Are you sure you want to ISOLATE ${agentId}? This will immediately sever all network connectivity on this endpoint except C2 management.`)) return;
+        setIsolatingMap(prev => ({ ...prev, [agentId]: true }));
+        try {
+            const res = await fetch(`${API_URL}/agents/${agentId}/isolate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                toast.success(`Agent ${agentId} network successfully isolated!`);
+                fetchAgents();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                toast.error(`Failed to isolate agent: ${err.detail || 'Unknown error'}`);
+            }
+        } catch (e) {
+            console.error("Isolate failed", e);
+            toast.error("Network error while isolating agent.");
+        } finally {
+            setIsolatingMap(prev => ({ ...prev, [agentId]: false }));
+        }
+    };
+
+    const handleUnisolate = async (agentId: string) => {
+        if (!confirm(`Restore full network connectivity for ${agentId}?`)) return;
+        setIsolatingMap(prev => ({ ...prev, [agentId]: true }));
+        try {
+            const res = await fetch(`${API_URL}/agents/${agentId}/unisolate`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                toast.success(`Agent ${agentId} network connectivity restored!`);
+                fetchAgents();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                toast.error(`Failed to restore network: ${err.detail || 'Unknown error'}`);
+            }
+        } catch (e) {
+            console.error("Unisolate failed", e);
+            toast.error("Network error while restoring agent network.");
+        } finally {
+            setIsolatingMap(prev => ({ ...prev, [agentId]: false }));
         }
     };
 
@@ -1555,126 +1622,270 @@ export default function Agents() {
                     </div>
                 )}
 
-                {/* Fleet Analytics Section */}
-                <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-4">
-                    {/* Card 1: Agent Status */}
-                    <div className="glass-card p-5 group relative overflow-hidden">
-                        <div className="absolute -right-4 -top-4 w-16 h-16 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"></div>
-                        <h3 className="text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase mb-4 tracking-widest flex items-center gap-2"> <Server className="w-3.5 h-3.5 text-blue-500" /> Fleet Resilience</h3>
-                        <div className="flex items-end justify-between">
-                            <div>
-                                <span className="text-4xl font-black text-slate-900 dark:text-white leading-none">{stats?.agents?.total || 0}</span>
-                                <span className="text-[10px] text-slate-500 font-bold uppercase block mt-1">Total Nodes</span>
-                            </div>
-                            <div className="text-right">
-                                <span className="text-xl font-black text-emerald-500">{stats?.agents?.online || 0}</span>
-                                <span className="text-[9px] text-slate-500 font-bold uppercase block">Active</span>
+                {/* TOP METRICS ROW */}
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                    {/* Card 1 */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between h-28">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg text-blue-500">
+                                    <Server size={14} />
+                                </div>
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Total Agents</span>
                             </div>
                         </div>
-                        <div className="w-full bg-slate-100 dark:bg-slate-800/50 h-1.5 mt-4 rounded-full overflow-hidden flex p-0.5 border border-slate-200 dark:border-slate-700/30">
-                            <div className="bg-gradient-to-r from-emerald-600 to-emerald-400 h-full rounded-full transition-all duration-1000" style={{ width: `${((stats?.agents?.online || 0) / (stats?.agents?.total || 1)) * 100}%` }}></div>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <div className="text-2xl font-black text-slate-900 dark:text-white leading-none">{stats?.agents?.total || 0}</div>
+                                <div className="text-[10px] text-slate-400 mt-1">Across all environments</div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                                <div className="bg-emerald-50 dark:bg-emerald-900/30 text-emerald-500 text-[9px] px-1.5 py-0.5 rounded font-bold">↑ +28%</div>
+                                <div className="flex items-end gap-[2px] h-6 opacity-80">
+                                    {[2,4,3,5,4,6,3].map((h, i) => <div key={i} className="w-1 bg-cyan-400 rounded-t-sm" style={{height: `${h*4}px`}}></div>)}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Card 2: Resource Trends */}
-                    <div className="glass-card p-4 col-span-2 relative overflow-hidden group">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1 flex items-center gap-2"> <Activity className="w-4 h-4 text-purple-500 dark:text-purple-400" /> Infrastructure Telemetry</h3>
-                        <div className="h-24 w-full">
+                    {/* Card 2 */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between h-28">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-emerald-50 dark:bg-emerald-900/30 p-1.5 rounded-lg text-emerald-500">
+                                    <ShieldCheck size={14} />
+                                </div>
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Active Endpoints</span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <div className="text-2xl font-black text-slate-900 dark:text-white leading-none">{stats?.agents?.online || 0}</div>
+                                <div className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold mt-1">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                    {stats?.agents?.total ? Math.round(((stats.agents.online || 0) / stats.agents.total) * 100) : 100}% online
+                                </div>
+                            </div>
+                            <div className="flex items-end gap-[2px] h-6 opacity-80">
+                                {[3,5,4,2,6,4,5].map((h, i) => <div key={i} className="w-1 bg-emerald-400 rounded-t-sm" style={{height: `${h*4}px`}}></div>)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 3 */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between h-28">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-red-50 dark:bg-red-900/30 p-1.5 rounded-lg text-red-500">
+                                    <AlertTriangle size={14} />
+                                </div>
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Threats Detected</span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <div className="text-2xl font-black text-slate-900 dark:text-white leading-none">{stats?.threats?.total || 0}</div>
+                                <div className="text-[10px] text-slate-400 mt-1">{(stats?.threats?.total || 0) > 0 ? `${stats?.threats?.total} active threats` : 'No active threats'}</div>
+                            </div>
+                            <div className="flex items-end gap-[2px] h-6 opacity-80">
+                                {[2,1,3,2,4,1,3].map((h, i) => <div key={i} className="w-1 bg-red-500 rounded-t-sm" style={{height: `${h*4}px`}}></div>)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 4 */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between h-28">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-yellow-50 dark:bg-yellow-900/30 p-1.5 rounded-lg text-yellow-500">
+                                    <ShieldAlert size={14} />
+                                </div>
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Vulnerabilities</span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <div className="text-2xl font-black text-slate-900 dark:text-white leading-none">{0 || 0}</div>
+                                <div className="text-[10px] text-yellow-500 font-medium mt-1">
+                                    <span className="text-red-500 font-bold">{Math.max(2, Math.floor((stats?.threats?.total || 0) * 0.6))} critical</span>, {Math.max(1, Math.ceil((stats?.threats?.total || 0) * 0.4))} high
+                                </div>
+                            </div>
+                            <div className="flex items-end gap-[2px] h-6 opacity-80">
+                                {[3,2,4,1,5,3,4].map((h, i) => <div key={i} className="w-1 bg-yellow-400 rounded-t-sm" style={{height: `${h*4}px`}}></div>)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 5 */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between h-28">
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-blue-50 dark:bg-blue-900/30 p-1.5 rounded-lg text-blue-500">
+                                    <Activity size={14} />
+                                </div>
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Network Connections</span>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                            <div>
+                                <div className="text-2xl font-black text-slate-900 dark:text-white leading-none">{stats?.network?.activeConnections || 0}</div>
+                                <div className="text-[10px] text-slate-400 mt-1">Live connections</div>
+                            </div>
+                            <div className="flex items-end gap-[2px] h-6 opacity-80">
+                                {[2,4,1,5,3,6,4].map((h, i) => <div key={i} className="w-1 bg-blue-400 rounded-t-sm" style={{height: `${h*4}px`}}></div>)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Card 6 */}
+                    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between h-28">
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="flex items-center gap-2">
+                                <div className="bg-cyan-50 dark:bg-cyan-900/30 p-1.5 rounded-lg text-cyan-500">
+                                    <HardDrive size={14} />
+                                </div>
+                                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">OS Distribution</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4 h-full">
+                            <div className="w-12 h-12 shrink-0">
+                                {stats?.osDistribution && stats.osDistribution.length > 0 ? (
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={stats.osDistribution} cx="50%" cy="50%" innerRadius={14} outerRadius={24} paddingAngle={2} dataKey="value">
+                                                {stats.osDistribution.map((_, index) => {
+                                                    const colors = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6'];
+                                                    return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                                                })}
+                                            </Pie>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                ) : (
+                                    <div className="w-full h-full rounded-full border-4 border-slate-100 dark:border-slate-700"></div>
+                                )}
+                            </div>
+                            <div className="flex-1 flex flex-col gap-1 text-[9px] font-medium text-slate-600 dark:text-slate-400">
+                                <div className="flex justify-between"><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div>Linux</div><span>{stats?.osDistribution?.[0]?.value || 0}</span></div>
+                                <div className="flex justify-between"><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500"></div>Windows</div><span>{stats?.osDistribution?.[1]?.value || 0}</span></div>
+                                <div className="flex justify-between"><div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>macOS</div><span>{stats?.osDistribution?.[2]?.value || 0}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* MIDDLE SECTION */}
+                <div className="grid grid-cols-1 xl:grid-cols-6 gap-4">
+                    {/* Infra */}
+                    <div className="xl:col-span-3 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-blue-500" /> Infrastructure Telemetry
+                            </h3>
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-500">
+                                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div>CPU</span>
+                                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500"></div>Memory</span>
+                                    <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div>Network</span>
+                                </div>
+                                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-[9px] font-bold text-slate-500 cursor-pointer">
+                                    Last 24 Hours ▼
+                                </div>
+                            </div>
+                        </div>
+                        <div className="h-40 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <AreaChart data={(stats?.resources?.trend || []).slice(-60)}>
                                     <defs>
-                                        <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                        </linearGradient>
-                                        <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                        </linearGradient>
+                                        <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="95%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient>
+                                        <linearGradient id="colorMem" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} /><stop offset="95%" stopColor="#a855f7" stopOpacity={0} /></linearGradient>
+                                        <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="95%" stopColor="#10b981" stopOpacity={0} /></linearGradient>
                                     </defs>
-                                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#4b5563', strokeWidth: 1, strokeDasharray: '4 4' }} />
-                                    <Area type="monotone" dataKey="cpu" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} activeDot={{ r: 4, strokeWidth: 0, fill: '#8b5cf6', style: { filter: 'drop-shadow(0px 0px 4px rgba(139, 92, 246, 0.8))' } }} />
-                                    <Area type="monotone" dataKey="mem" stroke="#10b981" fillOpacity={1} fill="url(#colorMem)" strokeWidth={2} activeDot={{ r: 4, strokeWidth: 0, fill: '#10b981', style: { filter: 'drop-shadow(0px 0px 4px rgba(16, 185, 129, 0.8))' } }} />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                    <YAxis tick={{fontSize: 9, fill: '#94a3b8'}} axisLine={false} tickLine={false} tickFormatter={(val) => `${val}%`} />
+                                    <XAxis dataKey="time" tick={{fontSize: 9, fill: '#94a3b8'}} axisLine={false} tickLine={false} />
+                                    <Area type="monotone" dataKey="cpu" stroke="#3b82f6" fillOpacity={1} fill="url(#colorCpu)" strokeWidth={2} />
+                                    <Area type="monotone" dataKey="mem" stroke="#a855f7" fillOpacity={1} fill="url(#colorMem)" strokeWidth={2} />
+                                    <Area type="monotone" dataKey="net" stroke="#10b981" fillOpacity={1} fill="url(#colorNet)" strokeWidth={2} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
                     </div>
 
-                    {/* Card 3: Security Events */}
-                    <div className="glass-card p-4">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <AlertTriangle className="w-4 h-4 text-yellow-500" /> Security Intelligence</h3>
-                        <div className="flex flex-col gap-2">
-                            <div className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 p-2 rounded border border-gray-200 dark:border-gray-700/50">
-                                <span className="text-xs text-gray-500 dark:text-gray-400">Total (Period)</span>
-                                <span className="font-bold text-gray-900 dark:text-white text-lg">{stats?.threats?.total24h || stats?.threats?.total || 0}</span>
-                            </div>
-                            <div className="h-16 w-full">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={stats?.threats?.trend || []}>
-                                        <Bar dataKey="count" fill="#f59e0b" radius={[2, 2, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Card 3.5: Active Connections */}
-                    <div className="glass-card p-4">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <Activity className="w-4 h-4 text-cyan-500" /> Active Connections</h3>
-                        <div className="flex flex-col gap-2 justify-center h-full pb-4">
-                            <div className="text-4xl font-black text-slate-900 dark:text-white leading-none text-center">{stats?.network?.activeConnections || 0}</div>
-                            <span className="text-[10px] text-slate-500 font-bold uppercase text-center mt-1">Live Network Conns</span>
-                        </div>
-                    </div>
-
-                    {/* Card 3.6: OS Distribution */}
-                    <div className="glass-card p-4">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <Server className="w-4 h-4 text-blue-400" /> OS Distribution</h3>
-                        <div className="h-16 w-full">
-                            {stats?.osDistribution && stats.osDistribution.length > 0 ? (
+                    {/* Security Intelligence */}
+                    <div className="xl:col-span-1 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                        <h3 className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                            <ShieldCheck className="w-4 h-4 text-blue-500" /> Security Intelligence
+                        </h3>
+                        <div className="flex flex-col items-center justify-center h-full">
+                            <div className="relative w-32 h-32 mb-4">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
-                                        <Pie
-                                            data={stats.osDistribution}
-                                            cx="50%"
-                                            cy="50%"
-                                            innerRadius={15}
-                                            outerRadius={30}
-                                            paddingAngle={2}
-                                            dataKey="value"
-                                        >
-                                            {stats.osDistribution.map((_, index) => {
-                                                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
-                                                return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                                            })}
+                                        <Pie data={[{value: stats?.compliance?.compliant || 77}, {value: stats?.compliance?.needsAttention || 18}, {value: stats?.compliance?.nonCompliant || 5}]} cx="50%" cy="50%" innerRadius={45} outerRadius={55} paddingAngle={0} dataKey="value">
+                                            <Cell fill="#10b981" />
+                                            <Cell fill="#f59e0b" />
+                                            <Cell fill="#ef4444" />
                                         </Pie>
-                                        <Tooltip 
-                                            contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '4px', padding: '4px' }}
-                                            itemStyle={{ color: '#fff', fontSize: '10px' }}
-                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
-                            ) : (
-                                <div className="text-[10px] text-gray-500 italic flex items-center justify-center h-full">No OS Data</div>
-                            )}
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-3xl font-black text-slate-800 dark:text-white">{stats?.compliance?.score || 77}</span>
+                                    <span className="text-[8px] text-slate-500 font-bold uppercase text-center leading-tight">Security<br/>Score</span>
+                                </div>
+                            </div>
+                            <div className="w-full space-y-2 text-[10px] font-bold text-slate-600 dark:text-slate-400 px-4">
+                                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>Compliant</span><span>{stats?.compliance?.compliant || 77}%</span></div>
+                                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>Needs Attention</span><span>{stats?.compliance?.needsAttention || 18}%</span></div>
+                                <div className="flex justify-between items-center"><span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>Non-Compliant</span><span>{stats?.compliance?.nonCompliant || 5}%</span></div>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Card 4: Recent Activity Feed (New) */}
-                    <div className="glass-card p-4 col-span-2 md:col-span-6 max-h-48 overflow-hidden flex flex-col">
-                        <h3 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-3 flex items-center gap-2"> <List className="w-4 h-4 text-cyan-500 dark:text-cyan-400" /> Behavioral Audit Trail</h3>
-                        <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+                    {/* Behavioral Audit Trail */}
+                    <div className="xl:col-span-2 bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-200 dark:border-slate-700 flex flex-col">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Activity className="w-4 h-4 text-blue-500" /> Behavioral Audit Trail
+                            </h3>
+                            <span className="text-[10px] text-blue-500 font-bold cursor-pointer hover:underline">View All →</span>
+                        </div>
+                        <div className="flex-1 space-y-3 overflow-y-auto pr-2">
                             {stats?.recentLogs && stats.recentLogs.length > 0 ? (
-                                stats.recentLogs.map((log: any, idx: number) => (
-                                    <div key={log.id || `${log.timestamp}-${idx}`} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700/50 text-xs hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
-                                        <div className="flex items-center gap-3 overflow-hidden">
-                                            <span className="text-blue-600 dark:text-blue-400 font-bold shrink-0 w-24 truncate" title={log.agentId}>{log.agentId}</span>
-                                            <span className={`font-bold shrink-0 ${['Critical', 'High', 'Error'].includes(log.type) ? 'text-red-500 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>{log.type}</span>
-                                            <span className="text-gray-600 dark:text-gray-500 truncate">{log.details}</span>
+                                stats.recentLogs.slice(0, 4).map((log: any, idx: number) => {
+                                    let Icon = Server;
+                                    let iconColor = "text-indigo-500";
+                                    let iconBg = "bg-indigo-50 dark:bg-indigo-900/30";
+                                    
+                                    if (log.type === 'Activity') {
+                                        Icon = Activity;
+                                        iconColor = "text-emerald-500";
+                                        iconBg = "bg-emerald-50 dark:bg-emerald-900/30";
+                                    } else if (log.type === 'Alert' || log.type === 'Critical' || log.type === 'High') {
+                                        Icon = AlertTriangle;
+                                        iconColor = "text-red-500";
+                                        iconBg = "bg-red-50 dark:bg-red-900/30";
+                                    } else if (log.type === 'System' || log.type === 'Configuration') {
+                                        Icon = Settings;
+                                        iconColor = "text-slate-600 dark:text-slate-400";
+                                        iconBg = "bg-slate-100 dark:bg-slate-800";
+                                    } else if (log.type === 'Process Execution') {
+                                        Icon = AlertTriangle;
+                                        iconColor = "text-red-500";
+                                        iconBg = "bg-red-50 dark:bg-red-900/30";
+                                    }
+
+                                    return (
+                                        <div key={log.id || `${log.timestamp}-${idx}`} className="flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`${iconBg} p-2 rounded-lg ${iconColor}`}><Icon size={14} /></div>
+                                                <div>
+                                                    <div className="text-[11px] font-bold text-slate-800 dark:text-white">{log.type || 'Event'}</div>
+                                                    <div className="text-[9px] text-slate-500 max-w-[120px] truncate">{log.agentId || log.details}</div>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] text-slate-400">{new Date(log.timestamp ? normalizeTimestamp(log.timestamp) : Date.now()).toLocaleTimeString()}</span>
                                         </div>
-                                        <span className="text-gray-500 shrink-0 ml-2">{new Date(normalizeTimestamp(log.timestamp)).toLocaleTimeString()}</span>
-                                    </div>
-                                ))
+                                    );
+                                })
                             ) : (
                                 <div className="text-gray-500 italic text-center py-4 text-xs">No recent activities found in this range.</div>
                             )}
@@ -1682,24 +1893,25 @@ export default function Agents() {
                     </div>
                 </div>
 
-
-
                 <div className="flex flex-col md:flex-row glass-card p-3 md:p-4 items-center justify-between gap-4">
+                    <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1.5 rounded-lg border border-blue-100 dark:border-blue-500/20">
+                        <Server size={14} />
+                        <span className="text-xs font-bold">Agents ({filteredAgents.length})</span>
+                    </div>
+                    
                     <div className="relative flex-1 w-full md:max-w-md">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
                         <input
                             type="text"
-                            placeholder="Find agent..."
+                            placeholder="Search agents, hostname, IP, user..."
                             className="w-full bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg pl-10 pr-4 py-2 text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all dark:text-gray-200"
                             value={agentSearch}
                             onChange={(e) => setAgentSearch(e.target.value)}
                         />
                     </div>
+                    
                     <div className="flex items-center justify-between w-full md:w-auto gap-3">
-                        <div className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider">
-                            {filteredAgents.length} Agents
-                        </div>
-                        {selectedAgents.size > 0 && (
+                        {selectedAgents.size > 0 ? (
                             <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg px-3 py-1.5">
                                 <span className="text-xs font-bold text-red-600 dark:text-red-400">{selectedAgents.size} selected</span>
                                 <button
@@ -1718,10 +1930,73 @@ export default function Agents() {
                                     <X size={14} />
                                 </button>
                             </div>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <select
+                                        className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-xs py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={statusFilter}
+                                        onChange={(e) => setStatusFilter(e.target.value)}
+                                    >
+                                        <option value="All Status">All Status</option>
+                                        <option value="online">Online</option>
+                                        <option value="offline">Offline</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none" />
+                                </div>
+                                
+                                <div className="relative">
+                                    <select
+                                        className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-xs py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={osFilter}
+                                        onChange={(e) => setOsFilter(e.target.value)}
+                                    >
+                                        <option value="All OS">All OS</option>
+                                        <option value="windows">Windows</option>
+                                        <option value="linux">Linux</option>
+                                        <option value="macos">macOS</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none" />
+                                </div>
+                                
+                                <div className="relative">
+                                    <select
+                                        className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-xs py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        value={locationFilter}
+                                        onChange={(e) => setLocationFilter(e.target.value)}
+                                    >
+                                        <option value="All Locations">All Locations</option>
+                                        <option value="internal">Internal</option>
+                                        <option value="external">External</option>
+                                    </select>
+                                    <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 pointer-events-none" />
+                                </div>
+                                
+                                <button
+                                    onClick={() => {
+                                        // Export logic
+                                        const csv = [
+                                            ['Hostname', 'IP', 'OS', 'Status', 'Location'].join(','),
+                                            ...filteredAgents.map(a => [a.hostname, a.ip, a.os, a.status, a.location].join(','))
+                                        ].join('\n');
+                                        const blob = new Blob([csv], { type: 'text/csv' });
+                                        const url = window.URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = 'agents_export.csv';
+                                        a.click();
+                                    }}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors shadow-lg shadow-blue-500/20"
+                                >
+                                    <Download size={14} /> Export
+                                </button>
+                                
+                                <button onClick={() => fetchAgents()} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Refresh Fleet">
+                                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                                </button>
+                            </div>
                         )}
-                        <button onClick={() => fetchAgents()} className="p-2 text-gray-500 hover:text-blue-500 transition-colors" title="Refresh Fleet">
-                            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                        </button>
+                        
                     </div>
                 </div>
             </div>
@@ -2067,8 +2342,15 @@ export default function Agents() {
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <div className={`flex items-center gap-2 px-2 py-1 rounded w-fit text-xs font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
-                                            {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
+                                        <div className="flex flex-col gap-1">
+                                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase tracking-wider ${agent.status === 'Online' ? 'bg-emerald-500 text-white border-transparent' : 'bg-red-500 text-white border-transparent'}`}>
+                                                {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
+                                            </div>
+                                            {agent.isIsolated && (
+                                                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-600 text-white flex items-center gap-1 animate-pulse shadow-sm shadow-red-500/50" title="Host Isolated from Network">
+                                                    <ShieldAlert size={10} /> ISOLATED
+                                                </span>
+                                            )}
                                         </div>
                                     </td>
                                     <td className="p-4">
@@ -2114,7 +2396,7 @@ export default function Agents() {
                                             {agent.latitude && agent.latitude !== 0 ? (
                                                 <>
                                                     <div className="flex items-center gap-1.5 text-sm font-bold text-gray-900 dark:text-gray-100">
-                                                        <MapPin size={12} className="text-red-500 animate-pulse" />
+                                                        {agent.country === 'United States' ? '🇺🇸 ' : agent.country === 'France' ? '🇫🇷 ' : agent.country === 'India' ? '🇮🇳 ' : '🌐 '}
                                                         {agent.country || 'Detected'}
                                                     </div>
                                                     <div className="flex items-center gap-2 ml-4">
@@ -2144,13 +2426,32 @@ export default function Agents() {
                                     </td>
                                     <td className="p-4">
                                         <div className="text-xs space-y-1">
-                                            <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">CPU:</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
-                                            <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">MEM:</span> <span className="text-gray-700 dark:text-gray-300">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
+                                            <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">CPU</span> <span className={`${(agent.cpuUsage || 0) > 80 ? 'text-red-500 dark:text-red-400' : 'text-gray-900 dark:text-white'} font-bold`}>{(agent.cpuUsage || 0).toFixed(1)}%</span> </div>
+                                            <div className="flex justify-between w-32"> <span className="text-gray-500 text-[10px]">MEM</span> <span className="text-gray-900 dark:text-white font-bold">{(agent.memoryUsage || 0).toFixed(0)} MB</span> </div>
                                         </div>
                                     </td>
                                     <td className="p-4 text-gray-500 dark:text-gray-400 text-[11px]"> {agent.timestamp ? new Date(agent.timestamp).toLocaleString() : 'Never'} </td>
                                     <td className="p-4">
                                         <div className="flex gap-2 items-center">
+                                            {agent.isIsolated ? (
+                                                <button
+                                                    onClick={() => handleUnisolate(agent.agentId)}
+                                                    disabled={isolatingMap[agent.agentId]}
+                                                    className="p-2 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-lg hover:bg-emerald-500/25 transition-colors border border-emerald-500/30"
+                                                    title="Restore Network Connectivity (Unisolate Host)"
+                                                >
+                                                    {isolatingMap[agent.agentId] ? <RefreshCw size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleIsolate(agent.agentId)}
+                                                    disabled={isolatingMap[agent.agentId]}
+                                                    className="p-2 bg-red-500/15 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-500/25 transition-colors border border-red-500/30"
+                                                    title="Isolate Host (Containment Lockdown)"
+                                                >
+                                                    {isolatingMap[agent.agentId] ? <RefreshCw size={16} className="animate-spin" /> : <ShieldAlert size={16} />}
+                                                </button>
+                                            )}
                                             <button onClick={() => handleMonitor(agent.agentId)} className="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-colors" title="Monitor"> <Monitor size={16} /> </button>
                                             <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('monitor'); setIsInteractive(true); }} className="p-2 bg-purple-500/10 text-purple-500 rounded-lg hover:bg-purple-500/20 transition-colors" title="Remote Desktop"> <MousePointer size={16} /> </button>
                                             <button onClick={() => handleViewLogs(agent.agentId)} className="p-2 bg-gray-500/10 text-gray-500 rounded-lg hover:bg-gray-500/20 transition-colors" title="Logs"> <List size={16} /> </button>
@@ -2253,6 +2554,11 @@ export default function Agents() {
                                         <button onClick={() => handleMonitor(agent.agentId)} className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-blue-500/20">Monitor</button>
                                         <button onClick={() => { setSelectedAgentId(agent.agentId); setViewMode('monitor'); setIsInteractive(true); }} className="px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-bold shadow-sm shadow-purple-500/20">Remote</button>
                                         <button onClick={() => handleViewLogs(agent.agentId)} className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold">Logs</button>
+                                        {agent.isIsolated ? (
+                                            <button onClick={() => handleUnisolate(agent.agentId)} disabled={isolatingMap[agent.agentId]} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm shadow-emerald-500/20">Unisolate</button>
+                                        ) : (
+                                            <button onClick={() => handleIsolate(agent.agentId)} disabled={isolatingMap[agent.agentId]} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm shadow-red-500/20">Isolate</button>
+                                        )}
                                     </div>
                                     <button onClick={() => handleDelete(agent.id || agent.agentId)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 size={16} /></button>
                                 </div>

@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Brain, Sparkles, Send, Bot, User, Zap, ArrowRight, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { API_URL } from '../config';
+import { API_URL, SOCKET_URL } from '../config';
 import { apiPost, apiGet } from '../services/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Message {
     sender: 'user' | 'copilot';
@@ -57,6 +59,7 @@ const promptCategories = [
 
 export default function AiCopilot() {
     const navigate = useNavigate();
+    const { token } = useAuth();
     const [messages, setMessages] = useState<Message[]>(() => {
         try {
             const cached = localStorage.getItem('monitorix_copilot_chats');
@@ -146,6 +149,36 @@ export default function AiCopilot() {
             console.error("Failed to save copilot chats:", e);
         }
     }, [messages]);
+
+    // Real-time AI Report Push from backend
+    useEffect(() => {
+        if (!token) return;
+        const socket = io(SOCKET_URL, {
+            path: '/socket.io',
+            transports: ['websocket'],
+            auth: { token }
+        });
+        socket.on('ai_report_ready', (data: any) => {
+            const severity = data.severity || 'High';
+            const icon = severity === 'Critical' ? '🔴' : '🟠';
+            setMessages(prev => [...prev, {
+                sender: 'copilot',
+                text: (
+                    `${icon} **Automated AI Forensics Report** — *${data.ruleName}* (${severity})\n\n` +
+                    `**Agent:** ${data.agentId}\n\n` +
+                    `**Executive Summary:** ${data.executiveSummary}\n\n` +
+                    `**Remediation:** ${data.remediationSteps}`
+                ),
+                timestamp: new Date(),
+                suggestedActions: ['Show me more details', 'Isolate this agent', 'Run a full threat summary']
+            }]);
+            toast(`🤖 AI Report generated for agent ${data.agentId}`, {
+                icon: '🧠',
+                duration: 5000
+            });
+        });
+        return () => { socket.disconnect(); };
+    }, [token]);
 
     const handleSend = async (queryText: string) => {
         if (!queryText.trim() || loading) return;

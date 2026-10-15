@@ -6,6 +6,8 @@ import { API_URL } from '../config';
 export default function SystemSettingsPanel() {
     const { token, user } = useAuth();
     const [antiTamperEnabled, setAntiTamperEnabled] = useState(true);
+    const [aiProviderUrl, setAiProviderUrl] = useState('https://api.openai.com/v1/chat/completions');
+    const [aiApiKey, setAiApiKey] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [msg, setMsg] = useState({ type: '', text: '' });
@@ -25,9 +27,17 @@ export default function SystemSettingsPanel() {
                 // Settings are grouped by Category. We look in "Security" or "General"
                 const allSettings = Object.values(data).flat() as any[];
                 const antiTamperSetting = allSettings.find(s => s.Key === 'EnableGlobalAntiTamper');
+                const aiProviderSetting = allSettings.find(s => s.Key === 'AiProviderUrl');
+                const aiKeySetting = allSettings.find(s => s.Key === 'AiApiKey');
                 
                 if (antiTamperSetting) {
                     setAntiTamperEnabled(antiTamperSetting.Value === 'true');
+                }
+                if (aiProviderSetting) {
+                    setAiProviderUrl(aiProviderSetting.Value);
+                }
+                if (aiKeySetting) {
+                    setAiApiKey(aiKeySetting.Value);
                 }
             }
         } catch (error) {
@@ -47,6 +57,18 @@ export default function SystemSettingsPanel() {
                 Value: antiTamperEnabled ? 'true' : 'false',
                 Category: 'Security',
                 Description: 'Enable strict UI obfuscation and anti-debugging globally.'
+            },
+            {
+                Key: 'AiProviderUrl',
+                Value: aiProviderUrl,
+                Category: 'AI',
+                Description: 'Custom OpenAI-compatible API endpoint URL for AI features.'
+            },
+            {
+                Key: 'AiApiKey',
+                Value: aiApiKey,
+                Category: 'AI',
+                Description: 'API Key for the custom AI provider.'
             }
         ];
 
@@ -97,6 +119,35 @@ export default function SystemSettingsPanel() {
                 <p className="text-xs text-red-600 dark:text-red-300">
                     Regardless of this toggle, <strong>SuperAdmin</strong> accounts are fully exempted from Anti-Tampering. You will always be able to inspect elements and use the console to debug the application in production.
                 </p>
+            </div>
+
+            <div className="p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
+                <div>
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-white">AI Provider Configuration</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Set a custom OpenAI-compatible endpoint for Copilot.</p>
+                </div>
+                
+                <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">API Endpoint URL</label>
+                    <input 
+                        type="text" 
+                        value={aiProviderUrl} 
+                        onChange={e => setAiProviderUrl(e.target.value)} 
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 transition-all"
+                        placeholder="e.g. https://api.openai.com/v1/chat/completions"
+                    />
+                </div>
+                
+                <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">API Key</label>
+                    <input 
+                        type="password" 
+                        value={aiApiKey} 
+                        onChange={e => setAiApiKey(e.target.value)} 
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg outline-none text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500/50 transition-all"
+                        placeholder="sk-..."
+                    />
+                </div>
             </div>
 
             {msg.text && (

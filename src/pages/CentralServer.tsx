@@ -331,7 +331,7 @@ function ThesaurusSettingsTab() {
                                     <td className="p-4 font-bold text-gray-900 dark:text-white">{entry.keyword}</td>
                                     <td className="p-4">
                                         <div className="flex flex-wrap gap-1">
-                                            {entry.synonyms.map((s: string) => (
+                                            {(entry.synonyms || []).map((s: string) => (
                                                 <span key={s} className="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded text-xs border border-blue-200 dark:border-blue-800/50">{s}</span>
                                             ))}
                                         </div>
@@ -634,7 +634,7 @@ function SearchesTab() {
                                 <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                                     <td className="p-4 font-bold text-gray-900 dark:text-white">{s.name}</td>
                                     <td className="p-4"><span className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 px-2 py-1 rounded text-xs border border-blue-200 dark:border-blue-800/50">{s.category}</span></td>
-                                    <td className="p-4 text-gray-500 text-xs">{new Date(s.createdAt).toLocaleDateString()}</td>
+                                    <td className="p-4 text-gray-500 text-xs">{s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</td>
                                     <td className="p-4 text-right"><button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 transition-colors"><Trash size={16} /></button></td>
                                 </tr>
                             ))}

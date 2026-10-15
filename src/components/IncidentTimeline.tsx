@@ -1,4 +1,4 @@
-import { Shield, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { Shield, AlertTriangle, Info, CheckCircle, Bomb } from 'lucide-react';
 
 interface Event {
     id: number;
@@ -15,7 +15,12 @@ interface IncidentTimelineProps {
 }
 
 export default function IncidentTimeline({ events }: IncidentTimelineProps) {
-    const getSeverityColor = (severity: string) => {
+    const isDeception = (type: string) => type.includes('Deception') || type.includes('RansomwareDecoy');
+
+    const getSeverityColor = (severity: string, type: string) => {
+        if (isDeception(type)) {
+            return 'text-red-500 bg-red-950/40 border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.4)] animate-pulse';
+        }
         switch (severity) {
             case 'Critical': return 'text-red-500 bg-red-500/10 border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.2)]';
             case 'High': return 'text-orange-500 bg-orange-500/10 border-orange-500/30 shadow-[0_0_15px_rgba(249,115,22,0.2)]';
@@ -25,6 +30,7 @@ export default function IncidentTimeline({ events }: IncidentTimelineProps) {
     };
 
     const getIcon = (type: string) => {
+        if (isDeception(type)) return <Bomb className="w-5 h-5 text-red-500" />;
         if (type.includes('Threat') || type.includes('Malware')) return <AlertTriangle className="w-4 h-4" />;
         if (type.includes('Policy') || type.includes('Access')) return <Shield className="w-4 h-4" />;
         if (type.includes('System') || type.includes('Update')) return <Info className="w-4 h-4" />;
@@ -36,7 +42,7 @@ export default function IncidentTimeline({ events }: IncidentTimelineProps) {
             {events.map((event) => (
                 <div key={event.id} className="relative flex items-start gap-8 group">
                     {/* Timeline Node */}
-                    <div className={`mt-2 w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 z-10 border-2 transition-all duration-500 group-hover:scale-110 ${getSeverityColor(event.severity)}`}>
+                    <div className={`mt-2 w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 z-10 border-2 transition-all duration-500 group-hover:scale-110 ${getSeverityColor(event.severity, event.type)}`}>
                         {getIcon(event.type)}
                     </div>
 

@@ -5,41 +5,27 @@ export default function RansomwareDashboard() {
   const [incidents, setIncidents] = useState<any[]>([]);
 
   useEffect(() => {
-    // Mocking response from /api/v2/ransomware/incidents
-    setIncidents([
-      {
-        id: 1,
-        agent_id: "WIN-SRV-FINANCE",
-        process_id: 4092,
-        heuristic: "MassFileRename",
-        timestamp: "2026-06-07T13:42:15Z",
-        mitigations: [
-          { action: "ProcessKilled", success: true },
-          { action: "HostQuarantined", success: true }
-        ]
-      },
-      {
-        id: 2,
-        agent_id: "WIN-DESK-CEO",
-        process_id: 0,
-        heuristic: "VssadminDeletion: 4 -> 0",
-        timestamp: "2026-06-07T10:15:00Z",
-        mitigations: [
-          { action: "HostQuarantined", success: true }
-        ]
-      },
-      {
-        id: 3,
-        agent_id: "WIN-SRV-DB1",
-        process_id: 0,
-        heuristic: "HighEntropy: 7.95",
-        timestamp: "2026-06-07T14:30:22Z",
-        mitigations: [
-          { action: "ProcessKilled", success: true },
-          { action: "HostQuarantined", success: true }
-        ]
+    const fetchIncidents = async () => {
+      try {
+        const token = localStorage.getItem('monitorix_token');
+        const res = await fetch('http://localhost:8000/api/v2/ransomware/incidents', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setIncidents(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch ransomware incidents:", e);
       }
-    ]);
+    };
+
+    fetchIncidents();
+    // Poll every 5 seconds for live updates
+    const intervalId = setInterval(fetchIncidents, 5000);
+    return () => clearInterval(intervalId);
   }, []);
 
   return (

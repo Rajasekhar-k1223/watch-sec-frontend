@@ -1,16 +1,51 @@
 import { useState } from 'react';
-import { Search, Save, FolderPlus, Clock, Database, Server, FileText, Globe } from 'lucide-react';
+import { Search, Save, FolderPlus, Database, Server, FileText, Globe, Bot, Send, Sparkles } from 'lucide-react';
+import { API_URL } from '../config';
 
 export default function ThreatHunting() {
   const [query, setQuery] = useState('process.name:"powershell.exe" AND network.dest_port:4444');
   const [results, setResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  
+  // AI Copilot State
+  const [copilotQuery, setCopilotQuery] = useState('');
+  const [copilotResponse, setCopilotResponse] = useState<{translated_kql?: string, analysis?: string} | null>(null);
+  const [isCopilotThinking, setIsCopilotThinking] = useState(false);
+
+  const handleCopilotSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!copilotQuery.trim()) return;
+    setIsCopilotThinking(true);
+    try {
+      const token = sessionStorage.getItem('token');
+      const res = await fetch(`${API_URL}/ai/hunting/copilot`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ query: copilotQuery })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCopilotResponse(data);
+        if (data.translated_kql) {
+          setQuery(data.translated_kql);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsCopilotThinking(false);
+      setCopilotQuery('');
+    }
+  };
 
   const handleSearch = async () => {
     setIsSearching(true);
     try {
       const token = sessionStorage.getItem('token');
-      const res = await fetch(`http://localhost:8000/api/v2/hunting/search`, {
+      const res = await fetch(`${API_URL}/v2/hunting/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,7 +67,7 @@ export default function ThreatHunting() {
             
             for (const ip of ips) {
                 try {
-                    const tiRes = await fetch(`http://localhost:8000/api/v2/threat-intel/ioc/lookup?value=${ip}&type=IPv4`, {
+                    const tiRes = await fetch(`${API_URL}/v2/threat-intel/ioc/lookup?value=${ip}&type=IPv4`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (tiRes.ok) {
@@ -44,7 +79,7 @@ export default function ThreatHunting() {
             
             for (const hash of hashes) {
                 try {
-                    const tiRes = await fetch(`http://localhost:8000/api/v2/threat-intel/ioc/lookup?value=${hash}&type=SHA256`, {
+                    const tiRes = await fetch(`${API_URL}/v2/threat-intel/ioc/lookup?value=${hash}&type=SHA256`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if (tiRes.ok) {
@@ -176,31 +211,51 @@ export default function ThreatHunting() {
           </div>
         </div>
 
-        {/* Workspace Timeline Panel */}
+        {/* AI Copilot Panel */}
         <div className="lg:col-span-1">
           <div className="bg-[#1a1a1a] border-gray-800 h-[600px] flex flex-col">
-            <div className="border-b border-gray-800 pb-3">
+            <div className="border-b border-gray-800 pb-3 p-4">
               <div className="flex items-center space-x-2">
-                <Clock className="w-5 h-5 text-[#00ff8e]" />
-                <h3 className="text-lg font-bold">Active Case Timeline</h3>
+                <Bot className="w-5 h-5 text-[#00ff8e]" />
+                <h3 className="text-lg font-bold">AI Threat Hunter Copilot</h3>
               </div>
             </div>
-            <div className="p-4 flex-1 overflow-auto">
-              <div className="space-y-6">
-                <div className="border-l-2 border-gray-700 pl-4 relative">
-                  <div className="absolute w-3 h-3 bg-[#00ff8e] rounded-full -left-[7px] top-1"></div>
-                  <p className="text-xs text-gray-500 font-mono">10:42:01 AM</p>
-                  <p className="text-sm font-medium">Suspicious Process</p>
-                  <p className="text-xs text-gray-400 mt-1">powershell.exe -w hidden execution detected by analyst.</p>
-                </div>
-                
-                <div className="border-l-2 border-gray-700 pl-4 relative">
-                  <div className="absolute w-3 h-3 bg-red-500 rounded-full -left-[7px] top-1"></div>
-                  <p className="text-xs text-gray-500 font-mono">10:42:05 AM</p>
-                  <p className="text-sm font-medium">C2 Beacon</p>
-                  <p className="text-xs text-gray-400 mt-1">TCP connection established to known malicious IP via port 4444.</p>
-                </div>
+            
+            <div className="p-4 flex-1 overflow-auto space-y-4 text-sm text-gray-300">
+              <div className="bg-[#2a2a2a] p-3 rounded-lg rounded-tl-none inline-block">
+                Hello! I can translate your natural language requests into complex KQL queries to hunt through our telemetry. Try asking: <br/><br/>
+                <span className="italic">"Find all powershell executions making network connections to port 4444"</span>
               </div>
+
+              {copilotResponse && (
+                <div className="bg-[#00331c] border border-[#00ff8e]/30 p-3 rounded-lg text-[#00ff8e] mt-4">
+                  <div className="flex items-center space-x-2 font-bold mb-1">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Analysis Complete</span>
+                  </div>
+                  <p>{copilotResponse.analysis}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-800">
+              <form onSubmit={handleCopilotSubmit} className="relative">
+                <input
+                  type="text"
+                  value={copilotQuery}
+                  onChange={(e) => setCopilotQuery(e.target.value)}
+                  placeholder="Ask Copilot to hunt..."
+                  className="w-full bg-[#0a0a0a] border border-gray-700 rounded-lg py-2 pl-3 pr-10 focus:border-[#00ff8e] focus:outline-none"
+                  disabled={isCopilotThinking}
+                />
+                <button 
+                  type="submit" 
+                  disabled={isCopilotThinking}
+                  className="absolute right-2 top-2 text-[#00ff8e] hover:text-[#00cc7a] disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+              </form>
             </div>
           </div>
         </div>

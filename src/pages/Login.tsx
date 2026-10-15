@@ -1,180 +1,367 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
-import { Shield, Lock, User, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import "./Login.css";
+import {
+  Shield, ShieldCheck, User, Building2, Lock, Eye, EyeOff, Sun, Globe,
+  Check, Monitor, FileCheck, ArrowRight, ChevronDown, AlertCircle
+} from "lucide-react";
+import { BarChart3 as ChartColumn } from "lucide-react";
 
 export default function Login() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [sessionExpired, setSessionExpired] = useState(false);
+  const [activeTab, setActiveTab] = useState<'operator' | 'sso'>('operator');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState("English");
 
-    const { login } = useAuth();
-    const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+  const { login, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-    // Detect redirect from 401 interceptor
-    useEffect(() => {
-        if (searchParams.get('reason') === 'session_expired') {
-            setSessionExpired(true);
-            // Clean up the URL without triggering a navigation
-            window.history.replaceState({}, '', '/login');
-        }
-    }, [searchParams]);
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/status');
+    }
+  }, [isAuthenticated, navigate]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setLoading(true);
+  useEffect(() => {
+    if (searchParams.get('reason') === 'session_expired') {
+      setSessionExpired(true);
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [searchParams]);
 
-        // Simulate network delay for "best view" demonstration if local
-        // await new Promise(r => setTimeout(r, 800)); 
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setSessionExpired(false);
 
-        try {
-            const res = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
-            });
+    if (activeTab === 'sso') {
+      setError("SSO integration not configured.");
+      return;
+    }
 
-            if (!res.ok) {
-                // Try to parse error message
-                const msg = await res.text();
-                throw new Error(msg || 'Invalid Credentials');
-            }
+    if (!username.trim() || !password) {
+      setError("Enter your Operator ID and cryptographic key.");
+      return;
+    }
 
-            const data = await res.json();
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
 
-            // Validate Token Structure (Basic check)
-            if (!data.token || !data.user) {
-                throw new Error("Invalid server response (Missing Token)");
-            }
+      if (!res.ok) {
+        throw new Error("Invalid operator credentials or identity token.");
+      }
 
-            // Successful Login
-            await login(data.token, data.user);
-            navigate('/status');
+      const data = await res.json();
+      login(data.token, data.user);
+      navigate('/status');
+    } catch (err: any) {
+      setError(err.message || "Invalid operator credentials or identity token.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        } catch (err: any) {
-            console.error("Login Failed:", err);
-            setError(err.message || 'Failed to connect to server.');
-        } finally {
-            setLoading(false);
-        }
-    };
+  const handleMicrosoftLogin = () => {
+    setError("Microsoft Entra ID integration not configured.");
+  };
 
-    return (
-        <div className="min-h-screen bg-slate-50 dark:bg-[#020617] flex items-center justify-center relative overflow-hidden transition-colors">
-            {/* Ambient Background Effects */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
-            <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-blue-600/10 dark:bg-blue-600/15 rounded-full blur-[120px] animate-pulse-slow pointer-events-none"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-emerald-600/10 dark:bg-emerald-600/15 rounded-full blur-[120px] animate-pulse-slow delay-700 pointer-events-none"></div>
+  const handleForgotKey = () => {
+    setError("Key recovery service unavailable.");
+  };
 
-            <div className="w-full max-w-md glass-card p-10 relative z-10 transition-all duration-500 hover:shadow-blue-500/10 hover:border-blue-500/30 animate-in fade-in slide-in-from-bottom-8">
+  const handleProvision = () => {
+    navigate("/register");
+  };
 
-                {/* Logo / Header */}
-                <div className="text-center mb-10">
-                    <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-600 to-emerald-600 rounded-3xl flex items-center justify-center mb-6 shadow-2xl shadow-blue-500/20 transform rotate-3 hover:rotate-6 transition-transform ring-4 ring-white/10">
-                        <Shield className="w-10 h-10 text-white" />
-                    </div>
-                    <h1 className="text-4xl font-black tracking-tighter mb-2">
-                        <span className="text-gradient">Monitorix Portal</span>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs font-black uppercase tracking-widest">Enterprise Command Center</p>
-                </div>
+  return (
+    <main className="login-page">
+      {/* LEFT: Brand and security showcase */}
+      <section className="login-hero">
+        <div className="cyber-background" />
+        <div className="login-illustration-glow" />
 
-                {/* Session Expired Banner */}
-                {sessionExpired && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs p-4 rounded-2xl mb-6 flex items-start gap-3 font-bold animate-in fade-in slide-in-from-top-4">
-                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                        <div>
-                            <p className="font-black uppercase tracking-wide mb-0.5">Session Expired</p>
-                            <p className="font-medium opacity-80">Your session timed out. Please sign in again to continue.</p>
-                        </div>
-                    </div>
-                )}
-
-                {/* Error Alert */}
-                {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs p-4 rounded-2xl mb-6 flex items-start gap-3 animate-shake font-bold">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{error}</span>
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-5">
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 ml-1">Identity Token</label>
-                            <div className="relative group">
-                                <User className="absolute left-4 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                                <input
-                                    type="text"
-                                    value={username}
-                                    onChange={(e) => setUsername(e.target.value)}
-                                    className="block w-full pl-12 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all font-semibold text-sm"
-                                    placeholder="Operator ID"
-                                    required
-                                    disabled={loading}
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2 ml-1">Cryptographic Key</label>
-                            <div className="relative group">
-                                <Lock className="absolute left-4 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-                                <input
-                                    type="password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="block w-full pl-12 bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/50 transition-all font-semibold text-sm"
-                                    placeholder="••••••••"
-                                    required
-                                    disabled={loading}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl shadow-2xl shadow-blue-500/20 text-xs font-black uppercase tracking-[0.2em] text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 focus:outline-none ring-2 ring-blue-500/20 disabled:opacity-70 disabled:cursor-not-allowed transition-all transform active:scale-95"
-                    >
-                        {loading ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                <span className="animate-pulse">Authorizing...</span>
-                            </>
-                        ) : (
-                            <>
-                                Establish Session <ArrowRight className="w-4 h-4" />
-                            </>
-                        )}
-                    </button>
-
-                    <div className="text-center pt-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest">
-                            <span className="text-slate-500">New Protocol? </span>
-                            <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:text-blue-500 transition-colors underline-offset-4 decoration-blue-500/20">
-                                Provision Organization
-                            </Link>
-                        </p>
-                    </div>
-                </form>
+        <div className="login-hero-content">
+          <header className="login-brand">
+            <div className="login-brand-icon">
+              <Shield className="h-7 w-7" strokeWidth={2.2} />
             </div>
-
-            {/* Footer */}
-            <div className="absolute bottom-8 text-center text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                <p>&copy; 2026 Monitorix. High-Trust Infrastructure.</p>
-                <div className="flex gap-6 justify-center mt-3 opacity-40">
-                    <span className="hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">Protocol</span>
-                    <span>•</span>
-                    <span className="hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">Compliance</span>
-                </div>
+            <div>
+              <h1 className="login-brand-name">Monitorix</h1>
+              <div className="login-brand-subtitle">
+                Enterprise Command Center
+              </div>
             </div>
+          </header>
+
+          <div className="login-hero-badge">
+            Unified security operations
+          </div>
+
+          <h2 className="login-hero-heading">
+            Secure Today.<br />
+            <span>Safer Tomorrow.</span>
+          </h2>
+
+          <p className="login-hero-description">
+            Unified security, monitoring and operations platform to protect
+            your infrastructure, applications and data across the
+            enterprise.
+          </p>
+
+          <ul className="login-benefits">
+            <li>Real-time Threat Monitoring</li>
+            <li>Endpoint Visibility & Control</li>
+            <li>Compliance & Risk Management</li>
+            <li>Multi-Cloud Support</li>
+            <li>AI-Powered Insights</li>
+          </ul>
+
+          {/* Bottom capability cards */}
+          <div className="login-feature-grid">
+            <div className="login-feature-card">
+              <div className="login-feature-icon">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <h3>Threat Detection</h3>
+              <p>Identify and stop threats before they impact</p>
+            </div>
+            <div className="login-feature-card">
+              <div className="login-feature-icon">
+                <Monitor className="h-5 w-5" />
+              </div>
+              <h3>Endpoint Control</h3>
+              <p>Complete visibility across all your devices</p>
+            </div>
+            <div className="login-feature-card">
+              <div className="login-feature-icon">
+                <FileCheck className="h-5 w-5" />
+              </div>
+              <h3>Compliance Ready</h3>
+              <p>Meet industry and regulatory standards</p>
+            </div>
+            <div className="login-feature-card">
+              <div className="login-feature-icon">
+                <ChartColumn className="h-5 w-5" />
+              </div>
+              <h3>Operational Insights</h3>
+              <p>AI-driven analytics and reporting</p>
+            </div>
+          </div>
+          
+          <footer className="login-hero-footer">
+            &copy; 2026 MONITORIX. HIGH-TRUST INFRASTRUCTURE.
+          </footer>
         </div>
-    );
+      </section>
+
+      {/* RIGHT: Login panel */}
+      <section className="login-panel">
+        <div className="login-top-controls">
+          <button
+            type="button"
+            className="login-theme-button"
+            onClick={() => setDarkMode(!darkMode)}
+            aria-label="Toggle dark mode"
+          >
+            <Sun className="h-4 w-4" />
+          </button>
+          
+          <button
+            type="button"
+            className="login-language-button"
+          >
+            <Globe className="h-4 w-4" />
+            {language}
+            <ChevronDown className="h-3 w-3" />
+          </button>
+        </div>
+
+        <div className="login-card">
+          <div className="login-card-brand">
+            <div className="login-card-brand-icon">
+              <Shield className="h-10 w-10" strokeWidth={2.2} />
+            </div>
+            <h2>Monitorix <span>Portal</span></h2>
+            <p>Enterprise Command Center</p>
+          </div>
+
+          <div className="login-tabs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('operator')}
+              className={`login-tab ${activeTab === 'operator' ? 'active' : ''}`}
+            >
+              <User className="h-4 w-4" />
+              Operator Login
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('sso')}
+              className={`login-tab ${activeTab === 'sso' ? 'active' : ''}`}
+            >
+              <Building2 className="h-4 w-4" />
+              SSO Login
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="login-form">
+            {sessionExpired && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#d97706', backgroundColor: '#fef3c7', padding: '12px', borderRadius: '8px', fontSize: '13px', border: '1px solid #fcd34d' }}>
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>Your session has expired. Please sign in again.</span>
+              </div>
+            )}
+            
+            {activeTab === 'operator' ? (
+              <>
+                <div className="login-form-group">
+                  <label htmlFor="operatorId">Identity Token</label>
+                  <div className="login-input-wrapper">
+                    <User className="login-input-icon h-4 w-4" />
+                    <input
+                      id="operatorId"
+                      name="operatorId"
+                      type="text"
+                      autoComplete="username"
+                      required
+                      value={username}
+                      onChange={(event) => setUsername(event.target.value)}
+                      placeholder="Operator ID"
+                    />
+                  </div>
+                </div>
+
+                <div className="login-form-group">
+                  <label htmlFor="secret">Cryptographic Key</label>
+                  <div className="login-input-wrapper">
+                    <Lock className="login-input-icon h-4 w-4" />
+                    <input
+                      id="secret"
+                      name="secret"
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      required
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Enter your cryptographic key"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      aria-label={showPassword ? "Hide cryptographic key" : "Show cryptographic key"}
+                      className="login-input-toggle"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="login-form-options">
+                  <label className="login-remember">
+                    <input
+                      type="checkbox"
+                      checked={rememberDevice}
+                      onChange={(event) => setRememberDevice(event.target.checked)}
+                    />
+                    Remember this device
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleForgotKey}
+                    className="login-forgot-link"
+                  >
+                    Forgot key?
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="login-form-group">
+                <label htmlFor="ssoOrg">Organization URL or Domain</label>
+                <div className="login-input-wrapper">
+                  <Building2 className="login-input-icon h-4 w-4" />
+                  <input
+                    id="ssoOrg"
+                    name="ssoOrg"
+                    type="text"
+                    required
+                    placeholder="company.com"
+                  />
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', color: '#b91c1c', backgroundColor: '#fef2f2', padding: '12px', borderRadius: '8px', fontSize: '12px', border: '1px solid #fee2e2' }}>
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="login-submit-button"
+            >
+              {loading ? "Establishing session..." : "Establish Session"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+
+            <div className="login-divider">
+              OR
+            </div>
+
+            <button
+              type="button"
+              onClick={handleMicrosoftLogin}
+              className="login-microsoft-button"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
+                <rect x="1" y="1" width="10" height="10" fill="#F25022" />
+                <rect x="13" y="1" width="10" height="10" fill="#7FBA00" />
+                <rect x="1" y="13" width="10" height="10" fill="#00A4EF" />
+                <rect x="13" y="13" width="10" height="10" fill="#FFB900" />
+              </svg>
+              Sign in with Microsoft
+              <ArrowRight className="h-4 w-4" style={{ color: '#8294b1' }} />
+            </button>
+
+            <p className="login-provision">
+              NEW PROTOCOL?{" "}
+              <button
+                type="button"
+                onClick={handleProvision}
+                style={{ background: 'none', border: 'none', color: 'var(--monitorix-primary)', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+              >
+                PROVISION ORGANIZATION
+              </button>
+            </p>
+          </form>
+        </div>
+
+        <footer className="login-footer">
+          <a href="#">About</a>
+          <span>|</span>
+          <a href="#">Security</a>
+          <span>|</span>
+          <a href="#">Compliance</a>
+          <span>|</span>
+          <a href="#">Support</a>
+        </footer>
+      </section>
+    </main>
+  );
 }
