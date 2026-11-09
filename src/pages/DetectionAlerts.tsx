@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
-    ShieldAlert, Zap, Server, Clock, Brain, AlertTriangle, 
-    CheckCircle, CheckCircle2, X, Shield, RefreshCw, Layers, ChevronRight, Filter,
-    Gauge, PlayCircle, BarChart3, TrendingUp, ShieldCheck
+    ShieldAlert, Zap, Server, Clock, Brain,
+    CheckCircle, CheckCircle2, Shield, RefreshCw, Layers, Filter,
+    Gauge, PlayCircle, BarChart3, ShieldCheck
 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { SOCKET_URL, API_URL } from '../config';
 import { AiReportModal } from '../components/AiReportModal';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { promoteAlertToSocCase } from '../services/soc_case_api';
 
 interface DetectionAlert {
     Id: number;
@@ -139,6 +141,7 @@ interface AnalystQueueItem {
 
 export default function DetectionAlerts() {
     const { token } = useAuth();
+    const navigate = useNavigate();
     const [alerts, setAlerts] = useState<DetectionAlert[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeCopilotAlertId, setActiveCopilotAlertId] = useState<number | null>(null);
@@ -159,7 +162,7 @@ export default function DetectionAlerts() {
 
     // Action states
     const [executingSoarId, setExecutingSoarId] = useState<number | null>(null);
-    const [escalatingId, setEscalatingId] = useState<number | null>(null);
+    const [promotingAlertId, setPromotingAlertId] = useState<number | null>(null);
 
     // MITRE Matrix State
     const [mitreData, setMitreData] = useState<MitreMatrixData | null>(null);
@@ -317,10 +320,24 @@ export default function DetectionAlerts() {
             console.log('Detection alerts socket connected');
         });
 
-        socket.on('detection_alert', (newAlert: DetectionAlert) => {
-            setAlerts(prev => [newAlert, ...prev]);
-            toast.error(`Security Alert Triggered on ${newAlert.AgentId}`, { icon: '🚨' });
-        });
+        const handleAlertEvent = (newAlert: Record<string, unknown>) => {
+            const formatted: DetectionAlert = {
+                Id: Number(newAlert.Id || newAlert.id || Date.now()),
+                AgentId: String(newAlert.AgentId || newAlert.agent_id || 'Unknown'),
+                RuleId: Number(newAlert.RuleId || newAlert.rule_id || 0),
+                RuleName: String(newAlert.RuleName || newAlert.rule_name || 'Threat Alert'),
+                Severity: String(newAlert.Severity || newAlert.severity || 'High'),
+                Status: String(newAlert.Status || newAlert.status || 'Active'),
+                Timestamp: String(newAlert.Timestamp || newAlert.timestamp || new Date().toISOString()),
+                MatchedContent: String(newAlert.MatchedContent || newAlert.matched_content || '')
+            };
+            setAlerts(prev => [formatted, ...prev]);
+            toast.error(`Security Alert Triggered on ${formatted.AgentId}`, { icon: '🚨' });
+        };
+
+        socket.on('detection_alert', handleAlertEvent);
+        socket.on('new_alert', handleAlertEvent);
+        socket.on('threat_alert', handleAlertEvent);
 
         return () => {
             socket.disconnect();
@@ -362,36 +379,37 @@ export default function DetectionAlerts() {
         }
     };
 
-    const handleEscalateToIncident = async (alertItem: DetectionAlert) => {
+    const handlePromoteToSocCase = async (alertItem: DetectionAlert) => {
         try {
-            setEscalatingId(alertItem.Id);
-            const res = await fetch(`${API_URL}/api/incidents`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    title: `Security Incident: ${alertItem.RuleName || 'Alert #' + alertItem.Id}`,
-                    description: `Escalated from Detection Alert #${alertItem.Id}. Matched telemetry: ${alertItem.MatchedContent}. MITRE: ${alertItem.MitreTactic || 'Defense Evasion'} (${alertItem.MitreTechnique || 'T1059'}).`,
-                    agent_id: alertItem.AgentId,
-                    severity: alertItem.Severity || 'High',
-                    affected_agents: [alertItem.AgentId]
-                })
+            setPromotingAlertId(alertItem.Id);
+            const severityPriorityMap: Record<string, 'P1' | 'P2' | 'P3' | 'P4'> = {
+                Critical: 'P1',
+                High: 'P2',
+                Medium: 'P3',
+                Low: 'P4'
+            };
+            const priority = severityPriorityMap[alertItem.Severity || 'High'] || 'P2';
+
+            const createdCase = await promoteAlertToSocCase({
+                alert_id: alertItem.Id,
+                title: alertItem.RuleName || `Alert #${alertItem.Id}: Security Incident`,
+                priority: priority,
+                notes: `Promoted from Detection Alert #${alertItem.Id}. Host: ${alertItem.AgentId}. MITRE: ${alertItem.MitreTactic || 'Defense Evasion'} (${alertItem.MitreTechnique || 'T1059'}). Telemetry: ${alertItem.MatchedContent || 'N/A'}`
             });
 
-            if (res.ok) {
-                const inc = await res.json();
-                toast.success(`Escalated to Incident #${inc.incident_id || 'new'}!`, { icon: '🔥' });
-                handleUpdateStatus(alertItem.Id, 'Escalated');
+            toast.success(`Promoted to SOC Case ${createdCase.case_number}!`, { icon: '🛡️' });
+            handleUpdateStatus(alertItem.Id, 'Escalated');
+            navigate(`/soc/incidents/${createdCase.id}`);
+        } catch (err: unknown) {
+            const errorObj = err as { isDuplicate?: boolean; statusCode?: number; message?: string };
+            if (errorObj?.isDuplicate || errorObj?.statusCode === 409) {
+                toast.error(`Alert #${alertItem.Id} has already been promoted to a SOC case.`, { icon: '⚠️' });
             } else {
-                toast.error('Failed to create incident');
+                console.error('Promotion error:', err);
+                toast.error(errorObj?.message || 'Failed to promote alert to SOC case');
             }
-        } catch (e) {
-            console.error(e);
-            toast.error('Error creating incident');
         } finally {
-            setEscalatingId(null);
+            setPromotingAlertId(null);
         }
     };
 
@@ -619,12 +637,13 @@ export default function DetectionAlerts() {
                                         </button>
 
                                         <button 
-                                            onClick={() => handleEscalateToIncident(alert)}
-                                            disabled={escalatingId === alert.Id}
+                                            onClick={() => handlePromoteToSocCase(alert)}
+                                            disabled={promotingAlertId === alert.Id}
                                             className="flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md disabled:opacity-50"
+                                            title="Promote this alert directly into an Enterprise SOC Case"
                                         >
-                                            <AlertTriangle size={14} />
-                                            {escalatingId === alert.Id ? 'Escalating...' : 'Escalate to Incident'}
+                                            <ShieldAlert size={14} className={promotingAlertId === alert.Id ? 'animate-spin' : ''} />
+                                            {promotingAlertId === alert.Id ? 'Promoting...' : 'Promote to SOC Case'}
                                         </button>
 
                                         <div className="flex gap-2">

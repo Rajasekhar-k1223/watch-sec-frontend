@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
-    PieChart, Pie, Cell, Tooltip, Legend,
-    BarChart, Bar, XAxis, YAxis, ResponsiveContainer,
-    AreaChart, Area, CartesianGrid
+    Activity, Clock, Monitor, Coffee, AlertTriangle, TrendingUp, Brain
+} from 'lucide-react';
+import {
+    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, BarChart, Bar, CartesianGrid, Legend
 } from 'recharts';
-import { Brain, Clock, Coffee, AlertTriangle, Monitor, Activity, TrendingUp } from 'lucide-react';
 import { API_URL } from '../config';
 
+interface AppUsage {
+    name: string;
+    duration: number; // in seconds
+    category: 'Productive' | 'Unproductive' | 'Neutral';
+}
+
 interface ProductivityData {
-    score: number;
+    agentId: string;
+    score: number; // 0-100
     totalSeconds: number;
     breakdown: {
         productive: number;
@@ -17,15 +25,8 @@ interface ProductivityData {
         neutral: number;
         idle: number;
     };
-    topApps: {
-        name: string;
-        duration: number;
-        category: string;
-    }[];
-    trend?: {
-        time: string;
-        score: number;
-    }[];
+    topApps: AppUsage[];
+    trend?: { time: string; score: number }[];
 }
 
 interface Agent {
@@ -35,6 +36,7 @@ interface Agent {
 
 export default function Productivity() {
     const { token } = useAuth();
+    const authToken = token || sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('monitorix_token');
     const [agents, setAgents] = useState<Agent[]>([]);
     const [selectedAgent, setSelectedAgent] = useState<string>("");
     const [data, setData] = useState<ProductivityData | null>(null);
@@ -45,9 +47,9 @@ export default function Productivity() {
 
     // 1. Fetch Agents List First
     useEffect(() => {
-        if (!token) return;
+        if (!authToken) return;
         fetch(`${API_URL}/status`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${authToken}` }
         })
             .then(res => res.json())
             .then((res: any[]) => {
@@ -55,54 +57,42 @@ export default function Productivity() {
                 if (res.length > 0) setSelectedAgent(res[0].agentId);
             })
             .catch(err => console.error("Failed to load agents", err));
-    }, [token]);
+    }, [authToken]);
 
     // 2. Fetch Productivity Data when Agent Selected
     useEffect(() => {
-        if (!selectedAgent) return;
+        if (!selectedAgent || !authToken) return;
         setLoading(true);
 
         let url = `${API_URL}/productivity/summary/${selectedAgent}`;
 
         if (startDate || endDate) {
-            // Default From to Start of Day, To to End of Day
-            // If only one is selected, default the other to the same day (single day view)
-            // or just leave open-ended? Better to enforce logic.
-
             let from = startDate ? `${startDate}T00:00:00` : '';
             let to = endDate ? `${endDate}T23:59:59` : '';
-
-            // Auto-fill missing bound for single-day UX if preferred, OR allow open ranges.
-            // Let's allow open ranges if backend supports it.
-            // Backend `productivity.py` checks `if from_date:` and `if to_date:` independently.
 
             const params = new URLSearchParams();
             if (from) params.append('from_date', from);
             if (to) params.append('to_date', to);
 
-            // If explicit range, override default days=7
             if (params.toString()) {
                 url += `?${params.toString()}`;
             }
         }
 
         fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${authToken}` }
         })
             .then(res => res.json())
             .then(apiData => {
-                // Mock trend data if missing (Visual Enhancement)
+                // Ensure trend data strictly adheres to real backend records
                 if (!apiData.trend) {
-                    apiData.trend = Array.from({ length: 24 }, (_, i) => ({
-                        time: `${i}:00`,
-                        score: Math.floor(Math.random() * 40) + 60 // Random score 60-100
-                    }));
+                    apiData.trend = [];
                 }
                 setData(apiData);
             })
             .catch(err => console.error(err))
             .finally(() => setLoading(false));
-    }, [selectedAgent, token, startDate, endDate]);
+    }, [selectedAgent, authToken, startDate, endDate]);
 
     const formatTime = (sec: number) => {
         const h = Math.floor(sec / 3600);
@@ -110,7 +100,7 @@ export default function Productivity() {
         return `${h}h ${m}m`;
     };
 
-    const COLORS = ['#10B981', '#EF4444', '#F59E0B', '#6B7280']; // Green, Red, Yellow, Gray
+    const COLORS = ['#10B981', '#EF4444', '#F59E0B', '#64748b']; // Green, Red, Yellow, Gray
 
     const pieData = data ? [
         { name: 'Productive', value: data.breakdown.productive },
@@ -120,29 +110,31 @@ export default function Productivity() {
     ] : [];
 
     return (
-        <div className="space-y-6 text-gray-900 dark:text-white">
+        <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6 text-slate-900 animate-in fade-in duration-500">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                        <Activity className="w-7 h-7 md:w-8 md:h-8 text-cyan-400 shrink-0" />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Activity Analytics</span>
+                    <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-slate-900">
+                        <div className="p-2 bg-blue-50 rounded-lg shrink-0 border border-blue-100">
+                            <Activity className="w-6 h-6 md:w-8 md:h-8 text-blue-600" />
+                        </div>
+                        Activity Analytics
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Real-time Productivity & Behavior Monitoring</p>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">Real-time Productivity & Behavior Monitoring</p>
                 </div>
 
-                <div className="flex gap-3">
-                    <div className="flex glass-panel rounded-lg p-1 items-center gap-2">
+                <div className="flex flex-wrap gap-3">
+                    <div className="flex bg-white border border-slate-200 shadow-sm rounded-lg p-1 items-center gap-2">
                         <input
                             type="date"
-                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-2 py-2 outline-none cursor-pointer"
+                            className="bg-transparent text-slate-800 text-xs font-semibold px-2 py-1.5 outline-none cursor-pointer"
                             value={startDate}
                             onChange={(e) => setStartDate(e.target.value)}
                             title="From Date"
                         />
-                        <span className="text-gray-400 text-xs">to</span>
+                        <span className="text-slate-400 text-xs">to</span>
                         <input
                             type="date"
-                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-2 py-2 outline-none cursor-pointer"
+                            className="bg-transparent text-slate-800 text-xs font-semibold px-2 py-1.5 outline-none cursor-pointer"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                             title="To Date"
@@ -151,98 +143,98 @@ export default function Productivity() {
                         {(startDate || endDate) && (
                             <button
                                 onClick={() => { setStartDate(''); setEndDate(''); }}
-                                className="mr-2 text-xs text-blue-600 dark:text-blue-400 hover:text-gray-900 dark:hover:text-white font-bold px-2 py-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded"
+                                className="mr-1 text-xs text-blue-600 hover:text-blue-800 font-bold px-2 py-1 hover:bg-slate-100 rounded"
                             >
                                 CLEAR
                             </button>
                         )}
                     </div>
 
-                    <div className="flex glass-panel rounded-lg p-1">
+                    <div className="flex bg-white border border-slate-200 shadow-sm rounded-lg p-1">
                         <select
                             value={selectedAgent}
                             onChange={(e) => setSelectedAgent(e.target.value)}
-                            className="bg-transparent text-gray-900 dark:text-white text-sm font-bold px-4 py-2 outline-none cursor-pointer"
+                            className="bg-transparent text-slate-800 text-xs font-semibold px-3 py-1.5 outline-none cursor-pointer"
                         >
-                            {agents.map(a => <option key={a.agentId} value={a.agentId} className="text-black">{a.agentId} ({a.status})</option>)}
+                            {agents.map(a => <option key={a.agentId} value={a.agentId}>{a.agentId} ({a.status})</option>)}
                         </select>
                     </div>
                 </div>
             </div>
 
-            {loading && <div className="text-center py-20 text-cyan-500 animate-pulse font-mono tracking-widest">SCANNING ACTIVITY LOGS...</div>}
+            {loading && <div className="text-center py-20 text-blue-600 animate-pulse font-mono tracking-widest text-sm">SCANNING ACTIVITY LOGS...</div>}
 
             {!loading && data && (
                 <>
                     {/* STAT CARDS */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {/* Score Card */}
-                        <div className="glass-panel rounded-xl p-6 relative overflow-hidden group hover:border-purple-500/50 transition-colors">
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm relative overflow-hidden group hover:border-slate-300 transition-colors">
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                                <Brain size={64} className="text-purple-500" />
+                                <Brain size={64} className="text-purple-600" />
                             </div>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Efficiency Score</p>
-                            <h2 className={`text-4xl font-black mt-2 ${data.score >= 70 ? 'text-green-400' : data.score >= 40 ? 'text-yellow-400' : 'text-red-400'}`}>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Efficiency Score</p>
+                            <h2 className={`text-4xl font-black mt-2 ${data.score >= 70 ? 'text-emerald-600' : data.score >= 40 ? 'text-amber-600' : 'text-rose-600'}`}>
                                 {data.score}
                             </h2>
-                            <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                                <TrendingUp size={12} className="text-green-500" /> Top 10%
+                            <div className="mt-2 flex items-center gap-1 text-xs text-slate-500 font-medium">
+                                <TrendingUp size={12} className="text-emerald-500" /> Top 10%
                             </div>
                         </div>
 
                         {/* Productive Time */}
-                        <div className="glass-panel rounded-xl p-6 hover:border-green-500/50 transition-colors">
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:border-slate-300 transition-colors">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Productive</p>
-                                    <h2 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{formatTime(data.breakdown.productive)}</h2>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Productive</p>
+                                    <h2 className="text-2xl font-bold mt-1 text-slate-900">{formatTime(data.breakdown.productive)}</h2>
                                 </div>
-                                <div className="p-2 bg-green-500/10 rounded-lg border border-green-500/20">
-                                    <Monitor size={20} className="text-green-500" />
+                                <div className="p-2 bg-emerald-50 rounded-lg border border-emerald-100">
+                                    <Monitor size={20} className="text-emerald-600" />
                                 </div>
                             </div>
-                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
-                                <div className="bg-green-500 h-full shadow-[0_0_8px_rgba(34,197,94,0.6)]" style={{ width: `${(data.breakdown.productive / data.totalSeconds) * 100}%` }}></div>
+                            <div className="w-full bg-slate-100 h-1.5 mt-4 rounded-full overflow-hidden">
+                                <div className="bg-emerald-500 h-full" style={{ width: `${(data.breakdown.productive / (data.totalSeconds || 1)) * 100}%` }}></div>
                             </div>
                         </div>
 
                         {/* Unproductive Time */}
-                        <div className="glass-panel rounded-xl p-6 hover:border-red-500/50 transition-colors">
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:border-slate-300 transition-colors">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Distracted</p>
-                                    <h2 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{formatTime(data.breakdown.unproductive)}</h2>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Distracted</p>
+                                    <h2 className="text-2xl font-bold mt-1 text-slate-900">{formatTime(data.breakdown.unproductive)}</h2>
                                 </div>
-                                <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20">
-                                    <Coffee size={20} className="text-red-500" />
+                                <div className="p-2 bg-rose-50 rounded-lg border border-rose-100">
+                                    <Coffee size={20} className="text-rose-600" />
                                 </div>
                             </div>
-                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
-                                <div className="bg-red-500 h-full shadow-[0_0_8px_rgba(239,68,68,0.6)]" style={{ width: `${(data.breakdown.unproductive / data.totalSeconds) * 100}%` }}></div>
+                            <div className="w-full bg-slate-100 h-1.5 mt-4 rounded-full overflow-hidden">
+                                <div className="bg-rose-500 h-full" style={{ width: `${(data.breakdown.unproductive / (data.totalSeconds || 1)) * 100}%` }}></div>
                             </div>
                         </div>
 
                         {/* Idle Time */}
-                        <div className="glass-panel rounded-xl p-6 hover:border-gray-500/50 transition-colors">
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:border-slate-300 transition-colors">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Idle</p>
-                                    <h2 className="text-2xl font-bold mt-1 text-gray-900 dark:text-white">{formatTime(data.breakdown.idle)}</h2>
+                                    <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Idle</p>
+                                    <h2 className="text-2xl font-bold mt-1 text-slate-900">{formatTime(data.breakdown.idle)}</h2>
                                 </div>
-                                <div className="p-2 bg-gray-500/10 rounded-lg border border-gray-500/20">
-                                    <Clock size={20} className="text-gray-400" />
+                                <div className="p-2 bg-slate-100 rounded-lg border border-slate-200">
+                                    <Clock size={20} className="text-slate-500" />
                                 </div>
                             </div>
-                            <div className="w-full bg-gray-100 dark:bg-gray-700 h-1.5 mt-4 rounded-full overflow-hidden">
-                                <div className="bg-gray-500 h-full" style={{ width: `${(data.breakdown.idle / data.totalSeconds) * 100}%` }}></div>
+                            <div className="w-full bg-slate-100 h-1.5 mt-4 rounded-full overflow-hidden">
+                                <div className="bg-slate-400 h-full" style={{ width: `${(data.breakdown.idle / (data.totalSeconds || 1)) * 100}%` }}></div>
                             </div>
                         </div>
                     </div>
 
-                    {/* NEW: FOCUS TREND CHART */}
-                    <div className="glass-panel rounded-xl p-6 shadow-lg">
-                        <h3 className="text-gray-900 dark:text-white font-bold mb-6 flex items-center gap-2">
-                            <TrendingUp className="text-cyan-400" size={20} />
+                    {/* FOCUS TREND CHART */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+                        <h3 className="text-slate-900 font-bold mb-6 flex items-center gap-2 text-sm">
+                            <TrendingUp className="text-blue-600" size={18} />
                             Focus Trend (24h)
                         </h3>
                         <div className="h-64 w-full">
@@ -250,19 +242,19 @@ export default function Productivity() {
                                 <AreaChart data={data.trend}>
                                     <defs>
                                         <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-100 dark:stroke-gray-800" vertical={false} />
-                                    <XAxis dataKey="time" stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} minTickGap={30} />
-                                    <YAxis stroke="#9CA3AF" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                    <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} minTickGap={30} />
+                                    <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} />
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e2e8f0)', color: 'var(--tooltip-text, #0f172a)' }}
-                                        itemStyle={{ color: 'var(--tooltip-text, #0f172a)' }}
-                                        labelStyle={{ color: '#9CA3AF' }}
+                                        contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                        itemStyle={{ color: '#0f172a' }}
+                                        labelStyle={{ color: '#64748b' }}
                                     />
-                                    <Area type="monotone" dataKey="score" stroke="#06b6d4" fillOpacity={1} fill="url(#colorScore)" strokeWidth={2} />
+                                    <Area type="monotone" dataKey="score" stroke="#3b82f6" fillOpacity={1} fill="url(#colorScore)" strokeWidth={2} />
                                 </AreaChart>
                             </ResponsiveContainer>
                         </div>
@@ -271,8 +263,8 @@ export default function Productivity() {
                     {/* CHARTS ROW */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* DONUT CHART */}
-                        <div className="glass-panel rounded-xl p-6 lg:col-span-1 flex flex-col items-center justify-center">
-                            <h3 className="text-gray-900 dark:text-white font-bold mb-4 self-start">Time Distribution</h3>
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm lg:col-span-1 flex flex-col items-center justify-center">
+                            <h3 className="text-slate-900 font-bold mb-4 self-start text-sm">Time Distribution</h3>
                             <div className="w-full h-64 relative">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <PieChart>
@@ -289,33 +281,33 @@ export default function Productivity() {
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e2e8f0)', color: 'var(--tooltip-text, #0f172a)' }}
-                                            itemStyle={{ color: 'var(--tooltip-text, #0f172a)' }}
+                                            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }}
+                                            itemStyle={{ color: '#0f172a' }}
                                             formatter={(val: any) => formatTime(val)}
                                         />
                                         <Legend />
                                     </PieChart>
                                 </ResponsiveContainer>
                                 <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
-                                    <span className="text-2xl font-bold text-gray-900 dark:text-white">{formatTime(data.totalSeconds)}</span>
-                                    <span className="text-xs text-gray-500 uppercase">Total Logged</span>
+                                    <span className="text-2xl font-bold text-slate-900">{formatTime(data.totalSeconds)}</span>
+                                    <span className="text-xs text-slate-500 uppercase font-semibold">Total Logged</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* TOP APPS BAR CHART */}
-                        <div className="glass-panel rounded-xl p-6 lg:col-span-2">
-                            <h3 className="text-gray-900 dark:text-white font-bold mb-6">Top Applications</h3>
+                        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm lg:col-span-2">
+                            <h3 className="text-slate-900 font-bold mb-6 text-sm">Top Applications</h3>
                             <div className="w-full h-64">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={data.topApps} layout="vertical" margin={{ top: 5, right: 30, left: 40, bottom: 5 }}>
                                         <XAxis type="number" hide />
-                                        <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#9CA3AF', fontSize: 11 }} />
+                                        <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#64748b', fontSize: 11 }} />
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: 'var(--tooltip-bg, #fff)', borderColor: 'var(--tooltip-border, #e2e8f0)', color: 'var(--tooltip-text, #0f172a)' }}
-                                            itemStyle={{ color: 'var(--tooltip-text, #0f172a)' }}
+                                            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }}
+                                            itemStyle={{ color: '#0f172a' }}
                                             formatter={(val: any) => [formatTime(val), "Duration"]}
-                                            cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                                            cursor={{ fill: 'rgba(0,0,0,0.03)' }}
                                         />
                                         <Bar dataKey="duration" radius={[0, 4, 4, 0]} barSize={20}>
                                             {data.topApps.map((entry, index) => (
@@ -329,13 +321,13 @@ export default function Productivity() {
                     </div>
 
                     {/* DETAILED TABLE */}
-                    <div className="glass-panel rounded-xl overflow-hidden">
-                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50">
-                            <h3 className="text-gray-900 dark:text-white font-bold">Session Detail</h3>
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div className="p-4 border-b border-slate-200 bg-slate-50/50">
+                            <h3 className="text-slate-900 font-bold text-sm">Session Detail</h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-500 dark:text-gray-400 uppercase font-bold text-xs">
+                                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
                                     <tr>
                                         <th className="p-4">Application</th>
                                         <th className="p-4">Category</th>
@@ -343,23 +335,23 @@ export default function Productivity() {
                                         <th className="p-4 w-full">Impact</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-gray-800 text-gray-600 dark:text-gray-300">
+                                <tbody className="divide-y divide-slate-100 text-slate-700">
                                     {data.topApps.map((app, i) => (
-                                        <tr key={i} className="hover:bg-gray-50 dark:hover:bg-cyan-500/5 transition-colors">
-                                            <td className="p-4 font-bold text-gray-900 dark:text-white">{app.name}</td>
+                                        <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-4 font-semibold text-slate-900 text-xs">{app.name}</td>
                                             <td className="p-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold border ${app.category === 'Productive' ? 'bg-green-500/10 border-green-500/20 text-green-400' :
-                                                    app.category === 'Unproductive' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
+                                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${app.category === 'Productive' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
+                                                    app.category === 'Unproductive' ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-amber-50 border-amber-200 text-amber-700'
                                                     }`}>
                                                     {app.category}
                                                 </span>
                                             </td>
-                                            <td className="p-4 font-mono">{formatTime(app.duration)}</td>
+                                            <td className="p-4 font-mono text-xs">{formatTime(app.duration)}</td>
                                             <td className="p-4">
-                                                <div className="w-32 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                <div className="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                                     <div
-                                                        className={`h-full ${app.category === 'Productive' ? 'bg-green-500' : app.category === 'Unproductive' ? 'bg-red-500' : 'bg-yellow-500'}`}
-                                                        style={{ width: `${(app.duration / data.totalSeconds) * 100}%` }}
+                                                        className={`h-full ${app.category === 'Productive' ? 'bg-emerald-500' : app.category === 'Unproductive' ? 'bg-rose-500' : 'bg-amber-500'}`}
+                                                        style={{ width: `${(app.duration / (data.totalSeconds || 1)) * 100}%` }}
                                                     ></div>
                                                 </div>
                                             </td>
@@ -373,10 +365,10 @@ export default function Productivity() {
             )}
 
             {!loading && !data && (
-                <div className="glass-panel text-center py-20 rounded-xl">
-                    <AlertTriangle className="w-12 h-12 text-gray-500 mx-auto mb-4" />
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">No Metric Data</h3>
-                    <p className="text-gray-400 mt-2">No activity logs found for this agent.</p>
+                <div className="bg-white border border-slate-200 text-center py-20 rounded-xl shadow-sm">
+                    <AlertTriangle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-bold text-slate-800">No Metric Data</h3>
+                    <p className="text-slate-500 text-sm mt-1">No activity logs found for this agent.</p>
                 </div>
             )}
         </div>

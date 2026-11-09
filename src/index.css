@@ -272,3 +272,114 @@ code, .font-mono, pre {
         height: 100%;
     }
 }
+
+/* =============================================
+   Comprehensive Mobile & Tablet Media Screens / Views
+   ============================================= */
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Touch-optimized and horizontal scroll wrapper for all data tables */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Mobile & Tablet Breakpoint: <= 1024px */
+@media (max-width: 1024px) {
+    .glass-card, .data-card {
+        padding: 1rem;
+    }
+}
+
+/* Mobile Breakpoint: <= 768px */
+@media (max-width: 768px) {
+    /* Touch target accessibility */
+    button, a, input, select, textarea {
+        touch-action: manipulation;
+    }
+
+    /* Modal dialog auto-containment */
+    .modal-content, [role="dialog"] {
+        max-height: 90vh;
+        max-width: 95vw;
+        overflow-y: auto;
+    }
+
+    /* Table text scaling */
+    table {
+        font-size: 11.5px;
+    }
+
+    th, td {
+        padding: 8px 10px;
+    }
+
+    /* Chart and svg container responsiveness */
+    svg.recharts-surface {
+        max-width: 100%;
+    }
+}
+
+/* Small Phones Breakpoint: <= 640px */
+@media (max-width: 640px) {
+    h1 {
+        font-size: 1.35rem !important;
+        line-height: 1.3 !important;
+    }
+
+    h2 {
+        font-size: 1.15rem !important;
+    }
+}
+
+/* =============================================
+   Cyber Command Center Threat Animations
+   ============================================= */
+@keyframes threatDashFlow {
+    from {
+        stroke-dashoffset: 100;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.threat-arc-animated {
+    stroke-dasharray: 6 4;
+    animation: threatDashFlow 2.8s linear infinite;
+}
+
+@keyframes cyberRadarPing {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.9;
+    }
+    50% {
+        transform: scale(2.2);
+        opacity: 0.2;
+    }
+    100% {
+        transform: scale(0.8);
+        opacity: 0.9;
+    }
+}
+
+.cyber-pulse-ring {
+    animation: cyberRadarPing 2.4s ease-in-out infinite;
+}
+
+/* Sovereign RTL (Right-to-Left) Localization for Arabic & Hebrew */
+html[dir="rtl"], body.rtl-layout {
+    direction: rtl;
+    text-align: right;
+}
+html[dir="rtl"] .ltr-override {
+    direction: ltr;
+    text-align: left;
+}
+

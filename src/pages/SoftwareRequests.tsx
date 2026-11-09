@@ -15,13 +15,14 @@ interface SoftwareRequest {
 
 export default function SoftwareRequests() {
     const { token } = useAuth();
+    const authToken = token || sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('monitorix_token');
     const [requests, setRequests] = useState<SoftwareRequest[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchRequests = async () => {
         try {
             const res = await fetch(`${API_URL}/software_requests`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 setRequests(await res.json());
@@ -34,19 +35,19 @@ export default function SoftwareRequests() {
     };
 
     useEffect(() => {
-        if (token) fetchRequests();
+        if (authToken) fetchRequests();
         const interval = setInterval(() => {
-            if (token) fetchRequests();
+            if (authToken) fetchRequests();
         }, 15000);
         return () => clearInterval(interval);
-    }, [token]);
+    }, [authToken]);
 
     const handleAction = async (id: number, action: 'approve' | 'deny') => {
         if (!confirm(`Are you sure you want to ${action} this request?`)) return;
         try {
             const res = await fetch(`${API_URL}/software_requests/${id}/${action}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 fetchRequests();
@@ -61,74 +62,78 @@ export default function SoftwareRequests() {
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'PENDING':
-                return <span className="flex items-center gap-1 text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-500 px-2 py-1 rounded text-xs font-bold uppercase"><Clock size={12} /> Pending</span>;
+                return <span className="flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"><Clock size={11} /> Pending</span>;
             case 'APPROVED':
-                return <span className="flex items-center gap-1 text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-1 rounded text-xs font-bold uppercase"><Check size={12} /> Approved</span>;
+                return <span className="flex items-center gap-1 text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"><Check size={11} /> Approved</span>;
             case 'COMPLETED':
-                return <span className="flex items-center gap-1 text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-2 py-1 rounded text-xs font-bold uppercase"><Check size={12} /> Completed</span>;
+                return <span className="flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"><Check size={11} /> Completed</span>;
             case 'DENIED':
-                return <span className="flex items-center gap-1 text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded text-xs font-bold uppercase"><X size={12} /> Denied</span>;
+                return <span className="flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"><X size={11} /> Denied</span>;
             case 'FAILED':
-                return <span className="flex items-center gap-1 text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-2 py-1 rounded text-xs font-bold uppercase"><X size={12} /> Failed</span>;
+                return <span className="flex items-center gap-1 text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded text-[10px] font-bold uppercase"><X size={11} /> Failed</span>;
             default:
-                return <span className="text-gray-500">{status}</span>;
+                return <span className="text-slate-500 text-xs">{status}</span>;
         }
     };
 
     return (
-        <div className="p-4 md:p-6 transition-colors">
-            <div className="mb-8">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Package className="text-purple-600 dark:text-purple-500" />
-                        Software Requests
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage user requests for new software installations.</p>
+        <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/90 shadow-sm p-6 rounded-2xl">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 text-purple-600 flex items-center justify-center shadow-xs">
+                        <Package className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Software Requests</h1>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Manage user requests for new software installations across the endpoint fleet
+                        </p>
+                    </div>
                 </div>
             </div>
 
             {loading ? (
-                <div className="text-center py-10 text-gray-500">Loading requests...</div>
+                <div className="text-center py-12 text-slate-400 text-xs">Loading software requests...</div>
             ) : (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                                    <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Device</th>
-                                    <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Software Requested</th>
-                                    <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Reason</th>
-                                    <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Requested At</th>
-                                    <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                                    <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                                <tr>
+                                    <th className="p-4">Device</th>
+                                    <th className="p-4">Software Requested</th>
+                                    <th className="p-4">Reason</th>
+                                    <th className="p-4">Requested At</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody className="divide-y divide-slate-100">
                                 {requests.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="p-8 text-center text-gray-500 dark:text-gray-400">
+                                        <td colSpan={6} className="p-12 text-center text-slate-400">
                                             No software requests found.
                                         </td>
                                     </tr>
                                 ) : (
                                     requests.map((req) => (
-                                        <tr key={req.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                        <tr key={req.id} className="hover:bg-slate-50/60 transition-colors">
                                             <td className="p-4">
                                                 <div className="flex items-center gap-2">
-                                                    <Monitor className="text-gray-400" size={16} />
+                                                    <Monitor className="text-slate-400" size={14} />
                                                     <div>
-                                                        <div className="font-bold text-gray-900 dark:text-white">{req.hostname || 'Unknown'}</div>
-                                                        <div className="text-xs text-gray-500 font-mono">{req.agentId.substring(0, 8)}...</div>
+                                                        <div className="font-bold text-slate-900">{req.hostname || 'Unknown'}</div>
+                                                        <div className="text-[10px] text-slate-400 font-mono">{req.agentId?.substring(0, 8)}...</div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="p-4 font-bold text-gray-900 dark:text-white">
+                                            <td className="p-4 font-bold text-slate-900">
                                                 {req.softwareName}
                                             </td>
-                                            <td className="p-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate" title={req.reason}>
+                                            <td className="p-4 text-slate-600 max-w-xs truncate" title={req.reason}>
                                                 {req.reason || '-'}
                                             </td>
-                                            <td className="p-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                            <td className="p-4 text-slate-500 font-mono whitespace-nowrap">
                                                 {req.requestedAt ? new Date(req.requestedAt).toLocaleString() : 'N/A'}
                                             </td>
                                             <td className="p-4 whitespace-nowrap">
@@ -139,15 +144,15 @@ export default function SoftwareRequests() {
                                                     <div className="flex justify-end gap-2">
                                                         <button
                                                             onClick={() => handleAction(req.id, 'approve')}
-                                                            className="flex items-center gap-1 bg-green-50 text-green-600 hover:bg-green-100 dark:bg-green-500/10 dark:text-green-400 dark:hover:bg-green-500/20 px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                                                            className="flex items-center gap-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-3 py-1 rounded-lg text-xs font-bold transition-colors"
                                                         >
-                                                            <Check size={14} /> Approve
+                                                            <Check size={13} /> Approve
                                                         </button>
                                                         <button
                                                             onClick={() => handleAction(req.id, 'deny')}
-                                                            className="flex items-center gap-1 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20 px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                                                            className="flex items-center gap-1 bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 px-3 py-1 rounded-lg text-xs font-bold transition-colors"
                                                         >
-                                                            <X size={14} /> Deny
+                                                            <X size={13} /> Deny
                                                         </button>
                                                     </div>
                                                 )}

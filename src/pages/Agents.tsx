@@ -222,7 +222,7 @@ export default function Agents() {
         };
         if (token) fetchApiKey();
     }, [token]);
-    const [latestVersion, setLatestVersion] = useState("v1.8.62"); // [v1.8.62] Latest Enterprise Build
+    const [latestVersion, setLatestVersion] = useState("v4.2.0"); // [v4.2.0] Latest Sovereign Enterprise Build
     const [updateProgressMap, setUpdateProgressMap] = useState<Record<string, number>>({});
     const updateTimeouts = useRef<Record<string, any>>({});
 
@@ -488,8 +488,10 @@ export default function Agents() {
 
                 // Sort: Online first, then by timestamp desc
                 normalizedData.sort((a: AgentReport, b: AgentReport) => {
-                    if (a.status === 'Online' && b.status !== 'Online') return -1;
-                    if (a.status !== 'Online' && b.status === 'Online') return 1;
+                    const aOnline = a.status === 'Online' || a.status === 'Active';
+                    const bOnline = b.status === 'Online' || b.status === 'Active';
+                    if (aOnline && !bOnline) return -1;
+                    if (!aOnline && bOnline) return 1;
                     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
                 });
 
@@ -2005,19 +2007,19 @@ export default function Agents() {
 
 
             {isLockdownModalOpen && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-gray-900 border border-red-500/30 rounded-2xl max-w-md w-full p-8 shadow-2xl shadow-red-500/20">
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div className="bg-white border border-rose-200 rounded-2xl max-w-md w-full p-8 shadow-2xl">
                         <div className="flex items-center justify-between mb-6">
                             <div className="flex items-center gap-3">
-                                <div className="p-3 bg-red-500/10 rounded-2xl text-red-500 ring-1 ring-red-500/20">
+                                <div className="p-3 bg-rose-50 rounded-2xl text-rose-600 ring-1 ring-rose-200">
                                     <ShieldAlert size={28} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Monitorix Lockdown</h2>
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{lockdownTargetIds.length} Nodes Targeted</p>
+                                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Monitorix Lockdown</h2>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{lockdownTargetIds.length} Nodes Targeted</p>
                                 </div>
                             </div>
-                            <button onClick={() => setIsLockdownModalOpen(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400">
+                            <button onClick={() => setIsLockdownModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400">
                                 <X size={20} />
                             </button>
                         </div>
@@ -2343,8 +2345,8 @@ export default function Agents() {
                                     </td>
                                     <td className="p-4">
                                         <div className="flex flex-col gap-1">
-                                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase tracking-wider ${agent.status === 'Online' ? 'bg-emerald-500 text-white border-transparent' : 'bg-red-500 text-white border-transparent'}`}>
-                                                {agent.status === 'Online' ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {agent.status === 'Online' ? 'ONLINE' : 'OFFLINE'}
+                                            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold shadow-sm uppercase tracking-wider ${(agent.status === 'Online' || agent.status === 'Active') ? 'bg-emerald-500 text-white border-transparent' : 'bg-red-500 text-white border-transparent'}`}>
+                                                {(agent.status === 'Online' || agent.status === 'Active') ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />} {(agent.status === 'Online' || agent.status === 'Active') ? 'ONLINE' : 'OFFLINE'}
                                             </div>
                                             {agent.isIsolated && (
                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-600 text-white flex items-center gap-1 animate-pulse shadow-sm shadow-red-500/50" title="Host Isolated from Network">
@@ -2508,9 +2510,9 @@ export default function Agents() {
                                         </div>
                                     </div>
                                     <div className="flex flex-col items-end gap-1.5">
-                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${agent.status === 'Online' ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
-                                            <div className={`w-1.5 h-1.5 rounded-full ${agent.status === 'Online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                                            {agent.status.toUpperCase()}
+                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold border ${(agent.status === 'Online' || agent.status === 'Active') ? 'bg-green-100 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-200 dark:border-green-500/20' : 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/20'}`}>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${(agent.status === 'Online' || agent.status === 'Active') ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                                            {(agent.status === 'Online' || agent.status === 'Active') ? 'ONLINE' : agent.status.toUpperCase()}
                                         </div>
                                         {(() => {
                                             try {
@@ -3122,7 +3124,7 @@ export default function Agents() {
                                             {/* AI Narrative Narrative */}
                                             <div className="space-y-2">
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Incident Forensic Narrative</h4>
-                                                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800 text-xs leading-relaxed font-mono font-bold text-slate-705 dark:text-slate-250 select-all whitespace-pre-wrap">
+                                                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-xs leading-relaxed font-mono font-bold text-slate-800 select-all whitespace-pre-wrap">
                                                     {aiSummaryData.Summary}
                                                 </div>
                                             </div>
@@ -3130,13 +3132,13 @@ export default function Agents() {
                                             {/* Recommended Remediation Playbook */}
                                             <div className="space-y-3">
                                                 <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Incident Remediation Playbook</h4>
-                                                <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200/50 dark:border-slate-800 rounded-2xl overflow-hidden bg-white dark:bg-slate-950 shadow-sm">
+                                                <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
                                                     {aiSummaryData.RemediationSteps.map((step, idx) => (
-                                                        <div key={idx} className="flex gap-4 items-center p-4 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
-                                                            <div className="w-5 h-5 rounded-md border border-slate-300 dark:border-slate-700 flex items-center justify-center shrink-0 text-emerald-500 bg-slate-100 dark:bg-slate-900">
+                                                        <div key={idx} className="flex gap-4 items-center p-4 hover:bg-slate-50/50 transition-colors">
+                                                            <div className="w-5 h-5 rounded-md border border-slate-300 flex items-center justify-center shrink-0 text-emerald-500 bg-slate-100">
                                                                 <Check className="w-3.5 h-3.5" />
                                                             </div>
-                                                            <span className="text-xs font-bold text-slate-750 dark:text-slate-350">{step}</span>
+                                                            <span className="text-xs font-bold text-slate-700">{step}</span>
                                                         </div>
                                                     ))}
                                                 </div>

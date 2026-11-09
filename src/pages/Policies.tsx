@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Shield, Plus, Trash2, Save, X, Activity, Users } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,12 +28,16 @@ export default function Policies() {
     const [policies, setPolicies] = useState<Policy[]>([]);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const query = new URLSearchParams(window.location.search);
+    const targetTenantId = Number(query.get('tenantId') || user?.tenantId || (user as any)?.TenantId || 1);
+
     const [newPolicy, setNewPolicy] = useState<Policy>({
         name: '',
         rulesJson: '[]',
         actions: 'Block',
         isActive: true,
-        tenantId: 1,
+        tenantId: targetTenantId,
         blockedAppsJson: '[]',
         blockedWebsitesJson: '[]',
         remediationJson: '[]',
@@ -45,17 +50,12 @@ export default function Policies() {
         productivityJson: '{}'
     });
 
-    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
-
     useEffect(() => {
         if (token) fetchPolicies();
-    }, [token]);
+    }, [token, user]);
 
     const fetchPolicies = async () => {
         try {
-            const query = new URLSearchParams(window.location.search);
-            const targetTenantId = query.get('tenantId') || user?.tenantId || 1;
-            
             const res = await fetch(`${API_URL}/policies?tenantId=${targetTenantId}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -68,6 +68,10 @@ export default function Policies() {
     };
 
     const handleSave = async () => {
+        if (!newPolicy.name.trim()) {
+            toast.error("Policy name is required");
+            return;
+        }
         try {
             const method = editingId ? 'PUT' : 'POST';
             const url = editingId ? `${API_URL}/policies/${editingId}` : `${API_URL}/policies`;
@@ -78,14 +82,21 @@ export default function Policies() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(newPolicy)
+                body: JSON.stringify({
+                    ...newPolicy,
+                    tenantId: targetTenantId
+                })
             });
             if (res.ok) {
+                toast.success(editingId ? "Policy updated successfully!" : "Policy created successfully!");
                 setIsModalOpen(false);
                 fetchPolicies();
                 resetForm();
+            } else {
+                toast.error("Failed to save policy");
             }
         } catch (e) {
+            toast.error("Network error saving policy");
             console.error(e);
         }
     };
@@ -97,7 +108,7 @@ export default function Policies() {
             rulesJson: '[]',
             actions: 'Block',
             isActive: true,
-            tenantId: 1,
+            tenantId: targetTenantId,
             blockedAppsJson: '[]',
             blockedWebsitesJson: '[]',
             remediationJson: '[]',
@@ -167,14 +178,20 @@ export default function Policies() {
     };
 
     const handleDelete = async (id: number) => {
-        if (!confirm("Are you sure?")) return;
+        if (!confirm("Are you sure you want to delete this policy?")) return;
         try {
-            await fetch(`${API_URL}/policies/${id}`, {
+            const res = await fetch(`${API_URL}/policies/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            fetchPolicies();
+            if (res.ok) {
+                toast.success("Policy deleted successfully");
+                fetchPolicies();
+            } else {
+                toast.error("Failed to delete policy");
+            }
         } catch (e) {
+            toast.error("Network error deleting policy");
             console.error(e);
         }
     };
@@ -234,7 +251,7 @@ export default function Policies() {
             {
                 isModalOpen && (
                     <div className="fixed inset-0 bg-black/50 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 w-full max-w-lg shadow-2xl">
+                        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 sm:p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
 
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">{editingId ? 'Edit Policy' : 'Create New Policy'}</h2>

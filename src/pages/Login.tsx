@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
+import LanguageSelector from '../components/LanguageSelector';
 import "./Login.css";
 import {
   Shield, ShieldCheck, User, Building2, Lock, Eye, EyeOff, Sun, Globe,
@@ -180,14 +181,7 @@ export default function Login() {
             <Sun className="h-4 w-4" />
           </button>
           
-          <button
-            type="button"
-            className="login-language-button"
-          >
-            <Globe className="h-4 w-4" />
-            {language}
-            <ChevronDown className="h-3 w-3" />
-          </button>
+          <LanguageSelector />
         </div>
 
         <div className="login-card">

@@ -44,6 +44,7 @@ function nextSendTime(settings: ReportSettings): string {
 
 export default function Reports() {
     const { token } = useAuth();
+    const authToken = token || sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('monitorix_token');
     const [settings, setSettings] = useState<ReportSettings>({
         auto_enabled: false,
         frequency: 'weekly',
@@ -62,10 +63,10 @@ export default function Reports() {
     const [newEmail, setNewEmail] = useState('');
     const emailInputRef = useRef<HTMLInputElement>(null);
 
-    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const headers = { 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'application/json' };
 
     useEffect(() => {
-        if (!token) return;
+        if (!authToken) return;
         setLoading(true);
         fetch(`${API_URL}/reports/settings`, { headers })
             .then(r => r.json())
@@ -73,7 +74,7 @@ export default function Reports() {
             .finally(() => setLoading(false));
 
         fetchHistory(0, true);
-    }, [token]);
+    }, [authToken]);
 
     const fetchHistory = async (newOffset: number, reset: boolean = false) => {
         try {
@@ -162,50 +163,47 @@ export default function Reports() {
     }
 
     return (
-        <div className="p-4 md:p-10 space-y-10 max-w-6xl mx-auto animate-in fade-in duration-700 min-h-screen bg-slate-50 dark:bg-[#020617]">
+        <div className="p-6 md:p-8 space-y-6 max-w-7xl mx-auto min-w-0 font-sans animate-in fade-in duration-500">
 
             {/* Header */}
-            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-4">
-                         <div className="p-1.5 bg-indigo-500/20 rounded-lg text-indigo-500 ring-1 ring-indigo-500/30">
-                            <FileText size={18} />
-                         </div>
-                         <span className="text-[10px] font-black tracking-[0.2em] uppercase text-indigo-500/80">Compliance Orchestration</span>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-white border border-slate-200/90 shadow-sm p-6 rounded-2xl">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-600 flex items-center justify-center shadow-xs">
+                        <FileText className="w-5 h-5 animate-pulse" />
                     </div>
-                    <h1 className="text-2xl md:text-5xl font-black tracking-tighter">
-                        <span className="text-gradient">Intelligence Reports</span>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 mt-4 text-xs font-medium max-w-xl leading-relaxed">
-                        Automated forensic auditing and fleet-wide health summaries. Schedule encrypted PDF delivery to key stakeholders across the global organization.
-                    </p>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Compliance & Executive Reports</h1>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Automated forensic auditing and fleet-wide health summaries with scheduled PDF delivery
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* ───────── AUTO SCHEDULE SETTINGS ───────── */}
-                <div className="lg:col-span-2 space-y-10">
-                    <div className="glass-card overflow-hidden">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm overflow-hidden">
                         {/* Card header */}
-                        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/40">
-                            <div className="flex items-center gap-4">
-                                <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
-                                    <Clock size={20} />
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600 border border-indigo-200">
+                                    <Clock size={16} />
                                 </div>
-                                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Autonomous Scheduler</h2>
+                                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Autonomous Scheduler</h2>
                             </div>
                             {/* Auto-send toggle */}
                             <button
                                 onClick={() => setSettings(s => ({ ...s, auto_enabled: !s.auto_enabled }))}
-                                className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.1em] transition-all ${settings.auto_enabled
-                                    ? 'bg-emerald-500 text-white shadow-2xl shadow-emerald-500/20'
-                                    : 'bg-slate-200 dark:bg-slate-800 text-slate-500 border border-slate-300 dark:border-slate-700'
+                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${settings.auto_enabled
+                                    ? 'bg-emerald-600 text-white shadow-sm'
+                                    : 'bg-slate-100 text-slate-500 border border-slate-300'
                                     }`}
                             >
                                 {settings.auto_enabled
-                                    ? <><ToggleRight size={18} /> Protocol Active</>
-                                    : <><ToggleLeft size={18} /> Protocol Offline</>
+                                    ? <><ToggleRight size={16} /> Protocol Active</>
+                                    : <><ToggleLeft size={16} /> Protocol Offline</>
                                 }
                             </button>
                         </div>
@@ -385,51 +383,51 @@ export default function Reports() {
 
                 {/* ───────── REPORT HISTORY ───────── */}
                 <div className="lg:col-span-1">
-                    <div className="glass-card h-full flex flex-col bg-white dark:bg-slate-950/40">
-                        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800">
-                            <div className="flex items-center gap-4">
-                                <FileText size={20} className="text-slate-400" />
-                                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Archival Feed</h2>
+                    <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm h-full flex flex-col overflow-hidden">
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/80">
+                            <div className="flex items-center gap-3">
+                                <FileText size={18} className="text-slate-400" />
+                                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Archival Feed</h2>
                             </div>
                             <button
                                 onClick={() => fetchHistory(0, true)}
-                                className="p-2 text-slate-400 hover:text-indigo-500 transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
                             >
-                                <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                             </button>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto max-h-[800px] divide-y divide-slate-100 dark:divide-slate-800">
+                        <div className="flex-1 overflow-y-auto max-h-[800px] divide-y divide-slate-100">
                             {history.length === 0 ? (
                                 <div className="py-24 text-center px-8">
-                                    <div className="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-3xl flex items-center justify-center mx-auto mb-6 opacity-40">
-                                        <FileText size={28} className="text-slate-400" />
+                                    <div className="w-16 h-16 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
+                                        <FileText size={24} />
                                     </div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">History Vacuum</p>
-                                    <p className="text-[9px] text-slate-400 mt-2 font-medium">No intelligence reports have been committed to the archive yet.</p>
+                                    <p className="text-xs font-bold uppercase tracking-wider text-slate-700">History Vacuum</p>
+                                    <p className="text-xs text-slate-400 mt-1">No intelligence reports have been committed to the archive yet.</p>
                                 </div>
                             ) : (
                                 history.map((file) => {
                                     const isWeekly = file.filename.includes('Weekly');
                                     const isMonthly = file.filename.includes('Monthly');
                                     const badgeColor = isWeekly
-                                        ? 'text-blue-500 bg-blue-500/10 border-blue-500/20'
+                                        ? 'text-blue-700 bg-blue-50 border-blue-200'
                                         : isMonthly
-                                            ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20'
-                                            : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
+                                            ? 'text-indigo-700 bg-indigo-50 border-indigo-200'
+                                            : 'text-emerald-700 bg-emerald-50 border-emerald-200';
                                     const badgeLabel = isWeekly ? 'WEEKLY' : isMonthly ? 'MONTHLY' : 'DAILY';
 
                                     return (
-                                        <div key={file.filename} className="p-6 hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors group">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <span className={`text-[8px] font-black px-2.5 py-1 rounded-md border tracking-[0.1em] ${badgeColor}`}>
+                                        <div key={file.filename} className="p-5 hover:bg-slate-50/70 transition-colors group">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border tracking-wider ${badgeColor}`}>
                                                     {badgeLabel}
                                                 </span>
-                                                <p className="text-[10px] text-slate-400 font-mono tracking-tighter">{(file.size_kb / 1024).toFixed(1)} MB</p>
+                                                <p className="text-[11px] text-slate-400 font-mono">{(file.size_kb / 1024).toFixed(1)} MB</p>
                                             </div>
-                                            <p className="font-black text-xs text-slate-900 dark:text-white truncate mb-2 group-hover:text-indigo-500 transition-colors">{file.filename}</p>
-                                            <div className="flex items-center justify-between gap-4 mt-4">
-                                                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-2">
+                                            <p className="font-bold text-xs text-slate-900 truncate mb-1 group-hover:text-indigo-600 transition-colors">{file.filename}</p>
+                                            <div className="flex items-center justify-between gap-4 mt-3">
+                                                <p className="text-[10px] text-slate-400 font-semibold flex items-center gap-1.5">
                                                     <Calendar size={12} />
                                                     {new Date(file.generated_at).toLocaleDateString()}
                                                 </p>
@@ -438,9 +436,9 @@ export default function Reports() {
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     download={file.filename}
-                                                    className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 transition-all active:scale-95"
+                                                    className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-all"
                                                 >
-                                                    <Download size={14} /> Access
+                                                    <Download size={13} /> Access
                                                 </a>
                                             </div>
                                         </div>

@@ -7,7 +7,6 @@ interface ApiKey {
     id: number;
     name: string;
     prefix: string;
-    raw_key: string | null;
     created_at: string;
     expires_at: string | null;
     last_used_at: string | null;
@@ -114,8 +113,7 @@ export default function ApiKeysPanel() {
     };
 
     const copyPrefixToClipboard = (key: ApiKey) => {
-        // Fallback to prefix if raw_key doesn't exist for legacy keys
-        const textToCopy = key.raw_key || key.prefix;
+        const textToCopy = key.prefix;
         navigator.clipboard.writeText(textToCopy).catch(() => {
             const el = document.createElement('textarea');
             el.value = textToCopy;
@@ -185,18 +183,11 @@ export default function ApiKeysPanel() {
                                         </td>
                                         <td className="p-4 text-slate-600 dark:text-slate-400 font-mono text-xs">
                                             <div className="flex items-center gap-2">
-                                                {visibleKeys.has(key.id) ? (key.raw_key || key.prefix + ' (Legacy)') : (key.prefix + '••••••••')}
-                                                <button 
-                                                    onClick={() => toggleVisibility(key.id)}
-                                                    className="text-slate-400 hover:text-blue-500 transition-colors ml-2"
-                                                    title={visibleKeys.has(key.id) ? "Hide Key" : "Show Key"}
-                                                >
-                                                    {visibleKeys.has(key.id) ? <EyeOff size={14} /> : <Eye size={14} />}
-                                                </button>
+                                                <span>{key.prefix}••••••••••••••••</span>
                                                 <button 
                                                     onClick={() => copyPrefixToClipboard(key)}
-                                                    className="text-slate-400 hover:text-blue-500 transition-colors"
-                                                    title={key.raw_key ? "Copy Full Key" : "Copy Prefix"}
+                                                    className="text-slate-400 hover:text-blue-500 transition-colors ml-1"
+                                                    title="Copy Prefix Identifier"
                                                 >
                                                     {copiedPrefixId === key.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                                                 </button>

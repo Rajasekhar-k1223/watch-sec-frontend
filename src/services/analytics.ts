@@ -1,35 +1,20 @@
-import mixpanel from 'mixpanel-browser';
-
-const MIXPANEL_TOKEN = import.meta.env.VITE_MIXPANEL_TOKEN || 'YOUR_MIXPANEL_TOKEN';
-
-const isDev = import.meta.env.DEV;
+// Sovereign Air-Gapped Analytics Stub
+// Prevents external SaaS telemetry egress in accordance with sovereign compliance requirements
 
 export const Analytics = {
     init: () => {
-        if (!MIXPANEL_TOKEN || MIXPANEL_TOKEN === 'YOUR_MIXPANEL_TOKEN') {
-            console.warn("Mixpanel Token not found. Analytics disabled.");
-            return;
-        }
-        mixpanel.init(MIXPANEL_TOKEN, {
-            debug: isDev,
-            track_pageview: true,
-            persistence: 'localStorage'
-        });
+        // Sovereign air-gapped mode: external telemetry disabled
     },
 
-    identify: (userId: string, traits?: any) => {
-        if (!(mixpanel as any).__loaded) return;
-        mixpanel.identify(userId);
-        if (traits) mixpanel.people.set(traits);
+    identify: (_userId: string, _traits?: any) => {
+        // Sovereign air-gapped mode
     },
 
-    track: (event: string, props?: any) => {
-        if (!(mixpanel as any).__loaded) return;
-        mixpanel.track(event, props);
+    track: (_event: string, _props?: any) => {
+        // Sovereign air-gapped mode
     },
 
     reset: () => {
-        if (!(mixpanel as any).__loaded) return;
-        mixpanel.reset();
+        // Sovereign air-gapped mode
     }
 };

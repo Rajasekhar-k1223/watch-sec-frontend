@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+.env*
+*.local
+*.log
+fix_*.py
+replace*.py
+update_*.py
+scratch/

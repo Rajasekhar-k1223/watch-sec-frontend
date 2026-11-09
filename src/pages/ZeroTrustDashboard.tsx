@@ -55,7 +55,7 @@ export default function ZeroTrustDashboard() {
 
   const fetchTenantRisk = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(`${API_URL}/v2/risk/tenant`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -73,7 +73,7 @@ export default function ZeroTrustDashboard() {
 
   const fetchUnifiedRisk = async () => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(`${API_URL}/v2/risk/unified`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -93,7 +93,7 @@ export default function ZeroTrustDashboard() {
 
   const fetchAgentDetails = async (agentId: string) => {
     try {
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(`${API_URL}/v2/risk/agent/${agentId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -127,7 +127,7 @@ export default function ZeroTrustDashboard() {
   const handleRecalculateAll = async () => {
     try {
       setRecalculating(true);
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(`${API_URL}/v2/risk/recalculate-all`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
@@ -157,28 +157,28 @@ export default function ZeroTrustDashboard() {
 
   const getBadgeStyle = (level: string) => {
     switch (level?.toLowerCase()) {
-      case 'critical': return 'bg-red-500/10 text-red-400 border border-red-500/30';
-      case 'high': return 'bg-orange-500/10 text-orange-400 border border-orange-500/30';
-      case 'medium': return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30';
-      default: return 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+      case 'critical': return 'bg-red-50 text-red-700 border border-red-200';
+      case 'high': return 'bg-orange-50 text-orange-700 border border-orange-200';
+      case 'medium': return 'bg-amber-50 text-amber-700 border border-amber-200';
+      default: return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
     }
   };
 
   return (
-    <div className="p-4 md:p-6 space-y-6 min-h-screen text-slate-100">
+    <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600">
               <ShieldCheck className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900">
                 Unified Risk Engine
               </h1>
-              <p className="text-sm text-slate-400">
-                Correlating Monitorix EDR fleet posture with RedRainbow external attack surface telemetry
+              <p className="text-sm text-slate-500">
+                Correlating Monitorix EDR fleet posture with external attack surface telemetry
               </p>
             </div>
           </div>
@@ -187,7 +187,7 @@ export default function ZeroTrustDashboard() {
         <button
           onClick={handleRecalculateAll}
           disabled={recalculating}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20"
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all shadow-sm"
         >
           <RefreshCw className={`w-4 h-4 ${recalculating ? 'animate-spin' : ''}`} />
           {recalculating ? 'Recalculating...' : 'Recalculate All Risks'}
@@ -195,24 +195,24 @@ export default function ZeroTrustDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-800 pb-2">
+      <div className="flex gap-2 border-b border-slate-200 pb-2">
         <button
           onClick={() => setActiveTab('unified')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'unified'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Layers className="w-4 h-4" />
-          Unified Cyber Risk Index (Monitorix + RedRainbow)
+          Unified Cyber Risk Index (EDR + External Surface)
         </button>
         <button
           onClick={() => setActiveTab('endpoints')}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'endpoints'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              ? 'bg-indigo-600 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
           <Server className="w-4 h-4" />
@@ -225,12 +225,12 @@ export default function ZeroTrustDashboard() {
           {/* Headline Unified Score Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Global Unified Index */}
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl space-y-3 relative overflow-hidden shadow-xl">
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-3 relative overflow-hidden shadow-sm">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Unified Global Risk Index
               </div>
               <div className="flex items-baseline gap-3">
-                <div className="text-5xl font-black text-white">
+                <div className="text-5xl font-black text-slate-900">
                   {unifiedRisk?.unified_risk_index ?? 43.6}
                 </div>
                 <div className="text-sm text-slate-400">/ 100</div>
@@ -238,10 +238,10 @@ export default function ZeroTrustDashboard() {
                   {unifiedRisk?.risk_tier || 'Medium'} Risk Tier
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 55% Internal Fleet Posture + 45% External Perimeter Exposure
               </p>
-              <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-2">
+              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
                 <div 
                   className="bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 h-full rounded-full" 
                   style={{ width: `${Math.min(unifiedRisk?.unified_risk_index || 45, 100)}%` }}
@@ -250,62 +250,62 @@ export default function ZeroTrustDashboard() {
             </div>
 
             {/* Internal Monitorix EDR Posture */}
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl space-y-3 shadow-xl">
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Internal Fleet Posture
                 </div>
-                <Server className="w-4 h-4 text-indigo-400" />
+                <Server className="w-4 h-4 text-indigo-600" />
               </div>
               <div className="flex items-baseline gap-2">
-                <div className="text-3xl font-bold text-indigo-400">
+                <div className="text-3xl font-bold text-indigo-600">
                   {unifiedRisk?.breakdown?.internal_fleet_risk?.score ?? 35.0}
                 </div>
-                <div className="text-xs text-slate-500">/ 100</div>
+                <div className="text-xs text-slate-400">/ 100</div>
               </div>
-              <div className="text-xs text-slate-300 font-semibold">Monitorix EDR Fleet</div>
+              <div className="text-xs text-slate-700 font-semibold">Monitorix EDR Fleet</div>
               <div className="flex gap-2 text-xs">
-                <span className="px-2 py-0.5 bg-red-500/10 text-red-400 rounded">
+                <span className="px-2 py-0.5 bg-red-50 text-red-700 border border-red-200 rounded">
                   Crit: {unifiedRisk?.breakdown?.internal_fleet_risk?.distribution?.critical ?? 0}
                 </span>
-                <span className="px-2 py-0.5 bg-amber-500/10 text-amber-400 rounded">
+                <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded">
                   High: {unifiedRisk?.breakdown?.internal_fleet_risk?.distribution?.high ?? 1}
                 </span>
-                <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded">
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded">
                   Med: {unifiedRisk?.breakdown?.internal_fleet_risk?.distribution?.medium ?? 3}
                 </span>
               </div>
             </div>
 
             {/* External RedRainbow Attack Surface */}
-            <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-2xl space-y-3 shadow-xl">
+            <div className="bg-white border border-slate-200 p-6 rounded-2xl space-y-3 shadow-sm">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   External Attack Surface
                 </div>
-                <Globe className="w-4 h-4 text-red-400" />
+                <Globe className="w-4 h-4 text-rose-600" />
               </div>
               <div className="flex items-baseline gap-2">
-                <div className="text-3xl font-bold text-red-400">
+                <div className="text-3xl font-bold text-rose-600">
                   {unifiedRisk?.breakdown?.external_attack_surface_risk?.score ?? 82.4}
                 </div>
-                <div className="text-xs text-slate-500">/ 100</div>
+                <div className="text-xs text-slate-400">/ 100</div>
               </div>
-              <div className="text-xs text-slate-300 font-semibold">RedRainbow Perimeter Recon</div>
-              <div className="text-xs text-slate-400 flex items-center justify-between">
-                <span>CVE Severity Score: <strong>88.0</strong></span>
-                <span>Subdomains: <strong>14</strong></span>
+              <div className="text-xs text-slate-700 font-semibold">Monitorix Perimeter Recon</div>
+              <div className="text-xs text-slate-600 flex items-center justify-between">
+                <span>CVE Severity Score: <strong className="text-slate-900">88.0</strong></span>
+                <span>Subdomains: <strong className="text-slate-900">14</strong></span>
               </div>
             </div>
           </div>
 
           {/* Critical Correlated Asset Exposure targets */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-bold text-white">Cross-Correlated High-Risk Assets</h3>
-                <p className="text-xs text-slate-400">
-                  Assets where RedRainbow external vulnerabilities directly connect to Monitorix internal endpoints
+                <h3 className="text-lg font-bold text-slate-900">Cross-Correlated High-Risk Assets</h3>
+                <p className="text-xs text-slate-500">
+                  Assets where external perimeter vulnerabilities directly connect to Monitorix internal endpoints
                 </p>
               </div>
               <span className="text-xs text-slate-500 font-mono">Real-Time Synthesis</span>
@@ -313,37 +313,37 @@ export default function ZeroTrustDashboard() {
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/60 text-slate-400 uppercase tracking-wider border-b border-slate-800 font-mono">
+                <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider border-b border-slate-200 font-mono">
                   <tr>
                     <th className="p-3">Asset</th>
                     <th className="p-3">Classification</th>
                     <th className="p-3">Internal Risk</th>
-                    <th className="p-3">External Exposure Vector (RedRainbow)</th>
+                    <th className="p-3">External Exposure Vector</th>
                     <th className="p-3">Correlated Threat Chain</th>
                     <th className="p-3 text-right">Recommended Containment</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
+                <tbody className="divide-y divide-slate-100">
                   {(unifiedRisk?.critical_correlated_assets || []).map((asset, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3 font-bold text-white font-mono">
+                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="p-3 font-bold text-slate-900 font-mono">
                         {asset.asset_name}
                         <div className="text-[11px] text-slate-500 font-normal">{asset.ip}</div>
                       </td>
-                      <td className="p-3 text-slate-300">{asset.type}</td>
+                      <td className="p-3 text-slate-600">{asset.type}</td>
                       <td className="p-3">
                         <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                          asset.internal_risk >= 80 ? 'bg-red-500/10 text-red-400' : 'bg-amber-500/10 text-amber-400'
+                          asset.internal_risk >= 80 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                         }`}>
                           {asset.internal_risk}/100
                         </span>
                       </td>
-                      <td className="p-3 text-red-300 font-medium">{asset.external_exposure_vector}</td>
-                      <td className="p-3 text-amber-300">{asset.threat_chain}</td>
+                      <td className="p-3 text-rose-600 font-medium">{asset.external_exposure_vector}</td>
+                      <td className="p-3 text-amber-600 font-medium">{asset.threat_chain}</td>
                       <td className="p-3 text-right">
                         <button
                           onClick={() => toast.success(`Automated playbook "${asset.recommended_playbook}" dispatched`)}
-                          className="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5"
+                          className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-sm"
                         >
                           <Zap className="w-3.5 h-3.5" />
                           Mitigate
@@ -361,10 +361,10 @@ export default function ZeroTrustDashboard() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {['Critical', 'High', 'Medium', 'Low'].map(level => (
-              <div key={level} className="bg-slate-900/80 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+              <div key={level} className="bg-white border border-slate-200 p-4 rounded-xl flex items-center justify-between shadow-sm">
                 <div>
-                  <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wider">{level} Risk Devices</h3>
-                  <div className="text-2xl font-bold text-white mt-1">
+                  <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wider">{level} Risk Devices</h3>
+                  <div className="text-2xl font-bold text-slate-900 mt-1">
                     {tenantRisk.filter(r => r.level?.toLowerCase() === level.toLowerCase()).length}
                   </div>
                 </div>
@@ -377,9 +377,9 @@ export default function ZeroTrustDashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="col-span-1 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
-              <div className="p-4 border-b border-slate-800">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Fleet Endpoints</h3>
+            <div className="col-span-1 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-slate-200">
+                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Fleet Endpoints</h3>
               </div>
               <div className="p-4 max-h-[500px] overflow-y-auto">
                 <ul className="space-y-2">
@@ -388,14 +388,14 @@ export default function ZeroTrustDashboard() {
                       key={agent.agent_id} 
                       className={`flex justify-between items-center p-3 rounded-xl cursor-pointer transition-all border ${
                         selectedAgent?.agent_id === agent.agent_id
-                          ? 'bg-indigo-950/40 border-indigo-500/50 shadow-md'
-                          : 'bg-slate-800/40 border-slate-800 hover:border-slate-700'
+                          ? 'bg-indigo-50 border-indigo-300 shadow-sm'
+                          : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-slate-100/70'
                       }`}
                       onClick={() => fetchAgentDetails(agent.agent_id)}
                     >
                       <div>
-                        <p className="font-semibold text-white text-xs">{agent.hostname || agent.agent_id}</p>
-                        <p className="text-[11px] text-slate-400 font-mono">{agent.ip_address} · Score: {agent.total_score}/100</p>
+                        <p className="font-semibold text-slate-900 text-xs">{agent.hostname || agent.agent_id}</p>
+                        <p className="text-[11px] text-slate-500 font-mono">{agent.ip_address} · Score: {agent.total_score}/100</p>
                       </div>
                       <span className={`px-2 py-0.5 text-xs rounded-full font-bold ${getBadgeStyle(agent.level)}`}>
                         {agent.level}
@@ -408,11 +408,11 @@ export default function ZeroTrustDashboard() {
 
             {selectedAgent && (
               <div className="col-span-2 space-y-6">
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                  <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-200">
                     <div>
-                      <h3 className="text-base font-bold text-white">Multi-Vector Risk Posture</h3>
-                      <p className="text-xs text-slate-400">Target: {selectedAgent.agent_id}</p>
+                      <h3 className="text-base font-bold text-slate-900">Multi-Vector Risk Posture</h3>
+                      <p className="text-xs text-slate-500">Target: {selectedAgent.agent_id}</p>
                     </div>
                     <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${getBadgeStyle(selectedAgent.level)}`}>
                       {selectedAgent.level} ({selectedAgent.total_score}/100)
@@ -421,27 +421,27 @@ export default function ZeroTrustDashboard() {
                   <div className="h-[300px] w-full pt-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={selectedAgent.vectors}>
-                        <PolarGrid stroke="#334155" />
-                        <PolarAngleAxis dataKey="subject" stroke="#94a3b8" />
-                        <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#64748b" />
-                        <Radar name="Risk Score" dataKey="A" stroke="#6366f1" fill="#6366f1" fillOpacity={0.4} />
-                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
+                        <PolarGrid stroke="#e2e8f0" />
+                        <PolarAngleAxis dataKey="subject" stroke="#64748b" />
+                        <PolarRadiusAxis angle={30} domain={[0, 100]} stroke="#94a3b8" />
+                        <Radar name="Risk Score" dataKey="A" stroke="#4f46e5" fill="#6366f1" fillOpacity={0.35} />
+                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }} />
                       </RadarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
                 
-                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl">
-                  <div className="pb-4 border-b border-slate-800">
-                    <h3 className="text-base font-bold text-white">Risk Trajectory Trend (24h)</h3>
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                  <div className="pb-4 border-b border-slate-200">
+                    <h3 className="text-base font-bold text-slate-900">Risk Trajectory Trend (24h)</h3>
                   </div>
                   <div className="h-[220px] w-full pt-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={selectedAgent.timeline}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                         <XAxis dataKey="time" stroke="#94a3b8" />
                         <YAxis domain={[0, 100]} stroke="#94a3b8" />
-                        <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px' }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '8px', color: '#0f172a' }} />
                         <Line type="monotone" dataKey="score" stroke="#10b981" strokeWidth={2} dot={{ r: 4, fill: '#10b981' }} />
                       </LineChart>
                     </ResponsiveContainer>

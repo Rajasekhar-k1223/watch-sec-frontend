@@ -29,7 +29,7 @@ export default function PlatformStatus() {
     { name: 'MinIO S3 Forensic Vault', category: 'Core Service', port: 9000, status: 'Healthy', latency_ms: 3.8, uptime: '3 weeks', details: 'Cryptographically sealed RAM dumps & PCAP artifacts' },
     { name: 'Qdrant Vector Neural Store', category: 'Core Service', port: 6333, status: 'Healthy', latency_ms: 4.5, uptime: '8 days', details: 'Semantic search embeddings for AI Security Copilot' },
     { name: 'Agent gRPC Protocol Gateway', category: 'Gateway', port: 50051, status: 'Healthy', latency_ms: 1.1, uptime: '3 weeks', details: 'High-throughput Protobuf stream for Windows/Linux agents' },
-    { name: 'RedRainbow Neo4j Graph DB', category: 'Database', port: 7687, status: 'Healthy', latency_ms: 2.9, uptime: '3 weeks', details: 'Attack path & external perimeter topology graph' }
+    { name: 'Monitorix Neo4j Attack Graph DB', category: 'Database', port: 7687, status: 'Healthy', latency_ms: 2.9, uptime: '3 weeks', details: 'Attack path & external perimeter topology graph' }
   ]);
   const [loading, setLoading] = useState(false);
   const [overallHealth, setOverallHealth] = useState<'Operational' | 'Degraded'>('Operational');
@@ -37,13 +37,39 @@ export default function PlatformStatus() {
   const pollHealth = async () => {
     try {
       setLoading(true);
-      const token = sessionStorage.getItem('token');
+      const token = sessionStorage.getItem('token') || localStorage.getItem('token');
       const res = await fetch(`${API_URL}/system/health`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
         if (data.overall) setOverallHealth(data.overall === 'Healthy' ? 'Operational' : 'Degraded');
+        if (data.services) {
+          setServices(prev => prev.map(s => {
+            const key = s.name.toLowerCase().includes('postgres') ? 'postgres'
+              : s.name.toLowerCase().includes('mongo') ? 'mongodb'
+              : s.name.toLowerCase().includes('redis') ? 'redis'
+              : s.name.toLowerCase().includes('clickhouse') ? 'clickhouse'
+              : null;
+            if (key && data.services[key]) {
+              const svc = data.services[key];
+              let details = s.details;
+              if (key === 'redis' && svc.used_memory_human) {
+                details = `Used Memory: ${svc.used_memory_human} | Active Clients: ${svc.connected_clients || 0}`;
+              } else if (key === 'postgres' && data.database?.row_counts?.agents) {
+                details = `Postgres Active | ${data.database.row_counts.agents} Enrolled Agents | ${data.database.size_mb || 0} MB`;
+              }
+              return {
+                ...s,
+                status: svc.status === 'Connected' ? 'Healthy' : 'Degraded',
+                latency_ms: Number((svc.latency_ms || s.latency_ms).toFixed(2)),
+                uptime: data.uptime_check || 'Live',
+                details
+              };
+            }
+            return s;
+          }));
+        }
       }
       toast.success('Platform microservices health refreshed');
     } catch (e) {
@@ -58,17 +84,17 @@ export default function PlatformStatus() {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200 p-6 rounded-2xl shadow-sm">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600">
               <Activity className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Platform Status & Microservice Health</h1>
-              <p className="text-sm text-slate-400">
+              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Platform Status & Microservice Health</h1>
+              <p className="text-sm text-slate-500">
                 Real-time operational status, latencies, container uptimes & telemetry pipelines across all 12 platform components
               </p>
             </div>
@@ -78,7 +104,7 @@ export default function PlatformStatus() {
         <button
           onClick={pollHealth}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-emerald-600/20"
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold transition-all shadow-sm"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           Check Live Status
@@ -86,51 +112,51 @@ export default function PlatformStatus() {
       </div>
 
       {/* Headline Status Bar */}
-      <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+      <div className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-3.5 h-3.5 rounded-full bg-emerald-400 animate-ping" />
+          <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-ping" />
           <div>
-            <div className="text-sm font-bold text-white flex items-center gap-2">
+            <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
               All Systems Operational
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 100% Availability
               </span>
             </div>
-            <div className="text-xs text-slate-400 mt-0.5 font-mono">
+            <div className="text-xs text-slate-500 mt-0.5 font-mono">
               12 of 12 Services Active · Avg Fleet Latency: 2.1 ms · Zero Pipeline Backlog
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
-          <span>Global SLA: <strong className="text-emerald-400 font-bold">99.99%</strong></span>
-          <span>Security Gateway: <strong className="text-white">Active (TLS 1.3)</strong></span>
+        <div className="flex items-center gap-3 text-xs text-slate-500 font-mono">
+          <span>Global SLA: <strong className="text-emerald-600 font-bold">99.99%</strong></span>
+          <span>Security Gateway: <strong className="text-slate-900">Active (TLS 1.3)</strong></span>
         </div>
       </div>
 
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {services.map((svc, i) => (
-          <div key={i} className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl space-y-3 hover:border-slate-700 transition-all shadow-xl">
+          <div key={i} className="bg-white border border-slate-200 shadow-sm p-5 rounded-2xl space-y-3 hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] uppercase font-bold font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+              <span className="text-[10px] uppercase font-bold font-mono px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
                 {svc.category}
               </span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" />
                 {svc.status}
               </span>
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-white">{svc.name}</h3>
-              <p className="text-xs text-slate-400 mt-1">{svc.details}</p>
+              <h3 className="text-sm font-bold text-slate-900">{svc.name}</h3>
+              <p className="text-xs text-slate-500 mt-1">{svc.details}</p>
             </div>
 
-            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-500">
-              <span>Port: <strong className="text-slate-300">{svc.port}</strong></span>
-              <span>Latency: <strong className="text-emerald-400">{svc.latency_ms} ms</strong></span>
-              <span>Uptime: <strong className="text-slate-300">{svc.uptime}</strong></span>
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-mono text-slate-500">
+              <span>Port: <strong className="text-slate-700">{svc.port}</strong></span>
+              <span>Latency: <strong className="text-emerald-600 font-semibold">{svc.latency_ms} ms</strong></span>
+              <span>Uptime: <strong className="text-slate-700">{svc.uptime}</strong></span>
             </div>
           </div>
         ))}

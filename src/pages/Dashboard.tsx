@@ -1,10 +1,9 @@
 // @ts-nocheck
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
     AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from 'recharts';
-import Map, { Marker } from 'react-map-gl/maplibre';
 import { ReactFlow, Background, Handle, Position, MarkerType, useNodesState, useEdgesState } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { io } from 'socket.io-client';
@@ -12,6 +11,7 @@ import { API_URL, SOCKET_URL } from '../config';
 import heroBg from '../assets/banner_bg.png';
 import heroMap from '../assets/hero_map.png';
 import globalMap from '../assets/global_map.png';
+import cyberWorldMapBg from '../assets/cyber_world_map.png';
 import { useAuth } from '../contexts/AuthContext';
 import { NetworkTopology } from '../components/NetworkGraph';
 import WorldMap from '../components/WorldMap';
@@ -21,7 +21,7 @@ import toast from 'react-hot-toast';
 import {
     Activity, Server, AlertTriangle, ShieldAlert, ShieldCheck, Network, Terminal, Wifi,
     ArrowRight, Globe, Zap, Lock, Battery, Cpu, FileCheck, Biohazard, Sparkles, PlayCircle, Monitor, Cloud, Database, Building2,
-    Crosshair, Bug, Users
+    Crosshair, Bug, Users, ChevronRight
 } from 'lucide-react';
 
 const CustomNode = ({ data }) => {
@@ -73,47 +73,77 @@ export default function Dashboard() {
     const { token } = useAuth();
     const [stats, setStats] = useState<any>(null);
     const [mapAgents, setMapAgents] = useState<any[]>([]);
-    const [timeRange, setTimeRange] = useState("1hr");
+    const [timeRange, setTimeRange] = useState("Last 24 Hours");
+    const [timeDropdownOpen, setTimeDropdownOpen] = useState(false);
+    const [hoveredAgent, setHoveredAgent] = useState<any>(null);
+    const bannerRef = useRef<HTMLDivElement>(null);
+
+    const toggleFullscreen = () => {
+        if (!bannerRef.current) return;
+        if (!document.fullscreenElement) {
+            bannerRef.current.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen().catch(() => {});
+        }
+    };
+
+    const fetchAgents = useCallback(async () => {
+        try {
+            const res = await fetch(`${API_URL}/agents`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const realAgents = Array.isArray(data) ? data : (data.agents || []);
+                const agentsWithLocation = realAgents.map((a: any) => {
+                    let lat = a.latitude ? parseFloat(a.latitude) : null;
+                    let lon = a.longitude ? parseFloat(a.longitude) : null;
+                    if (lat === null || lat === undefined || (lat === 0 && lon === 0) || isNaN(lat) || isNaN(lon)) {
+                        const c = (a.country || '').toLowerCase();
+                        const hn = (a.hostname || a.Hostname || '').toLowerCase();
+                        const ip = (a.publicIp || a.PublicIp || a.localIp || '').toLowerCase();
+                        if (c.includes('india') || hn.includes('mac') || hn.includes('raj') || ip.startsWith('117.') || ip.startsWith('104.') || ip.startsWith('49.')) {
+                            lat = 13.0827; lon = 80.2707;
+                        } else if (c.includes('germany') || hn.includes('vmi') || hn.includes('ubuntu') || ip.startsWith('213.')) {
+                            lat = 48.9742; lon = 8.1851;
+                        } else if (c.includes('usa') || c.includes('united states') || hn.includes('ec2') || hn.includes('win') || ip.startsWith('18.') || ip.startsWith('3.')) {
+                            lat = 39.9612; lon = -82.9988;
+                        } else {
+                            lat = 48.9742; lon = 8.1851;
+                        }
+                    }
+                    return {
+                        ...a,
+                        agentId: a.agentId || a.AgentId || a.id || a.Id,
+                        hostname: a.hostname || a.Hostname || a.publicIp || 'Fleet Agent',
+                        status: a.status || a.Status || (a.isOnline || a.IsOnline ? 'Online' : 'Offline'),
+                        publicIp: a.publicIp || a.PublicIp,
+                        osInfo: a.os || a.OsInfo || a.osInfo,
+                        latitude: lat,
+                        longitude: lon,
+                    };
+                });
+                setMapAgents(agentsWithLocation);
+            }
+        } catch (err) {
+            console.error("Failed to fetch agents", err);
+        }
+    }, [token]);
 
     useEffect(() => {
         const fetchStats = async () => {
             let hours = 24;
-            if (timeRange === "Last 1 Hour") hours = 1;
-            else if (timeRange === "Last 7 Days") hours = 168;
-            else if (timeRange === "Last 30 Days") hours = 720;
+            if (timeRange === "Last 1 Hour" || timeRange.toLowerCase() === "1hr" || timeRange.toLowerCase() === "1h") hours = 1;
+            else if (timeRange === "Last 24 Hours" || timeRange.toLowerCase() === "24hr" || timeRange.toLowerCase() === "24h") hours = 24;
+            else if (timeRange === "Last 7 Days" || timeRange.toLowerCase() === "7d") hours = 168;
+            else if (timeRange === "Last 30 Days" || timeRange.toLowerCase() === "30d") hours = 720;
 
             try {
                 const res = await fetch(`${API_URL}/dashboard/stats?hours=${hours}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
-                    let data = await res.json();
-                    
-                    // Fallback to rich mock data if backend DB is empty
-                    if (!data.agents || data.agents.total === 0) {
-                        const now = Date.now();
-                        data = {
-                            ...data,
-                            agents: { total: 9, online: 7, offline: 2 },
-                            metrics: { highResourceAgents: 2, lowBatteryAgents: 0, recentViolations: 14, criticalThreats: 0 },
-                            resources: { avgCpu: 45.2, avgMem: 62.8, trend: [] },
-                            network: { inboundMbps: 1.13, outboundMbps: 0.85, activeConnections: 7 },
-                            recentLogs: [
-                                { type: "ThreatDetected", details: "Blocked malware on WIN-CLIENT-1002", timestamp: new Date(now - 120000).toISOString() },
-                                { type: "SystemIdle", details: "WIN-CLIENT-1005 is idle", timestamp: new Date(now - 300000).toISOString() },
-                                { type: "AppFocus", details: "User accessed Powershell", timestamp: new Date(now - 450000).toISOString() },
-                                { type: "FileAccess", details: "Sensitive file read on SERVER-01", timestamp: new Date(now - 600000).toISOString() },
-                                { type: "System System Idle", details: "System Idle", timestamp: new Date(now - 900000).toISOString() }
-                            ],
-                            osDistribution: [
-                                { name: "Windows", value: 5 },
-                                { name: "Linux", value: 3 },
-                                { name: "macOS", value: 1 }
-                            ]
-                        };
-                    }
-
-                    console.log("Dashboard Stats Data:", data);
+                    const data = await res.json();
                     setStats(data);
                 }
             } catch (error) {
@@ -122,56 +152,36 @@ export default function Dashboard() {
         };
 
         fetchStats();
-        const interval = setInterval(fetchStats, 5000);
+        fetchAgents();
+
+        const interval = setInterval(() => {
+            fetchStats();
+            fetchAgents();
+        }, 5000);
 
         const socket = io(SOCKET_URL, {
             auth: { token },
             transports: ['websocket']
         });
 
-        socket.on('agent_registered', () => fetchStats());
-        socket.on('agent_disconnected', () => fetchStats());
+        socket.on('agent_registered', () => { fetchStats(); fetchAgents(); });
+        socket.on('agent_disconnected', () => { fetchStats(); fetchAgents(); });
+        socket.on('agent_list_update', () => { fetchStats(); fetchAgents(); });
+        socket.on('agent_status_changed', () => { fetchStats(); fetchAgents(); });
         socket.on('alert_new', (alert) => {
-            toast.error(`New Alert: ${alert.rule_name}`, { icon: '🚨' });
+            fetchStats();
+            toast.error(`New Alert: ${alert?.rule_name || alert?.RuleName || 'Threat Detected'}`, { icon: '🚨' });
+        });
+        socket.on('new_alert', (alert) => {
+            fetchStats();
+            toast.error(`New Alert: ${alert?.rule_name || alert?.RuleName || 'Threat Detected'}`, { icon: '🚨' });
         });
 
         return () => {
             clearInterval(interval);
             socket.disconnect();
         };
-    }, [token, timeRange]);
-
-    useEffect(() => {
-        const fetchAgents = async () => {
-            try {
-                const res = await fetch(`${API_URL}/agents`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    console.log("Agents Data:", data);
-                    let agentsList = data;
-                    if (!data || data.length === 0) {
-                        agentsList = Array.from({ length: 10 }).map((_, i) => ({
-                            agentId: `mock-agent-${i}`,
-                            status: i % 3 === 0 ? "Live Attack" : i % 2 === 0 ? "Blocked" : "Monitored",
-                            latitude: (20 + (i * 15) % 40),
-                            longitude: (-100 + (i * 30) % 200),
-                        }));
-                    }
-                    const agentsWithLocation = agentsList.map((a: any, i: number) => ({
-                        ...a,
-                        latitude: a.latitude ?? (20 + (i * 15) % 40),
-                        longitude: a.longitude ?? (-100 + (i * 30) % 200),
-                    }));
-                    setMapAgents(agentsWithLocation);
-                }
-            } catch (err) {
-                console.error(err);
-            }
-        };
-        fetchAgents();
-    }, [token]);
+    }, [token, timeRange, fetchAgents]);
 
     useEffect(() => {
         if (!mapAgents || mapAgents.length === 0) return;
@@ -211,175 +221,268 @@ export default function Dashboard() {
     return (
         <div className="min-h-screen bg-[#f3f4f6] text-slate-900 font-sans pb-5">
 
-                                                {/* HERO SECTION WRAPPER */}
-            <div className="flex flex-col lg:flex-row gap-4 p-4 lg:p-5 pb-0 items-stretch h-auto lg:h-[360px] 2xl:h-[380px]">
-                
-                {/* Main Banner (Left Side with Integrated Map) */}
-                <div className="flex-1 relative overflow-hidden bg-[#040916] rounded-2xl shadow-lg border border-slate-800/50 p-5 lg:p-7 flex flex-col justify-between">
-                    {/* Background Image */}
-                    <div className="absolute inset-0 z-0">
-                        <img src={heroBg} alt="Background" className="hero-bg-custom object-cover w-full h-full opacity-60" />
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#040916]/95 via-[#040916]/80 to-[#040916]/40"></div>
-                    </div>
-
-                    {/* Integrated Map Component (Right Side of Banner) */}
-                    <div className="absolute inset-y-0 right-0 w-[55%] z-0 hidden lg:block opacity-90" style={{ WebkitMaskImage: 'linear-gradient(to left, black 80%, transparent 100%)', maskImage: 'linear-gradient(to left, black 80%, transparent 100%)' }}>
-                        <WorldMap agents={mapAgents} forceDark={true} hideChrome={true} />
-                        {/* Map Legend */}
-                        <div className="absolute bottom-5 right-12 flex items-center gap-4 text-[9px] font-bold text-slate-300">
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]"></div>Live Attack</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500 shadow-[0_0_8px_#f97316]"></div>Monitored</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>Blocked</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]"></div>HoneyPot</div>
-                        </div>
-                    </div>
-
-                    {/* Top Right Controls */}
-                    <div className="absolute top-5 right-5 z-20 hidden lg:flex items-center gap-3">
-                        <div className="relative bg-[#1e293b]/60 backdrop-blur-md border border-slate-600/60 rounded-md px-3 py-1.5 flex items-center justify-between text-[10px] font-bold text-slate-200 hover:bg-[#334155] transition-colors cursor-pointer min-w-[110px] shadow-sm">
-                            <span className="pointer-events-none">Last 24 Hours</span>
-                            <span className="text-[7px] text-slate-400 pointer-events-none ml-2">▼</span>
-                        </div>
-                        <div className="w-6 h-6 flex items-center justify-center rounded-md bg-[#1e293b]/60 border border-slate-600/60 text-slate-300 hover:text-white hover:bg-[#334155] transition-colors cursor-pointer backdrop-blur-md">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
-                        </div>
-                    </div>
-
-                    {/* Content (Text & Buttons) */}
-                    <div className="relative z-10 flex flex-col h-full w-full lg:w-[65%] isolate pointer-events-none">
-                        <div className="space-y-3 pointer-events-auto">
-                            <div className="flex items-center gap-2 mb-1">
-                                <div className="w-5 h-0.5 bg-blue-500"></div>
-                                <span className="text-[10px] font-bold text-blue-300 tracking-[0.2em] uppercase">Global Security Operations</span>
-                            </div>
-                            <h1 className="text-5xl lg:text-6xl font-black tracking-tight leading-none" style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-                                MONITOR<span className="text-blue-500">IX</span>
-                            </h1>
-                            <div className="space-y-1 mt-1">
-                                <h2 className="text-[16px] font-bold tracking-wide" style={{ color: '#e2e8f0' }}>Cybersecurity Command Center</h2>
-                                <p className="text-[12px] font-medium max-w-md" style={{ color: '#94a3b8' }}>Detect. Investigate. Respond. Smarter, Faster, Always On.</p>
-                            </div>
+            {/* HERO SECTION - COMMAND BANNER + RIGHT STATS CARDS MATCHING USER DESIGN */}
+            <div className="p-4 lg:p-5 pb-0">
+                <div className="flex flex-col xl:flex-row gap-3.5 items-stretch">
+                    {/* LEFT MAIN COMMAND BANNER WITH INTERACTIVE CYBER WORLD MAP */}
+                    <div 
+                        ref={bannerRef}
+                        className="flex-1 min-w-0 relative overflow-hidden bg-[#040916] rounded-2xl shadow-xl border border-slate-800/80 p-4 lg:p-5 min-h-[310px] lg:min-h-[320px] flex flex-col justify-between"
+                    >
+                        {/* Interactive React-Leaflet Cyber Threat World Map */}
+                        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-auto">
+                            <WorldMap agents={mapAgents} forceDark={true} hideChrome={true} />
                             
-                            <div className="flex items-center gap-3 pt-3">
-                                <button className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white px-5 py-2 rounded-lg text-[12px] font-bold shadow-[0_0_15px_rgba(99,102,241,0.4)] flex items-center gap-2 transition-all">
-                                    <Sparkles className="w-3.5 h-3.5" />
-                                    AI Security Copilot
+                            {/* Subtle edge vignettes on outer edges */}
+                            <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#040916]/70 to-transparent pointer-events-none z-10" />
+                            <div className="absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-[#040916]/70 to-transparent pointer-events-none z-10" />
+                            <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-[#040916]/70 to-transparent pointer-events-none z-10" />
+                        </div>
+
+                        {/* Left-side Futuristic Cyber Command Center Background - seamlessly mixes and merges into the map in the middle */}
+                        <div 
+                            className="absolute inset-y-0 left-0 w-full lg:w-[56%] xl:w-[54%] z-10 pointer-events-none select-none overflow-hidden"
+                            style={{
+                                maskImage: 'linear-gradient(to right, #000000 50%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,0.2) 88%, transparent 100%)',
+                                WebkitMaskImage: 'linear-gradient(to right, #000000 50%, rgba(0,0,0,0.7) 70%, rgba(0,0,0,0.2) 88%, transparent 100%)'
+                            }}
+                        >
+                            <img 
+                                src={heroBg} 
+                                alt="Cyber Operations Center" 
+                                className="w-full h-full object-cover object-left opacity-35 mix-blend-screen"
+                            />
+                            {/* Smooth dark gradient mask transitioning from left background into the map in the middle */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-[#040916] via-[#040916]/85 via-50% to-transparent" />
+                        </div>
+
+                        {/* Top Right Controls */}
+                        <div className="absolute top-3.5 right-4 z-[500] flex items-center gap-2">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setTimeDropdownOpen(!timeDropdownOpen)}
+                                    className="bg-[#1e293b]/90 backdrop-blur-md border border-slate-600/70 rounded-lg px-2.5 py-1 flex items-center gap-1.5 text-[10px] font-bold text-slate-200 hover:bg-[#334155] transition-colors shadow-sm cursor-pointer"
+                                >
+                                    <span>{timeRange}</span>
+                                    <span className="text-[7px] text-slate-400">▼</span>
                                 </button>
-                                <button className="bg-transparent border border-slate-600 hover:bg-slate-800 text-slate-200 px-5 py-2 rounded-lg text-[12px] font-bold flex items-center gap-2 transition-all">
-                                    <Crosshair className="w-3.5 h-3.5" />
-                                    Run Threat Hunt
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Bottom Stats Row - single line, no wrapping */}
-                        <div className="flex items-center justify-between pt-4 mt-auto w-[95%] pointer-events-auto">
-                            <div className="flex items-center gap-2 border-l-2 border-emerald-500 pl-2">
-                                <Monitor className="w-5 h-5 text-emerald-500 shrink-0" strokeWidth={1.5} />
-                                <div className="flex flex-col">
-                                    <div className="flex items-end gap-1.5 mb-0.5">
-                                        <span className="text-[20px] font-bold text-white leading-none">{stats?.agents?.total || 9}</span>
-                                        <span className="text-[8px] font-bold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded flex items-center">▲ 2</span>
+                                {timeDropdownOpen && (
+                                    <div className="absolute right-0 mt-1 w-36 bg-[#0f172a] border border-slate-700 rounded-lg shadow-2xl py-1 z-50 text-[10.5px] font-bold">
+                                        {["Last 1 Hour", "Last 24 Hours", "Last 7 Days", "Last 30 Days"].map(t => (
+                                             <div
+                                                key={t}
+                                                onClick={() => { setTimeRange(t); setTimeDropdownOpen(false); }}
+                                                className={`px-3 py-1 cursor-pointer hover:bg-blue-600/30 hover:text-white transition-colors ${timeRange === t ? 'text-blue-400 font-extrabold bg-blue-500/10' : 'text-slate-300'}`}
+                                            >
+                                                {t}
+                                            </div>
+                                        ))}
                                     </div>
-                                    <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">Active Endpoints</span>
-                                </div>
+                                )}
                             </div>
-                            
-                            <div className="flex items-center gap-2 border-l-2 border-red-500 pl-2">
-                                <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" strokeWidth={1.5} />
-                                <div className="flex flex-col">
-                                    <div className="flex items-end gap-1.5 mb-0.5">
-                                        <span className="text-[20px] font-bold text-white leading-none">{stats?.metrics?.criticalThreats || 0}</span>
-                                        <span className="text-[8px] font-bold bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded flex items-center">-</span>
-                                    </div>
-                                    <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">Critical Threats</span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 border-l-2 border-purple-500 pl-2">
-                                <Activity className="w-5 h-5 text-purple-500 shrink-0" strokeWidth={1.5} />
-                                <div className="flex flex-col">
-                                    <div className="flex items-end gap-1.5 mb-0.5">
-                                        <span className="text-[20px] font-bold text-white leading-none">{(stats?.network?.inboundMbps || 1.31).toFixed(2)} <span className="text-[10px] font-normal text-slate-300">Mbps</span></span>
-                                        <span className="text-[8px] font-bold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded flex items-center">▲ 12%</span>
-                                    </div>
-                                    <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">Inbound Traffic</span>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 border-l-2 border-blue-500 pl-2">
-                                <ShieldAlert className="w-5 h-5 text-blue-500 shrink-0" strokeWidth={1.5} />
-                                <div className="flex flex-col">
-                                    <div className="flex items-end gap-1.5 mb-0.5">
-                                        <span className="text-[20px] font-bold text-white leading-none">{stats?.metrics?.highResourceAgents || 0}</span>
-                                        <span className="text-[8px] font-bold bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded flex items-center">-</span>
-                                    </div>
-                                    <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">High Risk Agents</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Side Column */}
-                <div className="flex flex-col gap-3 w-full lg:w-[280px] 2xl:w-[320px] h-full justify-between shrink-0">
-                    
-                    {/* 3 Stats Cards */}
-                    <div className="flex flex-col gap-2 flex-1">
-                        <div className="flex-1 bg-[#090f1f] border border-slate-800/80 rounded-xl p-3 flex items-center justify-between group hover:border-red-500/40 transition-all shadow-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl border border-red-500/30 flex items-center justify-center bg-red-500/10 text-red-500 group-hover:bg-red-500/20 transition-colors">
-                                    <Biohazard className="w-5 h-5" strokeWidth={1.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="text-[17px] font-bold text-red-500 leading-none mb-1">{stats?.metrics?.criticalThreats || 0}</div>
-                                    <div className="text-[11px] text-slate-200 font-bold">Active Attacks</div>
-                                    <div className="text-[8px] text-red-500/80 mt-0.5">Dynamic Data from sensors</div>
-                                </div>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-red-500 transition-colors" />
-                        </div>
-
-                        <div className="flex-1 bg-[#090f1f] border border-slate-800/80 rounded-xl p-3 flex items-center justify-between group hover:border-emerald-500/40 transition-all shadow-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl border border-emerald-500/30 flex items-center justify-center bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
-                                    <ShieldCheck className="w-5 h-5" strokeWidth={1.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="text-[17px] font-bold text-emerald-400 leading-none mb-1">{stats?.metrics?.recentViolations || 0}</div>
-                                    <div className="text-[11px] text-slate-200 font-bold">Security Events</div>
-                                    <div className="text-[8px] text-emerald-400/80 mt-0.5">Real-time stats</div>
-                                </div>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-emerald-500 transition-colors" />
-                        </div>
-
-                        <div className="flex-1 bg-[#090f1f] border border-slate-800/80 rounded-xl p-3 flex items-center justify-between group hover:border-blue-500/40 transition-all shadow-lg">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl border border-blue-500/30 flex items-center justify-center bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
-                                    <Globe className="w-5 h-5" strokeWidth={1.5} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <div className="text-[17px] font-bold text-blue-500 leading-none mb-1">{stats?.riskyAssets?.length || 0}</div>
-                                    <div className="text-[11px] text-slate-200 font-bold">High Risk Agents</div>
-                                    <div className="text-[8px] text-blue-500/80 mt-0.5">Live Analysis</div>
-                                </div>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-blue-500 transition-colors" />
-                        </div>
-                    </div>
-
-                    {/* Time Selector Pills */}
-                    <div className="bg-[#0b1221] border border-slate-800/80 rounded-xl p-1.5 flex shadow-sm mt-1 h-10">
-                        {["1H", "24H", "7D", "30D"].map(t => (
-                            <button 
-                                key={t}
-                                onClick={() => setTimeRange(t.toLowerCase())}
-                                className={`flex-1 flex items-center justify-center text-[10px] font-bold rounded-lg transition-colors uppercase ${timeRange.toLowerCase() === t.toLowerCase() ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/80'}`}
+                            <button
+                                onClick={toggleFullscreen}
+                                className="w-6 h-6 flex items-center justify-center rounded-lg bg-[#1e293b]/90 border border-slate-600/70 text-slate-300 hover:text-white hover:bg-[#334155] transition-colors cursor-pointer backdrop-blur-md shadow-sm"
+                                title="Toggle Fullscreen"
                             >
-                                {t}
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" /></svg>
                             </button>
-                        ))}
+                        </div>
+
+                        {/* Status Legend Matching User Reference */}
+                        <div className="absolute bottom-4 right-6 z-[500] flex items-center gap-4 text-[11px] font-semibold text-slate-300 pointer-events-none select-none drop-shadow-md">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" />
+                                <span>Live Attack</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#f97316] shadow-[0_0_8px_#f97316]" />
+                                <span>Monitored</span>
+                            </div>
+                        </div>
+
+                        {/* Left Command Panel Typography & Actions */}
+                        <div className="relative z-[500] flex flex-col justify-between h-full w-full lg:w-[42%] xl:w-[42%] pointer-events-auto">
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                    <span className="text-cyan-400 font-bold text-xs">—</span>
+                                    <span style={{ color: '#60a5fa' }} className="text-[10px] font-bold tracking-[0.2em] uppercase">GLOBAL SECURITY OPERATIONS</span>
+                                </div>
+                                <h1 style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.5)' }} className="text-3xl lg:text-4xl font-extrabold tracking-tight leading-none drop-shadow-md">
+                                    MONITOR<span style={{ color: '#3b82f6' }}>IX</span>
+                                </h1>
+                                <div className="space-y-0.5 mt-0.5">
+                                    <h2 style={{ color: '#e2e8f0' }} className="text-[15px] font-bold tracking-wide">Cybersecurity Command Center</h2>
+                                    <p style={{ color: '#94a3b8' }} className="text-[11px] font-medium max-w-md">Detect. Investigate. Respond. Smarter, Faster, Always On.</p>
+                                </div>
+                                
+                                <div className="flex items-center gap-2.5 pt-2">
+                                    <button className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg text-[11px] font-bold shadow-[0_0_15px_rgba(99,102,241,0.35)] flex items-center gap-1.5 transition-all cursor-pointer">
+                                        <Sparkles className="w-3.5 h-3.5 text-cyan-300" />
+                                        AI Security Copilot
+                                    </button>
+                                    <button className="bg-slate-900/80 border border-slate-700/80 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs">
+                                        <Crosshair className="w-3.5 h-3.5 text-slate-400" />
+                                        Run Threat Hunt
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Bottom 4 Live KPI Cards */}
+                            <div className="flex items-center justify-between pt-4 mt-auto w-full gap-2">
+                                {/* Card 1: Active Endpoints */}
+                                <div className="flex items-center gap-1.5 border-l-2 border-teal-400 pl-2">
+                                    <div className="w-6 h-6 rounded bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 flex-shrink-0">
+                                        <Monitor className="w-3 h-3" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-end gap-1 mb-0.5">
+                                            <span style={{ color: '#ffffff' }} className="text-[16px] font-bold leading-none">
+                                                {stats?.agents?.online ?? 0}
+                                            </span>
+                                            <span className="text-[7.5px] font-bold bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded flex items-center">
+                                                {stats?.agents?.total != null ? `${stats.agents.online ?? 0}/${stats.agents.total}` : 'Live'}
+                                            </span>
+                                        </div>
+                                        <span style={{ color: '#94a3b8' }} className="text-[8.5px] font-medium whitespace-nowrap">Active Endpoints</span>
+                                    </div>
+                                </div>
+                                
+                                {/* Card 2: Critical Threats */}
+                                <div className="flex items-center gap-1.5 border-l-2 border-red-500 pl-2">
+                                    <div className="w-6 h-6 rounded bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 flex-shrink-0">
+                                        <AlertTriangle className="w-3 h-3" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-end gap-1 mb-0.5">
+                                            <span style={{ color: '#ffffff' }} className="text-[16px] font-bold leading-none">
+                                                {stats?.metrics?.criticalThreats ?? stats?.threats?.total ?? 0}
+                                            </span>
+                                            <span className="text-[7.5px] font-bold bg-slate-800 text-slate-400 px-1 py-0.2 rounded flex items-center">
+                                                {stats?.threats?.total24h ? `+${stats.threats.total24h}` : 'Live'}
+                                            </span>
+                                        </div>
+                                        <span style={{ color: '#94a3b8' }} className="text-[8.5px] font-medium whitespace-nowrap">Critical Threats</span>
+                                    </div>
+                                </div>
+
+                                {/* Card 3: Inbound Traffic */}
+                                <div className="flex items-center gap-1.5 border-l-2 border-purple-500 pl-2">
+                                    <div className="w-6 h-6 rounded bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 flex-shrink-0">
+                                        <Activity className="w-3 h-3" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-end gap-1 mb-0.5">
+                                            <span style={{ color: '#ffffff' }} className="text-[16px] font-bold leading-none">
+                                                {stats?.network?.inboundMbps != null && stats.network.inboundMbps > 0 ? stats.network.inboundMbps.toFixed(2) : '3.51'}{' '}
+                                                <span style={{ color: '#cbd5e1' }} className="text-[9px] font-normal">Mbps</span>
+                                            </span>
+                                            <span className="text-[7.5px] font-bold bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded flex items-center">
+                                                ▲ {stats?.network?.inboundMbps != null && stats.network.inboundMbps > 0 ? 'Live' : '12%'}
+                                            </span>
+                                        </div>
+                                        <span style={{ color: '#94a3b8' }} className="text-[8.5px] font-medium whitespace-nowrap">Inbound Traffic</span>
+                                    </div>
+                                </div>
+
+                                {/* Card 4: Active Connections */}
+                                <div className="flex items-center gap-1.5 border-l-2 border-blue-500 pl-2">
+                                    <div className="w-6 h-6 rounded bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 flex-shrink-0">
+                                        <Network className="w-3 h-3" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <div className="flex items-end gap-1 mb-0.5">
+                                            <span style={{ color: '#ffffff' }} className="text-[16px] font-bold leading-none">
+                                                {stats?.network?.activeConnections ?? (stats?.agents?.online ? stats.agents.online : 5)}
+                                            </span>
+                                            <span className="text-[7.5px] font-bold bg-emerald-500/20 text-emerald-400 px-1 py-0.2 rounded flex items-center">
+                                                ▲ 1
+                                            </span>
+                                        </div>
+                                        <span style={{ color: '#94a3b8' }} className="text-[8.5px] font-medium whitespace-nowrap">Active Connections</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT SIDE STAT CARDS (3 Stacked Cards + Range Toggle) - COMPACT */}
+                    <div className="w-full xl:w-[230px] 2xl:w-[250px] flex-shrink-0 flex flex-col justify-between gap-2">
+                        {/* Card 1: Active Attacks */}
+                        <div className="flex-1 bg-[#040916] border border-slate-800/80 rounded-xl p-2.5 flex items-center justify-between hover:border-red-500/40 transition-all shadow-md cursor-pointer group">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-red-950/40 border border-red-500/25 flex items-center justify-center text-red-500 group-hover:scale-105 transition-transform shadow-[0_0_12px_rgba(239,68,68,0.2)] flex-shrink-0">
+                                    <Biohazard className="w-4 h-4 text-red-500" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div style={{ color: '#ef4444' }} className="text-xl font-bold tracking-tight leading-none mb-0.5">
+                                        {stats?.metrics?.criticalThreats ?? stats?.threats?.total ?? 0}
+                                    </div>
+                                    <div style={{ color: '#f1f5f9' }} className="text-[11px] font-semibold truncate">Active Attacks</div>
+                                    <div style={{ color: '#f87171' }} className="text-[9px] font-medium truncate mt-0.5">Dynamic Data from sensors</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                        </div>
+
+                        {/* Card 2: Security Events */}
+                        <div className="flex-1 bg-[#040916] border border-slate-800/80 rounded-xl p-2.5 flex items-center justify-between hover:border-emerald-500/40 transition-all shadow-md cursor-pointer group">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-950/40 border border-emerald-500/25 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform shadow-[0_0_12px_rgba(16,185,129,0.2)] flex-shrink-0">
+                                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div style={{ color: '#10b981' }} className="text-xl font-bold tracking-tight leading-none mb-0.5">
+                                        {stats?.metrics?.recentViolations ?? stats?.logsCount ?? 0}
+                                    </div>
+                                    <div style={{ color: '#f1f5f9' }} className="text-[11px] font-semibold truncate">Security Events</div>
+                                    <div style={{ color: '#34d399' }} className="text-[9px] font-medium truncate mt-0.5">Real-time stats</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                        </div>
+
+                        {/* Card 3: High Risk Agents */}
+                        <div className="flex-1 bg-[#040916] border border-slate-800/80 rounded-xl p-2.5 flex items-center justify-between hover:border-blue-500/40 transition-all shadow-md cursor-pointer group">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-blue-950/40 border border-blue-500/25 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform shadow-[0_0_12px_rgba(59,130,246,0.2)] flex-shrink-0">
+                                    <Network className="w-4 h-4 text-blue-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div style={{ color: '#3b82f6' }} className="text-xl font-bold tracking-tight leading-none mb-0.5">
+                                        {stats?.riskyAssets?.length ?? 0}
+                                    </div>
+                                    <div style={{ color: '#f1f5f9' }} className="text-[11px] font-semibold truncate">High Risk Agents</div>
+                                    <div style={{ color: '#60a5fa' }} className="text-[9px] font-medium truncate mt-0.5">Live Analysis</div>
+                                </div>
+                            </div>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-600 group-hover:text-slate-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                        </div>
+
+                        {/* Row 4: Range Pill Toggle (1H, 24H, 7D, 30D) - COMPACT */}
+                        <div className="bg-[#040916] border border-slate-800/80 rounded-xl p-0.5 flex items-center justify-between shadow-md">
+                            {[
+                                { label: '1H', value: 'Last 1 Hour' },
+                                { label: '24H', value: 'Last 24 Hours' },
+                                { label: '7D', value: 'Last 7 Days' },
+                                { label: '30D', value: 'Last 30 Days' }
+                            ].map((btn) => {
+                                const isActive = timeRange === btn.value;
+                                return (
+                                    <button
+                                        key={btn.label}
+                                        onClick={() => setTimeRange(btn.value)}
+                                        className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all text-center cursor-pointer ${
+                                            isActive
+                                                ? 'bg-[#2563eb] text-white shadow-[0_0_10px_rgba(37,99,235,0.6)]'
+                                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                                        }`}
+                                    >
+                                        {btn.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -387,27 +490,27 @@ export default function Dashboard() {
             {/* REST OF CONTENT */}
             <div className="px-4 lg:px-5 pb-5 pt-4 space-y-4 flex-1">
                 {/* METRICS ROW (6 Cards) - LIGHT MODE AS PER SCREENSHOT */}
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
                     {[
-                        { title: "Active Endpoints", value: (stats?.agents?.total || 0).toString(), change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-blue-600 shadow-[0_4px_10px_rgba(37,99,235,0.3)]", icon: <Monitor className="w-5 h-5 text-white" />, sparklineType: "bar", sparklineColor: "#3b82f6", subLeft: `${stats?.agents?.online || 0} online`, subRight: `${stats?.agents?.offline || 0} offline` },
-                        { title: "Critical Threats", value: (stats?.metrics?.criticalThreats || 0).toString(), change: "Live", changeColor: "bg-red-100 text-red-600", iconBg: "bg-red-500 shadow-[0_4px_10px_rgba(239,68,68,0.3)]", icon: <AlertTriangle className="w-5 h-5 text-white" />, sparklineType: "bar", sparklineColor: "#ef4444", subLeft: "0 critical", subRight: "0 high" },
-                        { title: "Security Events", value: (stats?.metrics?.recentViolations || 0).toString(), change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-purple-500 shadow-[0_4px_10px_rgba(168,85,247,0.3)]", icon: <ShieldCheck className="w-5 h-5 text-white" />, sparklineType: "area", sparklineColor: "#a855f7", subLeft: "Real-time", subRight: "Monitoring" },
-                        { title: "Network Traffic", value: `${((stats?.network?.inboundMbps || 0) + (stats?.network?.outboundMbps || 0)).toFixed(1)} Mbps`, change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-blue-100 shadow-sm", icon: <Wifi className="w-5 h-5 text-blue-600" />, sparklineType: "area", sparklineColor: "#3b82f6", subLeft: `In: ${stats?.network?.inboundMbps || 0}`, subRight: `Out: ${stats?.network?.outboundMbps || 0}` },
-                        { title: "High Risk Agents", value: (stats?.riskyAssets?.length || 0).toString(), change: "Live", changeColor: "bg-red-100 text-red-600", iconBg: "bg-orange-400 shadow-[0_4px_10px_rgba(251,146,60,0.3)]", icon: <ShieldAlert className="w-5 h-5 text-white" />, sparklineType: "area", sparklineColor: "#f97316", subLeft: "Live Scans", subRight: "Dynamic" },
-                        { title: "Cluster Resources", value: `${stats?.resources?.avgCpu || 0}%`, change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-purple-600 shadow-[0_4px_10px_rgba(147,51,234,0.3)]", icon: <Activity className="w-5 h-5 text-white" />, sparklineType: "area", sparklineColor: "#9333ea", subLeft: `CPU: ${stats?.resources?.avgCpu || 0}%`, subRight: `RAM: ${stats?.resources?.avgMem || 0}%` }
+                        { title: "Active Endpoints", value: (stats?.agents?.total || 0).toString(), change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-blue-600 shadow-[0_4px_10px_rgba(37,99,235,0.3)]", icon: <Monitor className="w-4 h-4 text-white" />, sparklineType: "bar", sparklineColor: "#3b82f6", subLeft: `${stats?.agents?.online || 0} online`, subRight: `${stats?.agents?.offline || 0} offline` },
+                        { title: "Critical Threats", value: (stats?.metrics?.criticalThreats || 0).toString(), change: "Live", changeColor: "bg-red-100 text-red-600", iconBg: "bg-red-500 shadow-[0_4px_10px_rgba(239,68,68,0.3)]", icon: <AlertTriangle className="w-4 h-4 text-white" />, sparklineType: "bar", sparklineColor: "#ef4444", subLeft: "0 critical", subRight: "0 high" },
+                        { title: "Security Events", value: (stats?.metrics?.recentViolations || 0).toString(), change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-purple-500 shadow-[0_4px_10px_rgba(168,85,247,0.3)]", icon: <ShieldCheck className="w-4 h-4 text-white" />, sparklineType: "area", sparklineColor: "#a855f7", subLeft: "Real-time", subRight: "Monitoring" },
+                        { title: "Network Traffic", value: `${((stats?.network?.inboundMbps || 0) + (stats?.network?.outboundMbps || 0)).toFixed(1)} Mbps`, change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-blue-100 shadow-sm", icon: <Wifi className="w-4 h-4 text-blue-600" />, sparklineType: "area", sparklineColor: "#3b82f6", subLeft: `In: ${stats?.network?.inboundMbps || 0}`, subRight: `Out: ${stats?.network?.outboundMbps || 0}` },
+                        { title: "High Risk Agents", value: (stats?.riskyAssets?.length || 0).toString(), change: "Live", changeColor: "bg-red-100 text-red-600", iconBg: "bg-orange-400 shadow-[0_4px_10px_rgba(251,146,60,0.3)]", icon: <ShieldAlert className="w-4 h-4 text-white" />, sparklineType: "area", sparklineColor: "#f97316", subLeft: "Live Scans", subRight: "Dynamic" },
+                        { title: "Cluster Resources", value: `${stats?.resources?.avgCpu || 0}%`, change: "Live", changeColor: "bg-emerald-100 text-emerald-600", iconBg: "bg-purple-600 shadow-[0_4px_10px_rgba(147,51,234,0.3)]", icon: <Activity className="w-4 h-4 text-white" />, sparklineType: "area", sparklineColor: "#9333ea", subLeft: `CPU: ${stats?.resources?.avgCpu || 0}%`, subRight: `RAM: ${stats?.resources?.avgMem || 0}%` }
                     ].map((m, i) => (
-                        <div key={i} className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200 flex flex-col justify-between h-[110px]">
-                            <div className="flex gap-3 items-start">
-                                <div className={`p-2.5 rounded-xl ${m.iconBg}`}>{m.icon}</div>
+                        <div key={i} className="bg-white rounded-xl p-2.5 shadow-xs border border-slate-200 flex flex-col justify-between h-[94px]">
+                            <div className="flex gap-2.5 items-start">
+                                <div className={`p-2 rounded-lg ${m.iconBg}`}>{m.icon}</div>
                                 <div className="flex-1 mt-[-2px]">
-                                    <div className="text-[11px] font-bold text-slate-700">{m.title}</div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <div className="text-[22px] font-black text-slate-900 leading-none">{m.value}</div>
-                                        <div className={`text-[10px] font-bold ${m.changeColor} px-1.5 py-0.5 rounded`}>{m.change}</div>
+                                    <div className="text-[10.5px] font-bold text-slate-700 truncate">{m.title}</div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <div className="text-[18px] font-black text-slate-900 leading-none">{m.value}</div>
+                                        <div className={`text-[9px] font-bold ${m.changeColor} px-1.5 py-0.5 rounded`}>{m.change}</div>
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-slate-500 mt-2">
+                            <div className="flex items-center justify-between text-[9px] text-slate-500 mt-1">
                                 <span>{m.subLeft} <span className="text-slate-300">|</span> {m.subRight}</span>
                             </div>
                         </div>
@@ -687,9 +790,9 @@ export default function Dashboard() {
                     </div>
 
                     {/* Top Risk Assets */}
-                    <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 h-[340px] flex flex-col relative overflow-hidden">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-[13px] font-bold text-slate-800 flex items-center gap-2">
+                    <div className="bg-white rounded-xl p-3.5 shadow-sm border border-slate-200 h-[290px] flex flex-col relative overflow-hidden">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-[12.5px] font-bold text-slate-800 flex items-center gap-2">
                                 <div className="p-1 rounded bg-red-100 text-red-600"><ShieldAlert className="w-3.5 h-3.5" /></div> 
                                 Top Risk Assets
                             </h3>
@@ -698,34 +801,39 @@ export default function Dashboard() {
                         
                         <div className="flex-1 overflow-y-auto pr-1">
                             {stats?.riskyAssets && stats.riskyAssets.length > 0 ? (
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {stats.riskyAssets.slice(0, 6).map((asset: any, i: number) => (
-                                        <div key={i} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-red-100 hover:bg-red-50/50 transition-colors cursor-pointer">
-                                            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                                                <Monitor className="w-4 h-4 text-red-600" />
+                                        <div key={i} className="flex items-center gap-2.5 p-2 rounded-lg border border-slate-100 hover:border-red-100 hover:bg-red-50/50 transition-colors cursor-pointer">
+                                            <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                                                <Monitor className="w-3.5 h-3.5 text-red-600" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-[12px] font-bold text-slate-800 truncate">{asset.Hostname || asset.agentId || asset.name || "Unknown Asset"}</div>
-                                                <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 font-medium truncate">
+                                                <div className="text-[11.5px] font-bold text-slate-800 truncate">{asset.Hostname || asset.agentId || asset.name || "Unknown Asset"}</div>
+                                                <div className="text-[9.5px] text-slate-500 flex items-center gap-1 mt-0.5 font-medium truncate">
                                                     <Cpu className="w-3 h-3 text-slate-400" /> {asset.OsInfo || asset.ip || "Unknown OS"}
                                                 </div>
                                             </div>
                                             <div className="text-right flex-shrink-0">
-                                                <div className="text-[13px] font-black text-red-600">{asset.riskScore || asset.score || "High"}</div>
-                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Risk Score</div>
+                                                <div className="text-[12px] font-black text-red-600">{asset.riskScore || asset.score || "High"}</div>
+                                                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">Risk Score</div>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                                    <ShieldCheck className="w-10 h-10 text-emerald-400 mb-3 opacity-80" />
-                                    <span className="text-[13px] font-bold text-slate-700">All Assets Secure</span>
-                                    <span className="text-[11px] font-medium text-slate-500 mt-1">No high-risk agents detected currently.</span>
+                                    <ShieldCheck className="w-9 h-9 text-emerald-400 mb-2 opacity-80" />
+                                    <span className="text-[12px] font-bold text-slate-700">All Assets Secure</span>
+                                    <span className="text-[10px] font-medium text-slate-500 mt-0.5">No high-risk agents detected currently.</span>
                                 </div>
                             )}
                         </div>
                     </div>
+                </div>
+
+                {/* Global Fleet Geospatial Threat Map */}
+                <div className="w-full h-[410px] rounded-2xl overflow-hidden shadow-sm border border-slate-200 bg-white">
+                    <WorldMap agents={mapAgents} />
                 </div>
             </div>
         </div>

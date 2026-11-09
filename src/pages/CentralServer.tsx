@@ -70,8 +70,8 @@ export default function CentralServer() {
                 )}
 
                 {!['General', 'Server Authorization', 'Search thesauruses', 'Recognition', 'Hash banks', 'Digital Fingerprints', 'License information', 'Searches'].includes(activeTab) && (
-                    <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center border-dashed">
-                        <p className="text-gray-500">Placeholder for {activeTab} settings</p>
+                    <div className="bg-slate-50 rounded-xl border border-slate-300 p-8 text-center border-dashed">
+                        <p className="text-slate-500">Placeholder for {activeTab} settings</p>
                     </div>
                 )}
             </div>
@@ -80,18 +80,54 @@ export default function CentralServer() {
 }
 
 function GeneralSettingsTab() {
+    const { token } = useAuth();
     const [settings, setSettings] = useState({
         DataRetentionDays: "90",
         LogLevel: "INFO",
         StoragePath: "/var/lib/monitorix/data"
     });
 
-    // Mock Load
-    // useEffect(() => { fetch('/api/system/settings')... }, [])
+    useEffect(() => {
+        if (!token) return;
+        fetch(`${API_URL}/system/settings`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.General) {
+                    const retention = data.General.find((x: any) => x.Key === 'DataRetentionDays')?.Value;
+                    const logLvl = data.General.find((x: any) => x.Key === 'LogLevel')?.Value;
+                    setSettings(prev => ({
+                        ...prev,
+                        DataRetentionDays: retention || prev.DataRetentionDays,
+                        LogLevel: logLvl || prev.LogLevel
+                    }));
+                }
+            })
+            .catch(err => console.error("Failed to load system settings", err));
+    }, [token]);
 
-    const handleSave = () => {
-        // fetch('/api/system/settings', { method: 'POST', body: JSON.stringify(...) })
-        toast.success("Settings Saved!");
+    const handleSave = async () => {
+        try {
+            const res = await fetch(`${API_URL}/system/settings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify([
+                    { Key: 'DataRetentionDays', Value: String(settings.DataRetentionDays), Category: 'General' },
+                    { Key: 'LogLevel', Value: String(settings.LogLevel), Category: 'General' }
+                ])
+            });
+            if (res.ok) {
+                toast.success("Settings Saved!");
+            } else {
+                toast.error("Failed to save settings");
+            }
+        } catch (e) {
+            toast.error("Error saving settings");
+        }
     };
 
     return (

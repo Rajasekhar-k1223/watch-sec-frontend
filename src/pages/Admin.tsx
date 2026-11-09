@@ -480,7 +480,7 @@ export default function Admin() {
                                 <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider mb-2 block">Quick Start Snippet</span>
                                 <div className="bg-gray-900 rounded p-3 overflow-x-auto">
                                     <code className="text-xs font-mono text-green-400 whitespace-pre">
-                                        curl -sSL https://get.monitorix.co.in/agent.sh | sudo bash -s -- --key {tenant.ApiKey || "YOUR_API_KEY"}
+                                        {`curl -sSL ${window.location.origin}/agent.sh | sudo bash -s -- --key ${tenant.ApiKey || "YOUR_API_KEY"}`}
                                     </code>
                                 </div>
                             </div>

@@ -1,0 +1,54 @@
+# ============================================================================
+# Monitorix Enterprise Hardened Production Web Frontend
+# ============================================================================
+# Stage 1: Build & Minification Stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies using pinned lockfile
+COPY package.json package-lock.json ./
+RUN npm ci --prefer-offline --no-audit
+
+# Copy application source (excluding files in .dockerignore)
+COPY . .
+
+# Compile hardened production bundle (Zero source maps, console dropped)
+ENV NODE_ENV=production
+RUN npm run build
+
+# Stage 2: Hardened Nginx Runtime
+FROM nginx:1.27-alpine AS runtime
+
+# Remove default nginx html and configs
+RUN rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/*
+
+# Copy compiled production assets from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy sovereign reverse proxy configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Generate sovereign self-signed fallback TLS certificate
+RUN mkdir -p /etc/nginx/ssl && \
+    apk add --no-cache openssl && \
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+      -keyout /etc/nginx/ssl/monitorix.key \
+      -out /etc/nginx/ssl/monitorix.crt \
+      -subj "/C=US/ST=Enterprise/L=Sovereign/O=Monitorix Security/CN=monitorix.internal" \
+      -addext "subjectAltName = DNS:localhost, DNS:*.localhost, DNS:monitorix.internal, DNS:*.monitorix.internal, DNS:monitorix.company.internal, IP:127.0.0.1" && \
+    apk del openssl
+
+# Security labeling
+LABEL org.opencontainers.image.title="Monitorix Enterprise Web Portal"
+LABEL org.opencontainers.image.vendor="Monitorix Cybersecurity"
+LABEL org.opencontainers.image.version="19.1.0"
+LABEL com.monitorix.artifact.type="production-web"
+
+# Health Check supporting HTTPS
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q --no-check-certificate -O /dev/null https://127.0.0.1/ || wget -q -O /dev/null http://127.0.0.1/ || exit 1
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

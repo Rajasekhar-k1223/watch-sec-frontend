@@ -235,8 +235,8 @@ export default function Landing() {
                     <div>
                         <h4 className="text-slate-300 font-semibold mb-4">Resources</h4>
                         <ul className="space-y-2">
-                            <li><a href="#" className="hover:text-blue-400 transition-colors">Documentation</a></li>
-                            <li><a href="#" className="hover:text-blue-400 transition-colors">API Reference</a></li>
+                            <li><a href="/docs/" className="hover:text-blue-400 transition-colors">Documentation</a></li>
+                            <li><a href="/api/docs" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">API Reference</a></li>
                             <li><a href="#" className="hover:text-blue-400 transition-colors">Security Whitepaper</a></li>
                         </ul>
                     </div>

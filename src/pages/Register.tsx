@@ -53,7 +53,7 @@ export default function Register() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-[#0f172a] flex items-center justify-center relative overflow-hidden transition-colors">
             {/* Background Decoration */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-radial-gradient from-blue-900/10 via-transparent to-transparent opacity-20 pointer-events-none"></div>
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2 pointer-events-none"></div>
 

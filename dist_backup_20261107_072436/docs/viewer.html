@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitorix Enterprise Documentation Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/docs/doc-viewer.css">
+  <style>
+    :root {
+      --bg-body: #f8fafc;
+      --bg-sidebar: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-subtle: #f1f5f9;
+      --bg-header: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+      --border-color: #e2e8f0;
+      --border-glow: rgba(2, 132, 199, 0.4);
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --primary: #0284c7;
+      --primary-hover: #0369a1;
+      --primary-glow: rgba(2, 132, 199, 0.25);
+      --terminal-bg: #0b1120;
+      --terminal-text: #38bdf8;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+    }
+
+    body.dark-theme {
+      --bg-body: #070a12;
+      --bg-sidebar: rgba(11, 17, 32, 0.98);
+      --bg-card: rgba(15, 23, 42, 0.85);
+      --bg-card-subtle: rgba(30, 41, 59, 0.5);
+      --bg-header: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.7) 100%);
+      --border-color: rgba(56, 189, 248, 0.15);
+      --border-glow: rgba(56, 189, 248, 0.35);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #00e5ff;
+      --primary-hover: #38bdf8;
+      --terminal-bg: #050811;
+      --terminal-text: #38bdf8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Bar */
+    .viewer-navbar {
+      background: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(8px);
+    }
+
+    .viewer-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .viewer-brand-badge {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .viewer-brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -0.3px;
+    }
+
+    .viewer-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Layout Structure */
+    .viewer-layout {
+      display: flex;
+      flex: 1;
+      min-height: calc(100vh - 61px);
+    }
+
+    /* Sidebar Navigation */
+    .viewer-sidebar {
+      width: 300px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      padding: 20px 16px;
+      overflow-y: auto;
+      flex-shrink: 0;
+      max-height: calc(100vh - 61px);
+      position: sticky;
+      top: 61px;
+    }
+
+    .viewer-nav-section-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      margin: 18px 8px 8px 8px;
+    }
+
+    .viewer-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: var(--text-main);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      margin-bottom: 2px;
+    }
+
+    .viewer-nav-link:hover {
+      background: var(--bg-card-subtle);
+      color: var(--primary);
+    }
+
+    .viewer-nav-link.active {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Center Content Area */
+    .viewer-content-area {
+      flex: 1;
+      padding: 30px 40px;
+      overflow-y: auto;
+    }
+
+    .viewer-doc-header {
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .viewer-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    .viewer-breadcrumb a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .viewer-doc-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--text-main);
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+      text-transform: capitalize;
+    }
+
+    .viewer-doc-meta {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+    }
+
+    /* Right TOC Area */
+    .viewer-toc-area {
+      width: 260px;
+      padding: 24px 20px;
+      flex-shrink: 0;
+      position: sticky;
+      top: 61px;
+      max-height: calc(100vh - 61px);
+      overflow-y: auto;
+      border-left: 1px solid var(--border-color);
+    }
+
+    @media (max-width: 1200px) {
+      .viewer-toc-area { display: none; }
+    }
+
+    @media (max-width: 860px) {
+      .viewer-sidebar { display: none; }
+      .viewer-content-area { padding: 20px; }
+    }
+
+    /* Seamless In-Page Google Translate Conversion */
+    .goog-te-banner-frame.skiptranslate, .goog-te-banner-frame { display: none !important; }
+    body { top: 0px !important; }
+    #goog-gt-tt, .goog-te-balloon-frame { display: none !important; }
+    .goog-text-highlight { background: transparent !important; box-shadow: none !important; }
+    #google_translate_element { display: none !important; }
+    .skiptranslate iframe { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="viewer-navbar">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <a href="/docs/" class="viewer-brand">
+        <span class="viewer-brand-badge">ENTERPRISE</span>
+        <span class="viewer-brand-title">MONITORIX DOCS</span>
+      </a>
+      <a href="/docs/" class="doc-btn" style="font-size: 12px;">
+        <span>🏠</span> Master Overview
+      </a>
+    </div>
+
+    <div class="viewer-toolbar">
+      <div style="display:inline-flex; align-items:center; gap:4px;">
+        <label for="viewerCountryLang" style="font-size:11px; font-weight:700; color:var(--text-muted);">
+          🌐 Language:
+        </label>
+        <select id="viewerCountryLang" class="doc-btn" onchange="changeViewerLanguage(this.value)" style="cursor:pointer; font-weight:700; font-size:11px; padding:4px 8px;">
+          <option value="en">🇺🇸 English</option>
+          <option value="es">🇪🇸 Spanish (Español)</option>
+          <option value="hi">🇮🇳 Hindi (हिन्दी)</option>
+          <option value="fr">🇫🇷 French (Français)</option>
+          <option value="de">🇩🇪 German (Deutsch)</option>
+          <option value="ar">🇸🇦 Arabic (العربية)</option>
+          <option value="zh-CN">🇨🇳 Chinese (中文)</option>
+          <option value="ja">🇯🇵 Japanese (日本語)</option>
+          <option value="pt">🇧🇷 Portuguese (Português)</option>
+          <option value="ru">🇷🇺 Russian (Русский)</option>
+          <option value="it">🇮🇹 Italian (Italiano)</option>
+          <option value="ko">🇰🇷 Korean (한국어)</option>
+          <option value="nl">🇳🇱 Dutch (Nederlands)</option>
+          <option value="tr">🇹🇷 Turkish (Türkçe)</option>
+        </select>
+      </div>
+      <button class="doc-btn" onclick="toggleTheme()" id="themeToggleBtn">
+        <span id="themeIcon">🌙</span> <span id="themeText">Dark Theme</span>
+      </button>
+      <button class="doc-btn" onclick="copyDocumentMarkdown()">
+        <span>📋</span> Copy Markdown
+      </button>
+      <button class="doc-btn" onclick="window.print()">
+        <span>📄</span> Print / PDF
+      </button>
+      <a id="rawDownloadLink" href="#" class="doc-btn" style="color: var(--text-muted); font-size: 11px;">
+        <span>⬇️</span> Raw .md
+      </a>
+    </div>
+  </header>
+
+  <!-- Layout Container -->
+  <div class="viewer-layout">
+
+    <!-- Left Sidebar: All Comprehensive Enterprise Manuals -->
+    <aside class="viewer-sidebar">
+      <div class="viewer-nav-section-title">🏛️ Master Manual & Compliance</div>
+      <a href="?doc=MONITORIX_ENTERPRISE_MASTER_DOCUMENTATION.md" class="viewer-nav-link" data-doc="MONITORIX_ENTERPRISE_MASTER_DOCUMENTATION.md" style="font-weight:700; color:var(--primary);">
+        <span>📖</span> Master Architecture Manual
+      </a>
+      <a href="?doc=GLOBAL_COMPLIANCE_AUDIT.md" class="viewer-nav-link" data-doc="GLOBAL_COMPLIANCE_AUDIT.md">
+        <span>⚖️</span> 32 Compliance Audit
+      </a>
+      <a href="?doc=GLOBAL_COMPLIANCE_FRAMEWORK_GUIDE.md" class="viewer-nav-link" data-doc="GLOBAL_COMPLIANCE_FRAMEWORK_GUIDE.md">
+        <span>📋</span> Compliance & Checksums
+      </a>
+      <a href="?doc=PRODUCTION_BUILD_AUDIT.md" class="viewer-nav-link" data-doc="PRODUCTION_BUILD_AUDIT.md">
+        <span>🔍</span> Production Build Audit
+      </a>
+      <a href="?doc=CROWN_JEWEL_MODULES.md" class="viewer-nav-link" data-doc="CROWN_JEWEL_MODULES.md">
+        <span>💎</span> Crown Jewel Modules
+      </a>
+
+      <div class="viewer-nav-section-title">📦 Installation & Hosting</div>
+      <a href="?doc=ENTERPRISE_INSTALLATION.md" class="viewer-nav-link" data-doc="ENTERPRISE_INSTALLATION.md">
+        <span>📦</span> Enterprise Installation
+      </a>
+      <a href="?doc=ENTERPRISE_DEPLOYMENT.md" class="viewer-nav-link" data-doc="ENTERPRISE_DEPLOYMENT.md">
+        <span>🚀</span> Enterprise Deployment
+      </a>
+      <a href="?doc=ON_PREMISE_DEPLOYMENT.md" class="viewer-nav-link" data-doc="ON_PREMISE_DEPLOYMENT.md">
+        <span>🏢</span> On-Premise Deployment
+      </a>
+      <a href="?doc=PRIVATE_CLOUD_DEPLOYMENT.md" class="viewer-nav-link" data-doc="PRIVATE_CLOUD_DEPLOYMENT.md">
+        <span>☁️</span> Private Cloud Deployment
+      </a>
+      <a href="?doc=AIR_GAPPED_DEPLOYMENT.md" class="viewer-nav-link" data-doc="AIR_GAPPED_DEPLOYMENT.md">
+        <span>🔒</span> Air-Gapped Deployment
+      </a>
+      <a href="?doc=ORGANIZATION_INSTALLATION.md" class="viewer-nav-link" data-doc="ORGANIZATION_INSTALLATION.md">
+        <span>🏗️</span> Org-Based Installation
+      </a>
+
+      <div class="viewer-nav-section-title">🛡️ Security, IP & Release</div>
+      <a href="?doc=IP_PROTECTION_MODEL.md" class="viewer-nav-link" data-doc="IP_PROTECTION_MODEL.md">
+        <span>🛡️</span> IP Protection Model
+      </a>
+      <a href="?doc=REVERSE_ENGINEERING_TEST_REPORT.md" class="viewer-nav-link" data-doc="REVERSE_ENGINEERING_TEST_REPORT.md">
+        <span>🧪</span> Anti-Tamper Test Report
+      </a>
+      <a href="?doc=BUILD_AND_RELEASE.md" class="viewer-nav-link" data-doc="BUILD_AND_RELEASE.md">
+        <span>⚙️</span> Build & Release Guide
+      </a>
+      <a href="?doc=LICENSE_ACTIVATION.md" class="viewer-nav-link" data-doc="LICENSE_ACTIVATION.md">
+        <span>🔑</span> License & Activation
+      </a>
+      <a href="?doc=PARTNER_RESELLER_GUIDE.md" class="viewer-nav-link" data-doc="PARTNER_RESELLER_GUIDE.md">
+        <span>🤝</span> Partner & Reseller Guide
+      </a>
+      <a href="?doc=DEPLOYMENT_CENTER_AUDIT.md" class="viewer-nav-link" data-doc="DEPLOYMENT_CENTER_AUDIT.md">
+        <span>📊</span> Deployment Center Audit
+      </a>
+
+      <div class="viewer-nav-section-title">⚙️ Fleet & Maintenance</div>
+      <a href="?doc=AGENT_ENROLLMENT.md" class="viewer-nav-link" data-doc="AGENT_ENROLLMENT.md">
+        <span>💻</span> Agent Enrollment
+      </a>
+      <a href="?doc=UPDATE_GUIDE.md" class="viewer-nav-link" data-doc="UPDATE_GUIDE.md">
+        <span>🔄</span> Updates & Upgrades
+      </a>
+      <a href="?doc=OFFLINE_UPDATE.md" class="viewer-nav-link" data-doc="OFFLINE_UPDATE.md">
+        <span>📦</span> Offline Updates
+      </a>
+      <a href="?doc=BACKUP_RESTORE.md" class="viewer-nav-link" data-doc="BACKUP_RESTORE.md">
+        <span>💾</span> Backup & Restore
+      </a>
+      <a href="?doc=DISASTER_RECOVERY.md" class="viewer-nav-link" data-doc="DISASTER_RECOVERY.md">
+        <span>🚨</span> Disaster Recovery
+      </a>
+      <a href="?doc=CUSTOMER_NETWORK_REQUIREMENTS.md" class="viewer-nav-link" data-doc="CUSTOMER_NETWORK_REQUIREMENTS.md">
+        <span>🌐</span> Network Requirements
+      </a>
+    </aside>
+
+    <!-- Main Content Reader -->
+    <main class="viewer-content-area">
+      <div class="viewer-doc-header">
+        <div class="viewer-breadcrumb">
+          <a href="/docs/">Documentation</a>
+          <span>/</span>
+          <span id="docBreadcrumbTitle">Enterprise Manual</span>
+        </div>
+        <h1 class="viewer-doc-title" id="docViewerTitle">Loading Manual...</h1>
+        <div class="viewer-doc-meta" id="docViewerMeta">
+          <span>Loading sovereign documentation...</span>
+        </div>
+      </div>
+
+      <!-- Markdown Output -->
+      <article id="docViewerContent" class="doc-reader-body">
+        <!-- Rendered markdown inserted here -->
+      </article>
+    </main>
+
+    <!-- Right Table of Contents -->
+    <aside class="viewer-toc-area">
+      <div class="doc-toc-wrapper">
+        <div class="doc-toc-title">
+          <span>📑</span> On This Page
+        </div>
+        <div id="docViewerToc">
+          <!-- Dynamic TOC inserted here -->
+        </div>
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="/docs/doc-viewer.js"></script>
+  <script>
+    const viewer = new MonitorixDocViewer({
+      containerId: 'docViewerContent',
+      tocContainerId: 'docViewerToc',
+      titleContainerId: 'docViewerTitle',
+      metaContainerId: 'docViewerMeta'
+    });
+
+    let currentDocFile = 'ENTERPRISE_INSTALLATION.md';
+    let currentRawMarkdown = '';
+
+    function getQueryParam(name) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    }
+
+    function initTheme() {
+      const savedTheme = localStorage.getItem('monitorix_theme') || 'light';
+      if (savedTheme === 'dark') {
+        document.body.classList.add('dark-theme');
+        updateThemeUI(true);
+      } else {
+        document.body.classList.remove('dark-theme');
+        updateThemeUI(false);
+      }
+    }
+
+    function toggleTheme() {
+      const isDark = document.body.classList.toggle('dark-theme');
+      localStorage.setItem('monitorix_theme', isDark ? 'dark' : 'light');
+      updateThemeUI(isDark);
+    }
+
+    function updateThemeUI(isDark) {
+      const icon = document.getElementById('themeIcon');
+      const text = document.getElementById('themeText');
+      if (icon) icon.innerText = isDark ? '☀️' : '🌙';
+      if (text) text.innerText = isDark ? 'Light Theme' : 'Dark Theme';
+    }
+
+    async function loadDoc(filename, updateHistory = true) {
+      currentDocFile = filename;
+      
+      // Update sidebar active state
+      document.querySelectorAll('.viewer-nav-link').forEach(link => {
+        link.classList.toggle('active', link.getAttribute('data-doc') === filename);
+      });
+
+      // Update breadcrumb
+      const cleanTitle = filename.replace('.md', '').replace(/_/g, ' ');
+      document.getElementById('docBreadcrumbTitle').innerText = cleanTitle;
+      document.title = `${cleanTitle} | Monitorix Sovereign Documentation`;
+
+      // Update raw download link
+      const rawLink = document.getElementById('rawDownloadLink');
+      if (rawLink) rawLink.href = `/docs/${filename}?download=1`;
+
+      if (updateHistory) {
+        history.pushState({ doc: filename }, '', `?doc=${encodeURIComponent(filename)}`);
+      }
+
+      await viewer.loadDocument(filename);
+    }
+
+    function copyDocumentMarkdown() {
+      fetch(`/docs/${encodeURIComponent(currentDocFile)}?raw=1`)
+        .then(r => r.text())
+        .then(text => {
+          navigator.clipboard.writeText(text).then(() => {
+            alert('Markdown content copied to clipboard!');
+          });
+        });
+    }
+
+    // Intercept sidebar navigation clicks for instant, smooth page rendering
+    document.querySelectorAll('.viewer-nav-link').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const doc = this.getAttribute('data-doc');
+        if (doc) loadDoc(doc);
+      });
+    });
+
+    window.addEventListener('popstate', function(e) {
+      const doc = getQueryParam('doc') || 'ENTERPRISE_INSTALLATION.md';
+      loadDoc(doc, false);
+    });
+
+    function changeViewerLanguage(langCode) {
+      localStorage.setItem('monitorix_viewer_lang', langCode);
+      const isRtl = (langCode === 'ar');
+      document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+      document.documentElement.lang = langCode;
+      if (isRtl) {
+        document.body.classList.add('rtl-layout');
+      } else {
+        document.body.classList.remove('rtl-layout');
+      }
+
+      // Apply Google Translate cookie for full DOM translation
+      const host = window.location.hostname;
+      if (langCode === 'en') {
+        document.cookie = "googtrans=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        document.cookie = `googtrans=; path=/; domain=${host}; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+        document.cookie = `googtrans=; path=/; domain=.${host}; expires=Thu, 01 Jan 1970 00:00:00 UTC;`;
+      } else {
+        document.cookie = `googtrans=/en/${langCode}; path=/;`;
+        document.cookie = `googtrans=/en/${langCode}; path=/; domain=${host};`;
+        document.cookie = `googtrans=/en/${langCode}; path=/; domain=.${host};`;
+      }
+
+      // Trigger translate combo if present
+      const combo = document.querySelector('.goog-te-combo');
+      if (combo) {
+        combo.value = langCode;
+        combo.dispatchEvent(new Event('change'));
+      } else {
+        setTimeout(() => {
+          window.location.reload();
+        }, 80);
+      }
+
+      const select = document.getElementById('viewerCountryLang');
+      if (select) select.value = langCode;
+    }
+
+    function initViewerLanguage() {
+      const saved = localStorage.getItem('monitorix_viewer_lang');
+      if (saved) {
+        const select = document.getElementById('viewerCountryLang');
+        if (select) select.value = saved;
+        return;
+      }
+      const navLang = (navigator.language || '').toLowerCase();
+      if (navLang.startsWith('es')) { changeViewerLanguage('es'); return; }
+      if (navLang.startsWith('hi')) { changeViewerLanguage('hi'); return; }
+      if (navLang.startsWith('fr')) { changeViewerLanguage('fr'); return; }
+      if (navLang.startsWith('de')) { changeViewerLanguage('de'); return; }
+      if (navLang.startsWith('ar')) { changeViewerLanguage('ar'); return; }
+      if (navLang.startsWith('zh')) { changeViewerLanguage('zh-CN'); return; }
+      if (navLang.startsWith('ja')) { changeViewerLanguage('ja'); return; }
+      if (navLang.startsWith('pt')) { changeViewerLanguage('pt'); return; }
+      if (navLang.startsWith('ru')) { changeViewerLanguage('ru'); return; }
+      if (navLang.startsWith('it')) { changeViewerLanguage('it'); return; }
+      if (navLang.startsWith('ko')) { changeViewerLanguage('ko'); return; }
+      if (navLang.startsWith('nl')) { changeViewerLanguage('nl'); return; }
+      if (navLang.startsWith('tr')) { changeViewerLanguage('tr'); return; }
+      changeViewerLanguage('en');
+    }
+
+    // Init
+    initTheme();
+    initViewerLanguage();
+    const initialDoc = getQueryParam('doc') || 'ENTERPRISE_INSTALLATION.md';
+    loadDoc(initialDoc, false);
+  </script>
+
+  <!-- Google Translate Client Conversion -->
+  <div id="google_translate_element" style="display:none;"></div>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'en,es,hi,fr,de,ar,zh-CN,ja,pt,ru,it,ko,nl,tr',
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+</body>
+</html>

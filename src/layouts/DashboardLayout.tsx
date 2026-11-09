@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import GlobalAiChatbot from '../components/GlobalAiChatbot';
 
 export default function DashboardLayout() {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -27,7 +28,7 @@ export default function DashboardLayout() {
                 />
             )}
 
-            <div className={`flex-1 flex flex-col w-full relative z-10 transition-all duration-500 ease-in-out ${isCollapsed ? 'md:ml-20 md:w-[calc(100%-5rem)]' : 'md:ml-64 md:w-[calc(100%-16rem)]'}`}>
+            <div className={`flex-1 flex flex-col w-full relative z-10 transition-all duration-300 ease-in-out ${isCollapsed ? 'md:ml-20 md:w-[calc(100%-5rem)]' : 'md:ml-64 md:w-[calc(100%-16rem)]'}`}>
                 <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
                 <main className="flex-1 overflow-x-hidden bg-[#f3f4f6]">
                     {/* Main Content Area - Full width */}
@@ -36,6 +37,9 @@ export default function DashboardLayout() {
                     </div>
                 </main>
             </div>
+
+            {/* Persistent Sovereign AI Chatbot */}
+            <GlobalAiChatbot />
         </div>
     );
 }

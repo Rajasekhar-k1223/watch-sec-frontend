@@ -27,10 +27,11 @@ interface VulnerabilityAlert {
 export default function Vulnerabilities() {
     const navigate = useNavigate();
     const { token, user } = useAuth();
+    const authToken = token || sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('monitorix_token');
     const [alerts, setAlerts] = useState<VulnerabilityAlert[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchAgent, setSearchAgent] = useState('');
-    const [planLevel, setPlanLevel] = useState<number>(1);
+    const [planLevel, setPlanLevel] = useState<number>(3);
 
     const [triggeringAll, setTriggeringAll] = useState(false);
     const [scanMap, setScanMap] = useState<Record<string, boolean>>({});
@@ -40,7 +41,7 @@ export default function Vulnerabilities() {
         try {
             const query = searchAgent ? `?agent_id=${searchAgent}` : '';
             const res = await fetch(`${API_URL}/vulnerabilities/alerts${query}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 setAlerts(await res.json());
@@ -58,7 +59,7 @@ export default function Vulnerabilities() {
         try {
             const res = await fetch(`${API_URL}/vulnerabilities/scan-all`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 import('react-hot-toast').then(t => t.default.success("Global fleet scan triggered."));
@@ -73,7 +74,7 @@ export default function Vulnerabilities() {
         try {
             const res = await fetch(`${API_URL}/vulnerabilities/scan/${agentId}`, {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 import('react-hot-toast').then(t => t.default.success(`Scan triggered for ${agentId}`));
@@ -86,7 +87,7 @@ export default function Vulnerabilities() {
     const handleExport = async () => {
         try {
             const res = await fetch(`${API_URL}/vulnerabilities/export/${searchAgent || 'all'}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 const blob = await res.blob();
@@ -102,12 +103,10 @@ export default function Vulnerabilities() {
     };
 
     useEffect(() => {
-        if (!token) return;
-
         // Fetch Plan
-        if (user?.tenantId) {
+        if (user?.tenantId && authToken) {
             fetch(`${API_URL}/tenants/${user.tenantId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             })
                 .then(res => res.json())
                 .then(data => {
@@ -118,61 +117,54 @@ export default function Vulnerabilities() {
         }
 
         fetchAlerts();
-    }, [token, searchAgent, user?.tenantId]);
+    }, [authToken, searchAgent, user?.tenantId]);
 
-    const isLocked = planLevel < (FEATURE_TIERS["vulnerabilities"] || 3);
+    const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin' || user?.role?.toLowerCase() === 'admin';
+    const isLocked = !isSuperAdmin && planLevel < (FEATURE_TIERS["vulnerabilities"] || 3);
 
     return (
-        <div className="p-4 md:p-8 animate-in fade-in duration-700 min-h-screen bg-slate-50 dark:bg-[#020617] transition-colors relative">
+        <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6 relative">
             {isLocked && (
-                <div className="absolute inset-0 z-[60] bg-slate-950/95 backdrop-blur-3xl flex flex-col items-center justify-center text-center p-6">
-                    <div className="p-10 bg-blue-500/10 rounded-[3rem] mb-10 ring-1 border border-blue-500/20 shadow-2xl shadow-blue-500/20 animate-pulse-slow">
-                        <Lock className="w-24 h-24 text-blue-500" />
-                    </div>
-                    <h2 className="text-6xl font-black text-white mb-6 tracking-tighter">
-                        <span className="text-gradient">Monitorix Intelligence</span>
-                    </h2>
-                    <p className="text-slate-400 max-w-2xl mb-14 text-2xl font-medium leading-tight tracking-tight">
-                        Autonomous <b>Vulnerability Orchestration</b> and <b>Threat Forensics</b> are locked for this identity tier.
-                    </p>
-                    <button
-                        onClick={() => window.location.hash = '#billing'}
-                        className="px-16 py-6 bg-white text-slate-950 font-black rounded-3xl shadow-2xl shadow-blue-500/40 hover:scale-105 transition-all flex items-center gap-6 group text-xs uppercase tracking-[0.3em]"
-                    >
-                        <Zap className="w-6 h-6 group-hover:rotate-12 transition-transform text-blue-600" />
-                        Authorize Enterprise Suite
-                    </button>
-                    <div className="mt-12 flex gap-8 text-slate-500 font-black uppercase tracking-[0.3em] text-[10px] opacity-50">
-                        <span>CVE Correlation</span>
-                        <span>•</span>
-                        <span>Autonomous Patching</span>
-                        <span>•</span>
-                        <span>Zero-Day Guard</span>
+                <div className="absolute inset-0 z-[60] bg-slate-900/40 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center text-center p-6">
+                    <div className="p-8 bg-white/95 rounded-3xl border border-slate-200 shadow-2xl flex flex-col items-center max-w-lg">
+                        <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl mb-4 border border-blue-200">
+                            <Lock className="w-12 h-12" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-900 mb-2">Enterprise Access Required</h2>
+                        <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+                            Autonomous Vulnerability Orchestration and Threat Forensics are reserved for Enterprise Plan users.
+                        </p>
+                        <button
+                            onClick={() => window.location.hash = '#billing'}
+                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 text-xs uppercase tracking-wider"
+                        >
+                            <Zap className="w-4 h-4" /> Upgrade to Enterprise
+                        </button>
                     </div>
                 </div>
             )}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-3">
-                         <div className="p-1.5 bg-red-500/20 rounded-lg text-red-500 ring-1 ring-red-500/30">
-                            <ShieldAlert size={18} />
-                         </div>
-                         <span className="text-[10px] font-black tracking-[0.2em] uppercase text-red-500/80">Threat Surface Audit</span>
+
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-200/90 shadow-sm p-6 rounded-2xl">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center shadow-xs">
+                        <ShieldAlert className="w-5 h-5 animate-pulse" />
                     </div>
-                    <h1 className="text-2xl md:text-5xl font-black tracking-tighter">
-                        <span className="text-gradient">Vulnerability Intel</span>
-                    </h1>
-                    <p className="text-slate-500 dark:text-slate-400 text-xs mt-3 font-medium max-w-xl leading-relaxed">
-                        Continuous forensic auditing of endpoint software stacks. Cross-referencing fleet inventory against global CVE repositories in real-time.
-                    </p>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Vulnerability Intelligence</h1>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Continuous forensic auditing of endpoint software stacks & live CVE cross-referencing
+                        </p>
+                    </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                    <div className="glass px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center gap-3">
-                        <Search className="text-slate-400" size={16} />
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex items-center gap-2">
+                        <Search className="text-slate-400" size={14} />
                         <input
                             type="text"
-                            placeholder="OPERATOR SEARCH..."
-                            className="bg-transparent text-slate-900 dark:text-white text-[10px] font-black uppercase tracking-widest outline-none w-40 placeholder-slate-500"
+                            placeholder="Filter agent..."
+                            className="bg-transparent text-slate-900 text-xs font-medium outline-none w-32 placeholder-slate-400"
                             value={searchAgent}
                             onChange={(e) => setSearchAgent(e.target.value)}
                         />
@@ -180,7 +172,7 @@ export default function Vulnerabilities() {
                     <button
                         onClick={triggerGlobalScan}
                         disabled={triggeringAll || isLocked}
-                        className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-2.5 rounded-xl flex items-center gap-3 transition-all shadow-xl shadow-blue-500/10 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 active:scale-95"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-sm shadow-blue-600/25 font-bold text-xs disabled:opacity-50"
                     >
                         {triggeringAll ? <RefreshCw size={14} className="animate-spin" /> : <Shield size={14} />}
                         Sync Fleet Scan
@@ -188,124 +180,125 @@ export default function Vulnerabilities() {
                     <button
                         onClick={() => navigate('/fleet-inventory')}
                         disabled={isLocked}
-                        className="glass px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-white flex items-center gap-3 transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50 active:scale-95"
+                        className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl flex items-center gap-2 transition-all font-bold text-xs disabled:opacity-50 shadow-2xs"
                     >
                         <Package size={14} /> Inventory
                     </button>
                     <button
                         onClick={handleExport}
                         disabled={loading || isLocked}
-                        className="glass px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-white flex items-center gap-3 transition-all font-black text-[10px] uppercase tracking-widest disabled:opacity-50 active:scale-95"
+                        className="bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl flex items-center gap-2 transition-all font-bold text-xs disabled:opacity-50 shadow-2xs"
                     >
-                        <Download size={14} /> Export
+                        <Download size={14} /> Export CSV
                     </button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                <div className="glass-card p-8 relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 ring-1 ring-blue-500/20">
-                            <Shield size={24} />
-                        </div>
-                        <span className="text-[9px] font-black text-blue-500 bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20 tracking-widest uppercase">Validated</span>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Anomalies</div>
+                        <div className="text-3xl font-black text-slate-900 mt-2">{alerts.length}</div>
+                        <div className="text-[11px] text-blue-600 font-semibold mt-1">Fleet CVE Matches</div>
                     </div>
-                    <div className="text-5xl font-black text-slate-900 dark:text-white mb-2 leading-none">{alerts.length}</div>
-                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Total Anomalies</div>
+                    <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center">
+                        <Shield size={22} />
+                    </div>
                 </div>
 
-                <div className="glass-card p-8 relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all"></div>
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="p-3 bg-red-500/10 rounded-2xl text-red-500 ring-1 ring-red-500/20">
-                            <AlertCircle size={24} />
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Critical Exposures</div>
+                        <div className="text-3xl font-black text-rose-600 mt-2">
+                            {alerts.filter(a => a.Details?.toLowerCase().includes('critical') || a.Details?.toLowerCase().includes('high')).length}
                         </div>
-                        <span className="text-[9px] font-black text-red-500 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20 tracking-widest uppercase">High Risk</span>
+                        <div className="text-[11px] text-rose-600 font-semibold mt-1">Immediate Action Required</div>
                     </div>
-                    <div className="text-5xl font-black text-slate-900 dark:text-white mb-2 leading-none">
-                        {alerts.filter(a => a.Details.toLowerCase().includes('critical') || a.Details.toLowerCase().includes('high')).length}
+                    <div className="w-12 h-12 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center">
+                        <AlertCircle size={22} />
                     </div>
-                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Critical Exposures</div>
                 </div>
 
-                <div className="glass-card p-8 relative overflow-hidden group">
-                    <div className="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
-                    <div className="flex justify-between items-start mb-6">
-                        <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-500 ring-1 ring-emerald-500/20">
-                            <CheckCircle size={24} />
+                <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm flex items-center justify-between">
+                    <div>
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Sync Status</div>
+                        <div className="text-lg font-bold text-slate-900 mt-2 truncate">
+                            {alerts.length > 0 ? new Date(alerts[0].Timestamp).toLocaleDateString() : 'REAL-TIME'}
                         </div>
-                        <span className="text-[9px] font-black text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20 tracking-widest uppercase">Sync Status</span>
+                        <div className="text-[11px] text-emerald-600 font-semibold mt-1">Global Intelligence Active</div>
                     </div>
-                    <div className="text-2xl font-black text-slate-900 dark:text-white mb-2 leading-none truncate">
-                        {alerts.length > 0 ? new Date(alerts[0].Timestamp).toLocaleDateString() : 'REAL-TIME'}
+                    <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center">
+                        <CheckCircle size={22} />
                     </div>
-                    <div className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em]">Last Intelligence Pulse</div>
                 </div>
             </div>
 
-            <div className="glass-card overflow-hidden shadow-2xl transition-colors">
+            {/* Table */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 dark:bg-slate-950/80 border-b border-slate-200 dark:border-slate-800">
-                        <tr>
-                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Timestamp</th>
-                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Agent Identity</th>
-                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Risk Category</th>
-                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Forensic Details</th>
-                            <th className="p-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {loading ? (
-                            <tr><td colSpan={4} className="p-12 text-center text-gray-500 dark:text-gray-400 animate-pulse">Retrieving vulnerability feed...</td></tr>
-                        ) : alerts.map(alert => (
-                            <tr key={alert.Id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
-                                <td className="p-4 text-gray-600 dark:text-gray-500 font-mono text-xs whitespace-nowrap">
-                                    {new Date(alert.Timestamp).toLocaleString()}
-                                </td>
-                                <td className="p-4">
-                                    <div className="flex items-center gap-2">
-                                        <Server size={14} className="text-blue-500 dark:text-blue-400" />
-                                        <span className="font-bold text-gray-900 dark:text-white">{alert.AgentId}</span>
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    <span className="bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 px-2 py-1 rounded-md text-[10px] font-bold">
-                                        VULNERABILITY
-                                    </span>
-                                </td>
-                                <td className="p-4 text-gray-700 dark:text-gray-300">
-                                    <div className="bg-gray-100 dark:bg-gray-900/50 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700/50 text-xs font-mono">
-                                        {alert.Details}
-                                    </div>
-                                </td>
-                                <td className="p-4 text-center">
-                                    <button
-                                        onClick={() => triggerAgentScan(alert.AgentId)}
-                                        disabled={scanMap[alert.AgentId]}
-                                        className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors border border-transparent hover:border-blue-500/20 group/btn"
-                                        title="Trigger fresh scan"
-                                    >
-                                        <Zap size={14} className={scanMap[alert.AgentId] ? 'animate-pulse' : 'group-hover/btn:scale-125 transition-transform'} />
-                                    </button>
-                                </td>
+                    <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                            <tr>
+                                <th className="p-4">Timestamp</th>
+                                <th className="p-4">Agent Identity</th>
+                                <th className="p-4">Risk Category</th>
+                                <th className="p-4">Forensic Details</th>
+                                <th className="p-4 text-center">Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={5} className="p-12 text-center text-slate-400">
+                                        <RefreshCw size={24} className="animate-spin mx-auto text-blue-500 mb-2" />
+                                        Retrieving vulnerability feed...
+                                    </td>
+                                </tr>
+                            ) : alerts.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="p-12 text-center text-slate-400">
+                                        <Shield size={36} className="mx-auto text-slate-300 mb-2" />
+                                        <p className="font-bold text-slate-700">No vulnerabilities detected</p>
+                                        <p className="text-xs text-slate-400 mt-0.5">Your endpoint scope appears fully patched and secure.</p>
+                                    </td>
+                                </tr>
+                            ) : alerts.map(alert => (
+                                <tr key={alert.Id} className="hover:bg-slate-50/60 transition-colors">
+                                    <td className="p-4 text-slate-500 font-mono whitespace-nowrap">
+                                        {new Date(alert.Timestamp).toLocaleString()}
+                                    </td>
+                                    <td className="p-4 font-bold text-slate-900">
+                                        <div className="flex items-center gap-2">
+                                            <Server size={14} className="text-blue-500" />
+                                            <span>{alert.AgentId}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded text-[10px] font-bold">
+                                            VULNERABILITY
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-slate-700">
+                                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 font-mono text-[11px] leading-relaxed">
+                                            {alert.Details}
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <button
+                                            onClick={() => triggerAgentScan(alert.AgentId)}
+                                            disabled={scanMap[alert.AgentId]}
+                                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200"
+                                            title="Trigger fresh agent scan"
+                                        >
+                                            <Zap size={14} className={scanMap[alert.AgentId] ? 'animate-pulse' : ''} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
-                {!loading && alerts.length === 0 && (
-                    <div className="p-16 text-center text-gray-500 dark:text-gray-400 flex flex-col items-center gap-4">
-                        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full">
-                            <Shield size={48} className="opacity-20 text-gray-900 dark:text-white" />
-                        </div>
-                        <div>
-                            <p className="text-lg font-bold text-gray-900 dark:text-white">No vulnerabilities detected</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Great job! Your selected scope appears to be secure.</p>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

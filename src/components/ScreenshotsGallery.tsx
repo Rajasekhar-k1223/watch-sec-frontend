@@ -25,7 +25,7 @@ export default function ScreenshotsGallery({ agentId, apiUrl, token, onUpdate }:
         if (path.startsWith('http')) return `${path}?token=${token}`;
         let baseUrl = apiUrl.replace(/\/api\/?$/, '');
         if (!baseUrl) {
-             baseUrl = 'https://monitorix-apis.elsea.co.in';
+             baseUrl = '';
         }
         return `${baseUrl}${path}?token=${token}`;
     };

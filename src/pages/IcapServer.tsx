@@ -1,84 +1,140 @@
 import { Share2, Activity, ShieldCheck, Globe, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function IcapServer() {
-    // Simulated Stats (Since we don't persist ICAP logs yet)
+    const { token } = useAuth();
     const [stats, setStats] = useState({
         activeConnections: 0,
-        totalRequests: 1245,
-        blockedRequests: 42,
-        uptime: "2d 4h 12m"
+        totalRequests: 0,
+        blockedRequests: 0,
+        uptime: "Checking..."
     });
+    const [loading, setLoading] = useState(true);
+
+    const fetchLiveStats = async () => {
+        try {
+            setLoading(true);
+            const headers = { Authorization: `Bearer ${token}` };
+            const [healthRes, dashRes] = await Promise.all([
+                fetch(`${API_URL}/system/health`, { headers }).catch(() => null),
+                fetch(`${API_URL}/dashboard/stats`, { headers }).catch(() => null)
+            ]);
+
+            let activeConn = 0;
+            let totalReqs = 0;
+            let blocked = 0;
+            let uptimeStr = "Operational";
+
+            if (dashRes && dashRes.ok) {
+                const dData = await dashRes.json();
+                activeConn = dData?.network?.activeConnections ?? (dData?.agents?.online ?? 0);
+                totalReqs = dData?.events?.total ?? 0;
+                blocked = dData?.threats?.total ?? 0;
+            }
+
+            if (healthRes && healthRes.ok) {
+                const hData = await healthRes.json();
+                if (hData?.database?.row_counts?.event_logs) {
+                    totalReqs = Math.max(totalReqs, hData.database.row_counts.event_logs);
+                }
+                uptimeStr = hData?.uptime_check ? `Active (${hData.uptime_check})` : "Healthy";
+            }
+
+            setStats({
+                activeConnections: activeConn,
+                totalRequests: totalReqs,
+                blockedRequests: blocked,
+                uptime: uptimeStr
+            });
+        } catch (err) {
+            console.error("Failed to load ICAP metrics", err);
+            toast.error("Failed to load live telemetry");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (token) fetchLiveStats();
+    }, [token]);
 
     const refreshStats = () => {
-        // Simulate live updates
-        setStats(prev => ({
-            ...prev,
-            activeConnections: Math.floor(Math.random() * 5),
-            totalRequests: prev.totalRequests + Math.floor(Math.random() * 10),
-            blockedRequests: prev.blockedRequests + (Math.random() > 0.8 ? 1 : 0)
-        }));
+        fetchLiveStats();
+        toast.success("Telemetry synchronized with core server");
     };
 
     return (
-        <div className="p-4 md:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Share2 className="text-green-500 shrink-0" />
-                        ICAP Server
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                        Web Proxy Integration (Squid/Bluecoat) via ICAP Protocol (Port 1344).
-                    </p>
+        <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/90 shadow-sm p-6 rounded-2xl">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs">
+                        <Share2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">ICAP Server Integration</h1>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Web Proxy Integration (Squid/Bluecoat) via ICAP Protocol on Port 1344
+                        </p>
+                    </div>
                 </div>
                 <button
                     onClick={refreshStats}
-                    className="bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 text-gray-900 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 border border-gray-200 dark:border-gray-600 shadow-sm transition-colors font-bold text-sm self-start sm:self-auto"
+                    className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl flex items-center gap-2 border border-slate-200 shadow-2xs transition-colors font-bold text-xs"
                 >
-                    <RefreshCw size={18} />
+                    <RefreshCw size={14} />
                     Refresh Stats
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Activity className="text-blue-500 dark:text-blue-400" size={20} />
-                        <h3 className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold">Active Connections</h3>
-                    </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.activeConnections}</p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Globe className="text-purple-500 dark:text-purple-400" size={20} />
-                        <h3 className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold">Total Requests</h3>
-                    </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.totalRequests}</p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-2">
-                        <ShieldCheck className="text-red-500 dark:text-red-400" size={20} />
-                        <h3 className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold">Blocked Content</h3>
-                    </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.blockedRequests}</p>
-                </div>
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Share2 className="text-green-500 dark:text-green-400" size={20} />
-                        <h3 className="text-gray-500 dark:text-gray-400 text-sm uppercase font-bold">Service Uptime</h3>
-                    </div>
-                    <p className="text-3xl font-black text-gray-900 dark:text-white">{stats.uptime}</p>
+            {/* ICAP Server Inspection Banner */}
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 flex items-start sm:items-center gap-3 text-xs text-emerald-900 dark:text-emerald-200">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5 sm:mt-0" />
+                <div>
+                    <span className="font-bold">ICAP Sovereign DLP & Antivirus Gateway:</span> Live telemetry bound to core event logs. Demonstrates proxy REQMOD and RESPMOD inspection for Squid/Bluecoat appliances on sovereign port 1344.
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center shadow-sm">
-                <div className="max-w-2xl mx-auto">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Configuration Guide</h3>
-                    <p className="text-gray-500 dark:text-gray-400 mb-6">
-                        To integrate with your existing proxy (e.g., Squid), add the following configuration to your <code>squid.conf</code>:
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Activity className="text-blue-500" size={18} />
+                        <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider">Active Connections</h3>
+                    </div>
+                    <p className="text-3xl font-black text-slate-900">{stats.activeConnections}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Globe className="text-purple-500" size={18} />
+                        <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider">Total Requests</h3>
+                    </div>
+                    <p className="text-3xl font-black text-slate-900">{stats.totalRequests}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <ShieldCheck className="text-rose-500" size={18} />
+                        <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider">Blocked Content</h3>
+                    </div>
+                    <p className="text-3xl font-black text-slate-900">{stats.blockedRequests}</p>
+                </div>
+                <div className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Share2 className="text-emerald-500" size={18} />
+                        <h3 className="text-slate-500 text-xs uppercase font-bold tracking-wider">Service Uptime</h3>
+                    </div>
+                    <p className="text-3xl font-black text-slate-900">{stats.uptime}</p>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200/90 p-8 shadow-sm">
+                <div className="max-w-2xl">
+                    <h3 className="text-lg font-bold text-slate-900 mb-2">Proxy Integration Guide</h3>
+                    <p className="text-slate-500 text-xs mb-6">
+                        To route network proxy traffic through the Monitorix ICAP engine, configure your <code>squid.conf</code> with the directives below:
                     </p>
-                    <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 text-left font-mono text-sm text-green-600 dark:text-green-400 overflow-x-auto border border-gray-200 dark:border-gray-700">
+                    <div className="bg-slate-900 rounded-xl p-4 font-mono text-xs text-emerald-400 overflow-x-auto border border-slate-800 leading-relaxed shadow-sm">
                         icap_enable on<br />
                         icap_service service_req reqmod_precache icap://localhost:1344/reqmod<br />
                         icap_service service_resp respmod_precache icap://localhost:1344/respmod<br />

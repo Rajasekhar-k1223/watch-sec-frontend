@@ -3,11 +3,13 @@ import { Lock, Bell, User, Check, AlertCircle, Building2, Shield, Key } from 'lu
 import MaintenanceSettings from '../components/MaintenanceSettings';
 import SystemSettingsPanel from '../components/SystemSettingsPanel';
 import ApiKeysPanel from '../components/ApiKeysPanel';
+import EnterpriseSsoPanel from '../components/EnterpriseSsoPanel';
 import { useAuth } from '../contexts/AuthContext';
 import { API_URL } from '../config';
 
 export default function Settings() {
     const { token, user } = useAuth();
+    const authToken = token || sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('monitorix_token');
     const [activeTab, setActiveTab] = useState('security');
 
     // Security State
@@ -17,11 +19,9 @@ export default function Settings() {
     const [msg, setMsg] = useState({ type: '', text: '' });
     const [isLoading, setIsLoading] = useState(false);
 
-    // Preferences State (Mock)
+    // User Notification Preferences
     const [emailAlerts, setEmailAlerts] = useState(true);
     const [weeklyReport, setWeeklyReport] = useState(false);
-
-    // const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5140";
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,7 +43,7 @@ export default function Settings() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${authToken}`
                 },
                 body: JSON.stringify({ oldPassword, newPassword })
             });
@@ -55,7 +55,7 @@ export default function Settings() {
                 setConfirmPassword('');
             } else {
                 const err = await res.text();
-                setMsg({ type: 'error', text: err || 'Failed to change password.' });
+                setMsg({ type: 'error', err: err || 'Failed to change password.' } as any);
             }
         } catch (error) {
             setMsg({ type: 'error', text: 'Network error. Please try again.' });
@@ -65,39 +65,39 @@ export default function Settings() {
     };
 
     return (
-        <div className="p-4 md:p-10 bg-slate-50 dark:bg-[#020617] min-h-screen text-slate-900 dark:text-white transition-colors animate-in fade-in duration-700">
-            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 mb-12 pb-8 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-6">
-                    <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl">
-                        <User size={32} className="text-blue-500" />
+        <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6 text-slate-900 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+                <div className="flex items-center gap-4">
+                    <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm">
+                        <User size={28} className="text-blue-600" />
                     </div>
                     <div>
-                        <div className="flex items-center gap-2 mb-2">
-                             <div className="p-1 bg-blue-500/20 rounded text-blue-500 ring-1 ring-blue-500/30">
+                        <div className="flex items-center gap-2 mb-1">
+                             <div className="p-1 bg-blue-50 rounded text-blue-600 border border-blue-200">
                                 <Lock size={12} />
                              </div>
-                             <span className="text-[10px] font-black tracking-[0.2em] uppercase text-blue-500/80">Identity Control</span>
+                             <span className="text-[10px] font-bold tracking-wider uppercase text-blue-700">Identity Control</span>
                         </div>
-                        <h1 className="text-2xl md:text-4xl font-black tracking-tighter">
-                            <span className="text-gradient">Console Settings</span>
+                        <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                            Console Settings
                         </h1>
-                        <p className="text-slate-500 dark:text-slate-400 text-xs font-medium mt-2">Protocol configuration and identity security management.</p>
+                        <p className="text-slate-500 text-xs font-medium mt-1">Protocol configuration and identity security management.</p>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 {/* Sidebar Navigation */}
-                <div className="space-y-3">
+                <div className="space-y-2">
                     <button
                         onClick={() => setActiveTab('security')}
-                        className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'security' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                        className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'security' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                     >
                         <Lock size={16} /> Security
                     </button>
                     <button
                         onClick={() => setActiveTab('preferences')}
-                        className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'preferences' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                        className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'preferences' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                     >
                         <Bell size={16} /> Notifications
                     </button>
@@ -105,13 +105,19 @@ export default function Settings() {
                         <>
                             <button
                                 onClick={() => setActiveTab('organization')}
-                                className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'organization' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                                className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'organization' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                             >
                                 <Building2 size={16} /> Organization
                             </button>
                             <button
+                                onClick={() => setActiveTab('sso')}
+                                className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'sso' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                            >
+                                <Shield size={16} /> SSO & Directory Sync
+                            </button>
+                            <button
                                 onClick={() => setActiveTab('developer_keys')}
-                                className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'developer_keys' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                                className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'developer_keys' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                             >
                                 <Key size={16} /> Developer Keys
                             </button>
@@ -120,7 +126,7 @@ export default function Settings() {
                     {user?.role === 'SuperAdmin' && (
                         <button
                             onClick={() => setActiveTab('global_security')}
-                            className={`w-full text-left px-6 py-4 rounded-2xl flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'global_security' ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-2xl shadow-slate-500/10' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-white'}`}
+                            className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center gap-3 text-xs font-bold uppercase tracking-wider transition-all ${activeTab === 'global_security' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                         >
                             <Shield size={16} /> Global Security
                         </button>
@@ -128,48 +134,46 @@ export default function Settings() {
                 </div>
 
                 {/* Content Area */}
-                <div className="lg:col-span-3 glass-card p-10 transition-colors relative overflow-hidden">
-                    <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] bg-blue-600/5 rounded-full blur-[80px] pointer-events-none"></div>
-
+                <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 md:p-8 relative overflow-hidden">
                     {activeTab === 'security' && (
                         <div className="max-w-md relative z-10">
-                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
-                                <Lock className="text-blue-500" size={16} /> Update Cryptographic Key
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 flex items-center gap-2">
+                                <Lock className="text-blue-600" size={16} /> Update Password
                             </h2>
 
                             {msg.text && (
-                                <div className={`p-5 rounded-2xl mb-8 flex items-start gap-4 text-[10px] font-black uppercase tracking-widest ${msg.type === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'}`}>
-                                    {msg.type === 'success' ? <Check size={16} className="mt-0.5" /> : <AlertCircle size={16} className="mt-0.5" />}
-                                    <p className="mt-1">{msg.text}</p>
+                                <div className={`p-4 rounded-xl mb-6 flex items-start gap-3 text-xs font-semibold ${msg.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+                                    {msg.type === 'success' ? <Check size={16} className="mt-0.5 text-emerald-600" /> : <AlertCircle size={16} className="mt-0.5 text-rose-600" />}
+                                    <p>{msg.text}</p>
                                 </div>
                             )}
 
-                            <form onSubmit={handleChangePassword} className="space-y-8">
+                            <form onSubmit={handleChangePassword} className="space-y-5">
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Current Password</label>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Current Password</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white outline-none transition-all font-black"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 text-slate-900 outline-none transition-all text-sm font-medium"
                                         value={oldPassword}
                                         onChange={e => setOldPassword(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">New Identity Secret</label>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">New Password</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white outline-none transition-all font-black"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 text-slate-900 outline-none transition-all text-sm font-medium"
                                         value={newPassword}
                                         onChange={e => setNewPassword(e.target.value)}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-3 ml-1">Confirm Secret</label>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Confirm New Password</label>
                                     <input
                                         type="password"
-                                        className="w-full bg-slate-50 dark:bg-slate-950/40 border border-slate-200 dark:border-slate-800 rounded-2xl px-5 py-4 focus:ring-2 focus:ring-blue-500/20 text-slate-900 dark:text-white outline-none transition-all font-black"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500/20 text-slate-900 outline-none transition-all text-sm font-medium"
                                         value={confirmPassword}
                                         onChange={e => setConfirmPassword(e.target.value)}
                                         required
@@ -179,9 +183,9 @@ export default function Settings() {
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className={`w-full py-5 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-[0.3em] transition-all shadow-2xl shadow-slate-500/10 hover:scale-[1.02] active:scale-95 ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
+                                    className={`w-full py-3.5 rounded-xl bg-slate-900 text-white text-xs font-bold uppercase tracking-wider transition-all shadow-sm hover:bg-slate-800 ${isLoading ? 'opacity-50 cursor-wait' : ''}`}
                                 >
-                                    {isLoading ? 'Encrypting...' : 'Commit Changes'}
+                                    {isLoading ? 'Updating...' : 'Save Password'}
                                 </button>
                             </form>
                         </div>
@@ -189,22 +193,22 @@ export default function Settings() {
 
                     {activeTab === 'preferences' && (
                         <div className="max-w-xl relative z-10">
-                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 flex items-center gap-2">
                                 <Bell className="text-amber-500" size={16} /> Notification Pulse
                             </h2>
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-950/40 rounded-3xl border border-slate-200 dark:border-slate-800 transition-all hover:border-blue-500/30">
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between p-5 bg-slate-50 rounded-xl border border-slate-200 transition-all hover:border-slate-300">
                                     <div className="max-w-[70%]">
-                                        <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Critical Alert Broadcast</h3>
-                                        <p className="text-[10px] text-slate-500 font-medium mt-2 leading-relaxed">Immediate SMTP/Webhook transmission for high-severity threat detections.</p>
+                                        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Critical Alert Broadcast</h3>
+                                        <p className="text-xs text-slate-500 font-medium mt-1">Immediate SMTP/Webhook transmission for high-severity threat detections.</p>
                                     </div>
                                     <ToggleSwitch enabled={emailAlerts} onChange={setEmailAlerts} />
                                 </div>
 
-                                <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-950/40 rounded-3xl border border-slate-200 dark:border-slate-800 transition-all hover:border-blue-500/30">
+                                <div className="flex items-center justify-between p-5 bg-slate-50 rounded-xl border border-slate-200 transition-all hover:border-slate-300">
                                     <div className="max-w-[70%]">
-                                        <h3 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest">Weekly Intelligence Sync</h3>
-                                        <p className="text-[10px] text-slate-500 font-medium mt-2 leading-relaxed">Consolidated forensic digest transmitted every UTC Monday 00:00.</p>
+                                        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Weekly Intelligence Sync</h3>
+                                        <p className="text-xs text-slate-500 font-medium mt-1">Consolidated forensic digest transmitted every UTC Monday 00:00.</p>
                                     </div>
                                     <ToggleSwitch enabled={weeklyReport} onChange={setWeeklyReport} />
                                 </div>
@@ -214,17 +218,26 @@ export default function Settings() {
 
                     {activeTab === 'organization' && (
                         <div className="max-w-xl relative z-10">
-                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
-                                <Building2 className="text-blue-500" size={16} /> Organization Protocol
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 flex items-center gap-2">
+                                <Building2 className="text-blue-600" size={16} /> Organization Protocol
                             </h2>
                             <MaintenanceSettings />
                         </div>
                     )}
 
+                    {activeTab === 'sso' && (user?.role === 'TenantAdmin' || user?.role === 'SuperAdmin') && (
+                        <div className="max-w-6xl relative z-10">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 flex items-center gap-2">
+                                <Shield className="text-blue-600" size={16} /> Enterprise SSO & SCIM Directory Provisioning
+                            </h2>
+                            <EnterpriseSsoPanel />
+                        </div>
+                    )}
+
                     {activeTab === 'developer_keys' && (user?.role === 'TenantAdmin' || user?.role === 'SuperAdmin') && (
                         <div className="max-w-5xl relative z-10">
-                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
-                                <Key className="text-blue-500" size={16} /> Developer API Keys
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 flex items-center gap-2">
+                                <Key className="text-blue-600" size={16} /> Developer API Keys
                             </h2>
                             <ApiKeysPanel />
                         </div>
@@ -232,8 +245,8 @@ export default function Settings() {
 
                     {activeTab === 'global_security' && user?.role === 'SuperAdmin' && (
                         <div className="max-w-xl relative z-10">
-                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-slate-500 mb-10 flex items-center gap-3">
-                                <Shield className="text-red-500" size={16} /> Global System Security
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-6 flex items-center gap-2">
+                                <Shield className="text-rose-600" size={16} /> Global System Security
                             </h2>
                             <SystemSettingsPanel />
                         </div>
@@ -248,7 +261,7 @@ function ToggleSwitch({ enabled, onChange }: any) {
     return (
         <button
             onClick={() => onChange(!enabled)}
-            className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${enabled ? 'bg-green-500' : 'bg-gray-200 dark:bg-gray-600'}`}
+            className={`w-12 h-6 rounded-full p-1 transition-colors flex items-center ${enabled ? 'bg-emerald-500' : 'bg-slate-200'}`}
         >
             <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${enabled ? 'translate-x-6' : 'translate-x-0'}`} />
         </button>

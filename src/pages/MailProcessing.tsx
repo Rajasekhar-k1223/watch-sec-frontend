@@ -25,6 +25,7 @@ interface MailLog {
 
 export default function MailProcessing() {
     const { token } = useAuth();
+    const authToken = token || sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('monitorix_token');
     const [logs, setLogs] = useState<MailLog[]>([]);
     const [selectedLog, setSelectedLog] = useState<MailLog | null>(null);
     const [loading, setLoading] = useState(true);
@@ -45,7 +46,7 @@ export default function MailProcessing() {
             if (params.toString()) url += `?${params.toString()}`;
 
             const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 setLogs(await res.json());
@@ -55,10 +56,10 @@ export default function MailProcessing() {
         } finally {
             setLoading(false);
         }
-    }, [token, startDate, endDate]);
+    }, [authToken, startDate, endDate]);
 
     useEffect(() => {
-        if (token) {
+        if (authToken) {
             fetchLogs();
             const interval = setInterval(fetchLogs, 30000);
             return () => clearInterval(interval);
@@ -119,16 +120,18 @@ export default function MailProcessing() {
     };
 
     return (
-        <div className="p-4 md:p-8">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Mail className="text-yellow-500 shrink-0" />
-                        Mail Processing (SMTP/Agent)
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                        Intercept, inspect, and audit email traffic from Outlook and Webmail.
-                    </p>
+        <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white border border-slate-200/90 shadow-sm p-6 rounded-2xl">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shadow-xs">
+                        <Mail className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Mail Processing (SMTP/Agent)</h1>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Intercept, inspect, and audit email traffic from Outlook and Webmail
+                        </p>
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-3 items-center">
                     {(startDate || endDate) && (

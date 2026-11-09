@@ -12,6 +12,7 @@ interface SoftwareItem {
 
 export default function FleetInventory() {
     const { token } = useAuth();
+    const authToken = token || sessionStorage.getItem('token') || localStorage.getItem('token') || localStorage.getItem('monitorix_token');
     const [inventory, setInventory] = useState<SoftwareItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -20,7 +21,7 @@ export default function FleetInventory() {
         setLoading(true);
         try {
             const res = await fetch(`${API_URL}/vulnerabilities/fleet-software`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${authToken}` }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -34,8 +35,8 @@ export default function FleetInventory() {
     };
 
     useEffect(() => {
-        if (token) fetchInventory();
-    }, [token]);
+        if (authToken) fetchInventory();
+    }, [authToken]);
 
     const filtered = inventory.filter(item =>
         item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -43,90 +44,92 @@ export default function FleetInventory() {
     );
 
     return (
-        <div className="p-4 md:p-8 animate-in fade-in duration-500 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                        <div className="p-2 bg-blue-100 dark:bg-blue-500/10 rounded-lg shrink-0">
-                            <Package className="text-blue-600 dark:text-blue-500 w-6 h-6 md:w-8 md:h-8" />
-                        </div>
-                        Fleet Software Inventory
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-2 font-medium">
-                        Consolidated software landscape across all active agents.
-                    </p>
+        <div className="max-w-7xl mx-auto min-w-0 font-sans p-6 md:p-8 space-y-6 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white border border-slate-200/90 shadow-sm p-6 rounded-2xl">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center shadow-xs">
+                        <Package className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Fleet Software Inventory</h1>
+                        <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            Consolidated software landscape and installed packages across all active endpoints
+                        </p>
+                    </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                    <div className="flex flex-1 min-w-[200px] bg-white dark:bg-gray-800 rounded-lg p-1 border border-gray-200 dark:border-gray-700 items-center shadow-sm">
-                        <Search className="text-gray-400 dark:text-gray-500 ml-2 shrink-0" size={16} />
+                <div className="flex flex-wrap items-center gap-2.5">
+                    <div className="flex min-w-[220px] bg-slate-50 rounded-xl px-3 py-2 border border-slate-200 items-center">
+                        <Search className="text-slate-400 mr-2 shrink-0" size={14} />
                         <input
                             type="text"
-                            placeholder="Filter software..."
-                            className="bg-transparent text-gray-900 dark:text-white text-xs px-3 py-1 outline-none w-full placeholder-gray-400"
+                            placeholder="Filter software name..."
+                            className="bg-transparent text-slate-900 text-xs outline-none w-full placeholder-slate-400"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
                     <button
                         onClick={fetchInventory}
-                        className="bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors border border-gray-200 dark:border-gray-700 shadow-sm font-medium"
+                        className="bg-white hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors border border-slate-200 shadow-2xs font-bold text-xs"
                     >
-                        <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                         Refresh
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800/40 backdrop-blur-xl border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-xl">
+            {/* Table */}
+            <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-900/80 border-b border-gray-200 dark:border-gray-700">
-                        <tr>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Software Name</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Version</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Installations</th>
-                            <th className="p-4 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Risk Level</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                        {loading ? (
-                            <tr><td colSpan={4} className="p-12 text-center text-gray-500 dark:text-gray-400 animate-pulse">Scanning fleet inventory...</td></tr>
-                        ) : filtered.map((item, idx) => (
-                            <tr key={`${item.Name}-${item.InstalledVersion}-${idx}`} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
-                                <td className="p-4">
-                                    <span className="font-bold text-gray-900 dark:text-white">{item.Name}</span>
-                                </td>
-                                <td className="p-4">
-                                    <span className="text-gray-500 dark:text-gray-400 font-mono text-xs">{item.InstalledVersion}</span>
-                                </td>
-                                <td className="p-4 text-center">
-                                    <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 px-3 py-1 rounded-full text-xs font-bold">
-                                        <Server size={12} />
-                                        {item.AgentCount} Agents
-                                    </div>
-                                </td>
-                                <td className="p-4">
-                                    {item.Name.toLowerCase().includes('google chrome') || item.Name.toLowerCase().includes('java') ? (
-                                        <div className="flex items-center gap-2 text-amber-500 font-bold text-xs">
-                                            <AlertCircle size={14} />
-                                            Needs Audit
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 text-emerald-500 font-bold text-xs">
-                                            <ShieldCheck size={14} />
-                                            Verified
-                                        </div>
-                                    )}
-                                </td>
+                    <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                            <tr>
+                                <th className="p-4">Software Name</th>
+                                <th className="p-4">Version</th>
+                                <th className="p-4 text-center">Installations</th>
+                                <th className="p-4">Audit Status</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {loading ? (
+                                <tr><td colSpan={4} className="p-12 text-center text-slate-400">Scanning fleet inventory...</td></tr>
+                            ) : filtered.map((item, idx) => (
+                                <tr key={`${item.Name}-${item.InstalledVersion}-${idx}`} className="hover:bg-slate-50/60 transition-colors group">
+                                    <td className="p-4">
+                                        <span className="font-bold text-slate-900">{item.Name}</span>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="text-slate-500 font-mono">{item.InstalledVersion}</span>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+                                            <Server size={11} />
+                                            {item.AgentCount} Nodes
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        {item.Name.toLowerCase().includes('google chrome') || item.Name.toLowerCase().includes('java') ? (
+                                            <div className="flex items-center gap-1.5 text-amber-600 font-bold text-xs">
+                                                <AlertCircle size={14} />
+                                                Needs Audit
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-1.5 text-emerald-600 font-bold text-xs">
+                                                <ShieldCheck size={14} />
+                                                Verified
+                                            </div>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
                 {!loading && filtered.length === 0 && (
-                    <div className="p-16 text-center text-gray-500 dark:text-gray-400">
-                        <Package size={48} className="mx-auto opacity-20 mb-4" />
-                        <p className="font-bold text-gray-900 dark:text-white">No software matching your search</p>
+                    <div className="p-16 text-center text-slate-400">
+                        <Package size={42} className="mx-auto opacity-30 mb-2" />
+                        <p className="font-bold text-slate-700">No software matching your search</p>
                     </div>
                 )}
             </div>

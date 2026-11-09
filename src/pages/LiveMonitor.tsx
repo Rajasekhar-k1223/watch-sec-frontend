@@ -843,7 +843,7 @@ export default function LiveMonitor() {
 
                         {/* Events Preview */}
                         <div className="bg-gray-50/50 dark:bg-black/30 rounded p-4 h-32 overflow-hidden mb-4 border border-gray-200 dark:border-gray-700/50 font-mono text-xs relative">
-                            {/* Assuming events might be global or we fetch per agent, for now we leave empty or mock */}
+                            {/* Events preview for selected agent */}
                             <div className="text-gray-400 dark:text-gray-500 text-center italic mt-10">Click to view details</div>
 
                             <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-gray-50 dark:from-black/50 to-transparent" />

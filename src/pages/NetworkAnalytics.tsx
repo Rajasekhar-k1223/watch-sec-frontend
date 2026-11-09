@@ -67,23 +67,27 @@ export default function NetworkAnalytics() {
             }
         });
 
-        socket.on("network_telemetry", (data: any) => {
-            // Real-time Mbps update
+        const handleNetworkData = (data: any) => {
+            const ingress = data.totalIngress ?? data.total_ingress_mbps ?? data.network_in ?? 0;
+            const egress = data.totalEgress ?? data.total_egress_mbps ?? data.network_out ?? 0;
             setTrafficHistory(prev => {
                 const newPoint = {
                     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-                    ingress: data.totalIngress || 0,
-                    egress: data.totalEgress || 0
+                    ingress,
+                    egress
                 };
-                return [...prev, newPoint].slice(-30); // Keep last 30 points
+                return [...prev, newPoint].slice(-30);
             });
 
             if (data.nodes) {
                 setNodeTraffic(data.nodes);
             }
-            setTotalIngress(data.totalIngress || 0);
-            setTotalEgress(data.totalEgress || 0);
-        });
+            setTotalIngress(ingress);
+            setTotalEgress(egress);
+        };
+
+        socket.on("network_telemetry", handleNetworkData);
+        socket.on("agent_bandwidth_update", handleNetworkData);
 
         return () => {
             socket.disconnect();

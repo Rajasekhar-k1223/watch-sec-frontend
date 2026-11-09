@@ -68,12 +68,10 @@ export default function Billing() {
         }
     }, [user]);
 
-    const handleUpgrade = async (newPlan: string) => {
-        if (!user?.tenantId) return;
+    const handleDirectPlanUpdate = async (newPlan: string) => {
         setLoading(true);
         try {
-            // Call Stripe Checkout Endpoint
-            const res = await fetch(`${API_URL}/billing/create-checkout-session`, {
+            const res = await fetch(`${API_URL}/billing/update-plan`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -84,21 +82,31 @@ export default function Billing() {
 
             if (res.ok) {
                 const data = await res.json();
-                if (data.checkoutUrl) {
-                    window.location.href = data.checkoutUrl; // Redirect to Stripe
-                } else {
-                    toast.error("Failed to initialize checkout.");
-                }
+                setInfo({
+                    id: data.TenantId,
+                    Plan: data.Plan,
+                    AgentLimit: data.AgentLimit,
+                    AgentCount: info?.AgentCount || 0,
+                    NextBillingDate: data.NextBillingDate,
+                    AmountDue: data.AmountDue,
+                    StripeCustomerId: data.StripeCustomerId,
+                    SubscriptionStatus: data.SubscriptionStatus
+                });
+                toast.success(`Plan successfully updated to ${newPlan}!`);
             } else {
                 const err = await res.json();
-                toast.error(`Error: ${err.detail || 'Unknown error'}`);
+                toast.error(`Update failed: ${err.detail || 'Unknown error'}`);
             }
         } catch (e) {
-            toast.error("Upgrade failed. Please try again.");
-            console.error(e);
+            toast.error("Network error during plan update");
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleUpgrade = async (newPlan: string) => {
+        // Direct plan upgrade for sovereign & local enterprise deployments
+        await handleDirectPlanUpdate(newPlan);
     };
 
     const handleManageSubscription = async () => {
@@ -139,8 +147,8 @@ export default function Billing() {
                     </h1>
                     <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Manage your plan, limits, and invoices.</p>
                 </div>
-                <div className="flex flex-col items-end gap-2">
-                    <div className="text-right">
+                <div className="flex flex-col items-start sm:items-end gap-2">
+                    <div className="text-left sm:text-right">
                         <p className="text-xs text-gray-500 dark:text-gray-500 uppercase font-bold">Next Billing Date</p>
                         <p className="text-xl font-mono text-gray-900 dark:text-white">{new Date(info.NextBillingDate).toLocaleDateString()}</p>
                     </div>
