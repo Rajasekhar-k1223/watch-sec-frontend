@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitorix Enterprise — Master Client Demonstration Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: #151e2e;
+      --card-border: #25324b;
+      --cyan: #00d2ff;
+      --emerald: #10b981;
+      --crimson: #ef4444;
+      --amber: #f59e0b;
+      --purple: #a855f7;
+      --text-white: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-white);
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, var(--cyan), #0070f3);
+      color: #fff;
+      font-weight: 800;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      letter-spacing: 1px;
+    }
+    .brand h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-white);
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-white);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover {
+      border-color: var(--cyan);
+      background: #1c283d;
+      color: var(--cyan);
+    }
+    .slide-indicator {
+      font-size: 14px;
+      color: var(--cyan);
+      font-weight: 600;
+      font-family: 'Fira Code', monospace;
+    }
+    .main-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 30px;
+    }
+    .slide-viewport {
+      width: 100%;
+      max-width: 1200px;
+      min-height: 650px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      position: relative;
+    }
+    .slide {
+      display: none;
+    }
+    .slide.active {
+      display: block;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .slide-header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 16px;
+    }
+    .slide-tag {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--cyan);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-family: 'Fira Code', monospace;
+    }
+    .slide-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-white);
+    }
+    .slide-body {
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text-white);
+    }
+    .slide-body h4 {
+      color: var(--cyan);
+      margin: 16px 0 8px 0;
+      font-size: 17px;
+    }
+    .slide-body p {
+      margin-bottom: 14px;
+      color: #cbd5e1;
+    }
+    .slide-body ul {
+      margin-left: 20px;
+      margin-bottom: 16px;
+    }
+    .slide-body li {
+      margin-bottom: 8px;
+      color: #e2e8f0;
+    }
+    .slide-body li strong {
+      color: var(--cyan);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 18px 0;
+      background: #0d131f;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 14px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    th {
+      background: #111a2c;
+      color: var(--cyan);
+      font-weight: 700;
+    }
+    td {
+      color: #cbd5e1;
+    }
+    pre, code {
+      font-family: 'Fira Code', monospace;
+      background: #090d16;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      color: #38bdf8;
+    }
+    pre {
+      padding: 16px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    code {
+      padding: 2px 6px;
+      font-size: 13px;
+    }
+    .img-box {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .img-box img {
+      max-width: 100%;
+      max-height: 380px;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-right: 6px;
+    }
+    .badge-green { background: rgba(16, 185, 129, 0.2); color: var(--emerald); border: 1px solid var(--emerald); }
+    .badge-red { background: rgba(239, 68, 68, 0.2); color: var(--crimson); border: 1px solid var(--crimson); }
+    .badge-cyan { background: rgba(0, 210, 255, 0.2); color: var(--cyan); border: 1px solid var(--cyan); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span class="logo-badge">MONITORIX</span>
+      <h1>Enterprise Client Demonstration Deck</h1>
+    </div>
+    <div class="controls">
+      <button class="btn" onclick="prevSlide()">◀ Previous</button>
+      <span class="slide-indicator" id="indicator">1 / 16</span>
+      <button class="btn" onclick="nextSlide()">Next ▶</button>
+      <button class="btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <div class="slide-viewport">
+
+      <div class="slide active" id="slide-1">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 01 OF 16</div>
+          <div class="slide-title">1: Executive Title & Cover</div>
+        </div>
+        <div class="slide-body">
+          
+<pre><code>┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                 MONITORIX ENTERPRISE                                   │
+│            SOVEREIGN CROSS-PLATFORM XDR, SIEM, SOAR & DATAGUARD DLP                    │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│  • Edge Sensors: Linux, Microsoft Windows, Apple macOS                                 │
+│  • Automated Containment: Sub-240ms Autonomous Closed-Loop SOAR                        │
+│  • Architecture: Zero-Trust, Pure Rust Agent (<25MB RAM), mTLS 1.3 Streaming           │
+│  • Target Audience: CISO, Principal Security Architects, SOC Directors, Lead Auditors │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+
+> [!NOTE]
+> <strong>Executive Purpose:</strong> Deliver complete sovereign control over enterprise assets, eliminate tool fragmentation, prevent insider data leakage across every physical and network channel, and autonomously neutralize advanced threats in milliseconds.
+
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-2">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 02 OF 16</div>
+          <div class="slide-title">2: Enterprise Problem Statement vs. Monitorix</div>
+        </div>
+        <div class="slide-body">
+          
+<table><thead><tr><th>Enterprise Challenge (The Problem)</th><th>The Monitorix Sovereign Solution</th></tr></thead><tbody><tr><td><strong>Tool Sprawl & High Footprint:</strong> Organizations deploy 15-20 distinct agents (Antivirus, DLP, EDR, SIEM forwarder, VPN) consuming 30-50% CPU and 4GB+ RAM.</td></tr></tbody></table> <strong>Single Native Rust Daemon:</strong> One consolidated agent (<25MB RAM, <1.2% CPU) providing unified EDR, DLP, SIEM forwarding, and hardware control. |
+| <strong>Data Exfiltration Blindspots:</strong> Traditional DLP relies on filename extensions or misses USB transfers, clipboard buffers, virtual print drivers, and cloud uploads. | <strong>DataGuard 360° DLP:</strong> Low-level OS hooks intercept USB storage, scrub clipboards, block virtual PDF/XPS printers, and enforce browser native messaging. |
+| <strong>Slow Incident Containment:</strong> Industry-average breach dwell time exceeds 200 days; manual SOC triage takes hours or days to isolate compromised hosts. | <strong>Sub-240ms Autonomous SOAR:</strong> Dynamic playbook engine executes host network isolation, process termination, and IOC distribution in under a quarter of a second. |
+| <strong>Stealth In-Memory Tradecraft:</strong> Modern ransomware and APTs operate purely in volatile RAM (Cobalt Strike, Meterpreter, Mimikatz), evading file-based scanners. | <strong>Live Process Memory Probing:</strong> Direct active memory map inspection (`/proc/<pid>/mem`, Win32 API) detects reflective DLL injection and beacons in real time. |
+| <strong>Third-Party Cloud Liability:</strong> Uploading telemetry to public multi-tenant clouds exposes proprietary business intelligence to external supply-chain risks. | <strong>100% Sovereign Deployment:</strong> On-premise or private-cloud installation with self-contained databases (PostgreSQL, MongoDB, MinIO) and zero foreign dependencies. |
+
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-3">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 03 OF 16</div>
+          <div class="slide-title">3: 3D Master 4-Tier Platform Architecture & 9-Domain PyDiagrams Blueprint</div>
+        </div>
+        <div class="slide-body">
+          
+<div class="img-box"><img src="/opt/projects/monitorix/docs/monitorix_pydiagrams_master_architecture.png" alt="Monitorix PyDiagrams Master 9-Domain Architecture"></div>
+
+<div class="img-box"><img src="/opt/projects/monitorix/docs/monitorix_3d_master_architecture_animated.gif" alt="Monitorix 3D Master Platform Architecture Animated"></div>
+
+<pre><code>flowchart TD
+    subgraph Tier1["Tier 1: Physical Edge Sensors (Rust)"]
+        E_LNX["Linux x86_64\n(eBPF, Netlink, CUPS, rfkill)"]
+        E_WIN["Windows x64 / x86\n(ETW, WMI, WinSpool, PnP)"]
+        E_MAC["macOS Apple Silicon & Intel\n(ESF, FSEvents, launchd)"]
+    end
+
+    subgraph Tier2["Tier 2: Ingress & Gateways"]
+        GW["mTLS 1.3 / gRPC Protobuf & HTTPS Ingress\nRSA-4096 Authenticode Signature Validation"]
+    end
+
+    subgraph Tier3["Tier 3: Polyglot Data Lake & Engines"]
+        ENG_CORR["Correlation & Sigma Detection Engine"]
+        ENG_SOAR["Autonomous SOAR Playbook Engine"]
+        DB_PG[("PostgreSQL 16\nACID Policies & Multi-Tenant State")]
+        DB_MGO[("MongoDB Lake\nHigh-Velocity Telemetry Streams")]
+        DB_VLT[("MinIO Vault\nImmutable Forensic PCAPs & Dumps")]
+    end
+
+    subgraph Tier4["Tier 4: SOC Mission Control"]
+        SOC["React 18 / TypeScript / Vite Operations Console\n(Threat Map, Canvas Remote Desktop, DLP Center, Work Queue)"]
+    end
+
+    Tier1 -->|Signed Envelopes| Tier2
+    Tier2 --> Tier3
+    Tier3 --> Tier4
+    Tier3 ==>|Closed-Loop Remediation Channel| Tier1
+</code></pre>
+
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-4">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 04 OF 16</div>
+          <div class="slide-title">4: Native Sovereign Endpoint Agent Architecture</div>
+        </div>
+        <div class="slide-body">
+          <ul><li><strong>Performance & Determinism:</strong></li>
+<li>Engineered in <strong>Rust 2021</strong> with Tokio asynchronous runtime.</li>
+<li>Consumes <strong><25MB RAM</strong> and <strong><1.2% CPU</strong> under full production inspection loads.</li>
+<li>Zero garbage collection pauses, zero JIT compiler overhead, zero reliance on Python, Java, or .NET runtimes.</li>
+<li><strong>Deep Operating System Hooks:</strong></li>
+<li><strong>Linux Kernel (Ring-0/Ring-3):</strong> Native eBPF tracepoints (`sys_enter_execve`, `sys_enter_connect`), Netlink audit sockets, `procfs`, and `sysfs`.</li>
+<li><strong>Windows Drivers & Subsystems:</strong> Event Tracing for Windows (ETW), kernel minifilters, WMI, Win32 API, and PnP storage notifications.</li>
+<li><strong>Apple macOS Darwin:</strong> Endpoint Security Framework (ESF), System Extensions, and FSEvents file monitoring.</li>
+<li><strong>Offline Resilience & Zero Data Loss:</strong></li>
+<li><strong>100MB Encrypted Ring Buffer:</strong> When network connectivity is lost, events are spooled locally in a circular FIFO buffer encrypted with AES-256.</li>
+<li><strong>Automatic Replay:</strong> Upon C2 reconnection, buffered telemetry is played back in chronological order with backpressure management.</li>
+<li><strong>Tamper-Evident Self-Defense:</strong></li>
+<li>Watchdog blocks unauthorized termination (`SIGKILL`, `SIGTERM`, `taskkill`).</li>
+<li>Intercepts debugger attachments (`ptrace`, WinDbg).</li>
+<li>Software updates require valid RSA-4096 publisher signatures; unsigned updates are unconditionally rejected.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-5">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 05 OF 16</div>
+          <div class="slide-title">5: DataGuard DLP — 360° Multi-Channel Exfiltration Shield</div>
+        </div>
+        <div class="slide-body">
+          
+<pre><code>┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                DATAGUARD DLP COVERAGE                                  │
+├──────────────────────────┬──────────────────────────┬──────────────────────────────────┤
+│ EXFILTRATION CHANNEL     │ MONITORING MECHANISM     │ ACTIVE ENFORCEMENT ACTION        │
+├──────────────────────────┼──────────────────────────┼──────────────────────────────────┤
+│ USB & External Storage   │ 2-Second Polling Loop    │ Read-Only Remount / Block Mount  │
+│ Desktop Clipboard        │ Native Window Hooks      │ Dynamic Content Scrubbing        │
+│ Document Printing        │ CUPS & Windows Spooler   │ Virtual PDF Block / Job Cancel   │
+│ Cloud Storage Uploads    │ Native Messaging Host    │ Interception of Drive / Dropbox  │
+│ Corporate Webmail        │ Active Compose Analyzer  │ Secret Detection & Risk Scoring  │
+│ Hardware Radios          │ rfkill & Windows bthserv │ Instant Bluetooth Controller Kill│
+└──────────────────────────┴──────────────────────────┴──────────────────────────────────┘
+</code></pre>
+
+> [!IMPORTANT]
+> <strong>Active Enforcement vs. Passive Logging:</strong> DataGuard does not merely log data theft after the fact; it actively intercepts the OS write, copy, or print request <strong>before data reaches external media or the network</strong>.
+
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-6">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 06 OF 16</div>
+          <div class="slide-title">6: Deep Content Inspection & Mathematical Luhn Engine</div>
+        </div>
+        <div class="slide-body">
+          
+<div class="img-box"><img src="/opt/projects/monitorix/docs/monitorix_dlp_incident_investigation.png" alt="DataGuard Investigation Pipeline"></div>
+
+1. <strong>Universal Stream Extraction (`extract_strings_from_bytes`):</strong>
+<ul><li>Dissects raw binary streams, Office OpenXML (`.docx`, `.xlsx`, `.pptx`), PDF documents, and multi-layer compressed archives (`.zip`, `.tar.gz`, `.7z`).</li>
+</ul>2. <strong>Mathematical Luhn Algorithm Checksum:</strong>
+<ul><li>Validates credit card PAN structures for Visa, Mastercard, American Express, and Discover. Prevents false alarms on arbitrary 16-digit serial numbers.</li>
+</ul>3. <strong>High-Confidence Pattern Matchers:</strong>
+<ul><li>Social Security Numbers (SSN), AWS access keys (`AKIA...`), PEM private keys (`BEGIN RSA/OPENSSH PRIVATE KEY`), database connection URIs (`postgresql://`, `mongodb://`), and JWT bearer tokens.</li>
+</ul>4. <strong>Privacy-Preserving Obfuscation:</strong>
+<ul><li>Discovered sensitive payload fragments are masked at the point of capture (`[CONFIDENTIAL-DATA-MASKED]`), ensuring privacy regulations (GDPR, PCI-DSS, HIPAA) are upheld.</li>
+</ul>5. <strong>Corporate Override Management:</strong>
+<ul><li>Supports authorized manager bypass tokens with auditable justification logging.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-7">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 07 OF 16</div>
+          <div class="slide-title">7: Next-Gen EDR & Live Memory Threat Scanner</div>
+        </div>
+        <div class="slide-body">
+          <ul><li><strong>Live In-Memory RAM Scanning:</strong></li>
+<li>Direct address space inspection of active running processes (`/proc/<pid>/mem` on Linux, `VirtualQueryEx` on Windows).</li>
+<li>Inspects memory pages without freezing or destabilizing user applications.</li>
+<li><strong>In-Memory Attack Pattern Library:</strong></li>
+<li><strong>Cobalt Strike Beacons:</strong> Detects reflective DLL loaders and embedded beacon configuration blocks.</li>
+<li><strong>Metasploit Meterpreter:</strong> Flags reverse TCP stager shellcode and memory-resident listeners.</li>
+<li><strong>Mimikatz LSASS Protection:</strong> Detects `sekurlsa::logonpasswords` credential scraping before plaintext passwords leave memory.</li>
+<li><strong>Process Lineage & Living-Off-The-Land (LOLBins):</strong></li>
+<li>Traces parent-child execution ancestry (e.g., `winword.exe` $\to$ `cmd.exe` $\to$ `powershell.exe` $\to$ `bitsadmin.exe`).</li>
+<li>Flags interactive reverse shell redirected standard input/output streams.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-8">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 08 OF 16</div>
+          <div class="slide-title">8: Anti-Ransomware Canary Decoy Grid & Volume Rollback</div>
+        </div>
+        <div class="slide-body">
+          
+<pre><code>sequenceDiagram
+    autonumber
+    participant Attacker as Ransomware / Malicious Actor
+    participant Canary as Canary Decoy File (/tmp/2025_Financials.docx)
+    participant Kernel as Monitorix Kernel Sensor
+    participant Rollback as Volume Snapshot Engine (BTRFS / VSS)
+    participant SOC as SOC Command Center
+
+    Attacker->>Canary: Attempts to Encrypt / Rename / Delete Decoy
+    Canary-->>Kernel: Immediate Low-Level Tripwire Trigger (<5ms)
+    Kernel->>Kernel: Force-Kill Ransomware Process Tree
+    Kernel->>Kernel: Disconnect Network Interface (Prevent Spreading)
+    Kernel->>Rollback: Revert Modified Files from Local Immutable Snapshot
+    Rollback-->>Kernel: Volume Restored to Pre-Attack State
+    Kernel->>SOC: Dispatch Critical P0 Incident Alert ($0 Ransom Paid)
+</code></pre>
+<ul><li><strong>Transparent Canary Honeypots:</strong> Distributed across common user and enterprise file paths; invisible to normal user workflows.</li>
+<li><strong>Entropy Burst Detection:</strong> Continuously tracks file modification velocity and Shannon entropy spikes indicative of algorithmic encryption.</li>
+<li><strong>Instant Snapshot Rollback:</strong> Integrates directly with Linux BTRFS / LVM snapshots and Windows Volume Shadow Copies (VSS) for immediate file recovery.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-9">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 09 OF 16</div>
+          <div class="slide-title">9: 5-Stage Container, Protocol & Port Data Transfer Blueprint</div>
+        </div>
+        <div class="slide-body">
+          
+<div class="img-box"><img src="/opt/projects/monitorix/docs/monitorix_3d_total_dataflow_animated.gif" alt="Monitorix 3D Total Project Data Transfer & Bidirectional Flow Animated GIF"></div>
+<ul><li><strong>End-to-End Bidirectional 3D Data Flow:</strong></li>
+<li><strong>Where Data Comes From (Edge Sensors):</strong> Low-level kernel probes (eBPF syscalls, Windows ETW, macOS ESF), memory scanners, file system write hooks, USB 2-second device listeners, dynamic clipboard buffers, and browser native messaging sockets.</li>
+<li><strong>Encrypted Transmission:</strong> Serialized into protobuf envelopes, digitally signed with RSA-4096 / Authenticode keys, and streamed over mTLS 1.3 to ingestion clusters.</li>
+<li><strong>Streaming Pipeline:</strong> Ingested into Apache Kafka event streams (50,000+ EPS) and partitioned across polyglot storage: PostgreSQL 16 (ACID policies), MongoDB (raw telemetry lake), and MinIO (immutable forensic vaults).</li>
+<li><strong>Real-Time Detection & Correlation:</strong> Evaluated in <150ms against Sigma rules and MITRE ATT&CK correlation sliding windows.</li>
+<li><strong>Closed-Loop SOAR Feedback:</strong> Automated containment orders (host isolation, process termination, read-only remount) travel in reverse across the dedicated command channel directly to endpoints in <240ms.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-10">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 10 OF 16</div>
+          <div class="slide-title">10: Multi-Engine Correlation & MITRE ATT&CK Matrix</div>
+        </div>
+        <div class="slide-body">
+          <ul><li><strong>Stateful Correlation Windows:</strong></li>
+<li>Correlates multi-stage events across 5-minute to 24-hour temporal windows.</li>
+<li>Combines initial access, script execution, credential dumping, and exfiltration into a single unified incident.</li>
+<li><strong>Sigma Detection Engine:</strong></li>
+<li>Built-in rule parser supporting community and custom enterprise Sigma detection logic.</li>
+<li>Heuristic alert deduplication eliminates alert fatigue, filtering out up to 94% of false-positive noise.</li>
+<li><strong>MITRE ATT&CK Enterprise Matrix (All 14 Tactics):</strong></li>
+<li>Real-time tactical heatmap visualizes active threat posture from Initial Access (`TA0001`) to Exfiltration (`TA0010`).</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-11">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 11 OF 16</div>
+          <div class="slide-title">11: Autonomous SOAR & Sub-240ms Closed-Loop Remediation</div>
+        </div>
+        <div class="slide-body">
+          
+<pre><code>flowchart LR
+    INC["Critical Incident Detected\n(Score >= 85)"] --> SOAR["SOAR Playbook Engine\n(Visual DAG Workflow)"]
+    SOAR --> A1["Host Network Isolation\n(Drop All Non-C2 Traffic)"]
+    SOAR --> A2["Process Tree Termination\n(Force-Kill Malicious PIDs)"]
+    SOAR --> A3["Hardware Port Lockdown\n(Unmount USB, Kill Radios)"]
+    SOAR --> A4["Global IOC Distribution\n(Push IP/Domain Block to Fleet)"]
+    SOAR --> A5["Forensic Evidence Freeze\n(Memory Dump & PCAP to Vault)"]
+</code></pre>
+<ul><li><strong>Sub-240ms Response Time:</strong> High-confidence threats are neutralized automatically in milliseconds without waiting for human analyst approval.</li>
+<li><strong>Human-In-The-Loop Controls:</strong> Optional manual 1-click execution for sensitive tier-1 production database servers.</li>
+<li><strong>Cryptographic Chain of Custody:</strong> Automated forensic evidence capture (RAM dumps, 60s PCAP network buffers) stamped with SHA-256 hashes for legal admissibility.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-12">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 12 OF 16</div>
+          <div class="slide-title">12: Continuous Threat Exposure Management (CTEM) & Autonomous AI Pipeline</div>
+        </div>
+        <div class="slide-body">
+          
+<div class="img-box"><img src="/opt/projects/monitorix/docs/monitorix_pydiagrams_ctem_ai_flow.png" alt="Monitorix PyDiagrams 5-Stage CTEM & 8-Stage Autonomous AI Resolution Pipeline"></div>
+
+<div class="img-box"><img src="/opt/projects/monitorix/docs/monitorix_3d_ctem_dataflow_animated.gif" alt="Monitorix 3D CTEM Dataflow Animated GIF"></div>
+<ul><li><strong>3D Continuous Threat Exposure Management (CTEM) Flow:</strong></li>
+<li><strong>Where Data Comes From (Stage 1: Scoping):</strong> Native Rust agent telemetry (Linux eBPF, Windows ETW, macOS ESF), multi-cloud APIs (AWS, Azure, GCP, K8s), agentless network scanners, and critical enterprise crown jewels.</li>
+<li><strong>Reconnaissance Streams (Stage 2: Discovery):</strong> Continuous 65,535 external port surveillance (EASM), live CVE/EPSS vulnerability inventory, unencrypted cloud data stores (DSPM), and identity privilege exposures (ITDR).</li>
+<li><strong>Contextual Prioritization (Stage 3):</strong> Evaluated against multi-vector asset risk scores (`risk_engine.py`), live weaponized threat intel (OTX, AbuseIPDB, MISP), and crown jewel reachability graphs.</li>
+<li><strong>Adversary Breach Validation (Stage 4: BAS):</strong> Automated breach emulation across 6 production scenarios (Ransomware blast, Kerberoasting, S3 to RDS, K8s escapes), measuring real-time MTTD (<70ms) and triggering volatile RAM canary tripwires.</li>
+<li><strong>Closed-Loop SOAR Mobilization (Stage 5):</strong> Direct sub-240ms containment (host network isolation, process tree kill, read-only USB remount) traveling backward across the reverse conduit directly to compromised endpoints!</li>
+<li><strong>External Attack Surface Management (EASM):</strong></li>
+<li><strong>Full Port Reconnaissance:</strong> Continuous scanning of all 65,535 external ports across public corporate IP ranges.</li>
+<li><strong>Subdomain Takeover Defense:</strong> Identifies orphaned CNAME records pointing to expired third-party cloud services.</li>
+<li><strong>SSL/TLS Certificate Tracking:</strong> Alerts on weak cipher configurations, expired certs, and certificate chain errors.</li>
+<li><strong>Web Application & API Protection (WAAP):</strong> Neutralizes OWASP Top 10 exploits, API injection, and malicious bot scraping.</li>
+<li><strong>Cloud Native Application Protection (CNAPP):</strong></li>
+<li><strong>Cloud Security Posture Management (CSPM):</strong> Automated compliance scanning across AWS, Azure, and Google Cloud environments.</li>
+<li><strong>Kubernetes Security:</strong> DaemonSet container runtime inspection, admission controller validation, and RBAC audits.</li>
+<li><strong>Data Security Posture (DSPM):</strong> Scans cloud buckets and databases for exposed sensitive assets.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-13">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 13 OF 16</div>
+          <div class="slide-title">13: Autonomous Deception Technology Grid & Cyber Range</div>
+        </div>
+        <div class="slide-body">
+          <ul><li><strong>High-Interaction Honeypot Grid:</strong></li>
+<li><strong>Cowrie SSH & Telnet Decoys:</strong> Emulates real Linux servers, capturing attacker keystrokes, downloaded scripts, and brute-force passwords.</li>
+<li><strong>Dionaea Malware Traps:</strong> Exposes emulated SMB, HTTP, and FTP services to capture zero-day malware binaries in the wild.</li>
+<li><strong>Synthetic Honeytokens:</strong> Plants artificial database credentials and API keys in memory to detect insider privilege abuse.</li>
+<li><strong>Zero False Positives:</strong> Legitimate enterprise users have no operational reason to touch decoy systems; every interaction represents confirmed threat activity.</li>
+<li><strong>Breach & Attack Simulation (BAS / Cyber Range):</strong></li>
+<li>Safely emulates adversary tactics in an isolated test environment to validate defensive controls and compute mean time to detect (MTTD).</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-14">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 14 OF 16</div>
+          <div class="slide-title">14: 24/7 SOC Command Center & Live Operations Console</div>
+        </div>
+        <div class="slide-body">
+          
+<div class="img-box"><img src="/opt/projects/monitorix/docs/monitorix_command_center_topology.png" alt="SOC Command Center Topology"></div>
+<ul><li><strong>Live Threat Heatmap:</strong> Geographic and network asset visualization displaying active threat origins and target endpoints.</li>
+<li><strong>Analyst Work Queue:</strong> Tier-1 to Tier-3 incident ticketing, SLA countdown timers, and automated playbook dispatching.</li>
+<li><strong>Live Remote Desktop Streaming:</strong> Sub-second HTML5 canvas video streaming of endpoint desktop for real-time visual forensics.</li>
+<li><strong>Interactive Terminal Shell:</strong> Secure, audited administrative shell access to remote endpoints directly from the browser.</li>
+<li><strong>Autonomous AI Security Copilot:</strong> Natural language incident summaries, automated MITRE attack mapping, and threat hunting query generation.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-15">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 15 OF 16</div>
+          <div class="slide-title">15: Zero Trust Identity & 32 Statutory Regulatory Frameworks</div>
+        </div>
+        <div class="slide-body">
+          
+<pre><code>┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                              COMPLIANCE & GOVERNANCE MATRIX                            │
+├──────────────────────────┬─────────────────────────────────────────────────────────────┤
+│ FRAMEWORK                │ MONITORED CONTROLS & ENFORCEMENT CAPABILITIES               │
+├──────────────────────────┼─────────────────────────────────────────────────────────────┤
+│ PCI-DSS 4.0              │ Automated Luhn PAN masking, encryption, and audit logs      │
+│ HIPAA / HITECH           │ Electronic Protected Health Information (ePHI) leak control │
+│ SOC 2 Type II            │ Continuous security, availability, and confidentiality audit│
+│ ISO / IEC 27001          │ Information security management system (ISMS) controls      │
+│ GDPR / CCPA              │ Automated personal data discovery and export blocking       │
+│ NIST CSF 2.0             │ Identify, Protect, Detect, Respond, and Recover execution   │
+│ CIS Benchmarks           │ OS hardening and baseline configuration auditing            │
+└──────────────────────────┴─────────────────────────────────────────────────────────────┘
+</code></pre>
+<ul><li><strong>Identity Threat Detection (ITDR):</strong> Flags credential spraying, golden ticket attacks, and abnormal login locations.</li>
+<li><strong>Enterprise SCIM & SSO:</strong> Automated user provisioning and de-provisioning from Okta, Azure AD, and Google Workspace with SAML 2.0 / OIDC authentication.</li>
+</ul>
+---
+        </div>
+      </div>
+    
+      <div class="slide" id="slide-16">
+        <div class="slide-header">
+          <div class="slide-tag">SLIDE 16 OF 16</div>
+          <div class="slide-title">16: Business ROI, Tool Consolidation & Next Steps</div>
+        </div>
+        <div class="slide-body">
+          
+<pre><code>┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        LEGACY TOOL CHAOS vs. MONITORIX UNIFIED                         │
+├─────────────────────────────────────────────────┬──────────────────────────────────────┤
+│ TRADITIONAL DISCONNECTED STACK                  │ THE MONITORIX SOVEREIGN PLATFORM     │
+├─────────────────────────────────────────────────┼──────────────────────────────────────┤
+│ • Antivirus Agent (Vendor A)                    │                                      │
+│ • EDR Agent (Vendor B)                          │                                      │
+│ • DLP Agent (Vendor C)                          │       ONE UNIFIED RUST AGENT         │
+│ • SIEM Log Shipper (Vendor D)                   │            (<25MB RAM)               │
+│ • USB Port Locker (Vendor E)                    │                                      │
+│ • Vulnerability Scanner (Vendor F)              │        SAVINGS: UP TO 70% TCO        │
+│ • Ransomware Decoy Agent (Vendor G)             │                                      │
+└─────────────────────────────────────────────────┴──────────────────────────────────────┘
+</code></pre>
+
+### Recommended Next Steps for Client Engagement:
+1. <strong>Proof-of-Concept (POC) Deployment:</strong> Deploy the Monitorix agent across 10-50 pilot endpoints (Windows, Linux, macOS).
+2. <strong>Active Attack & DLP Simulation:</strong> Test USB file copies, clipboard exfiltration, and simulated ransomware in safe evaluation mode.
+3. <strong>SOC Command Center Review:</strong> Walk through live incident correlation, automated SOAR playbooks, and compliance reporting with your security team.
+4. <strong>Production Enterprise Rollout:</strong> Distribute silently across the enterprise via Active Directory GPO, Microsoft Intune, Ansible, or Jamf.
+
+---
+
+### Deliverable Document References
+<ul><li><strong>PyDiagrams Master 9-Domain Architecture (PNG):</strong> [`monitorix_pydiagrams_master_architecture.png`](file:///opt/projects/monitorix/docs/monitorix_pydiagrams_master_architecture.png)</li>
+<li><strong>PyDiagrams 5-Stage CTEM & 8-Stage Autonomous AI Flow (PNG):</strong> [`monitorix_pydiagrams_ctem_ai_flow.png`](file:///opt/projects/monitorix/docs/monitorix_pydiagrams_ctem_ai_flow.png)</li>
+<li><strong>PowerPoint Presentation:</strong> [`MONITORIX_ENTERPRISE_CLIENT_DEMO.pptx`](file:///opt/projects/monitorix/docs/MONITORIX_ENTERPRISE_CLIENT_DEMO.pptx)</li>
+<li><strong>Interactive Markdown Deck:</strong> [`MONITORIX_ENTERPRISE_CLIENT_DEMO.md`](file:///opt/projects/monitorix/docs/MONITORIX_ENTERPRISE_CLIENT_DEMO.md)</li>
+<li><strong>Standalone HTML Presentation:</strong> [`MONITORIX_ENTERPRISE_CLIENT_DEMO.html`](file:///opt/projects/monitorix/docs/MONITORIX_ENTERPRISE_CLIENT_DEMO.html)</li>
+<li><strong>Unified Master Technical Specification:</strong> [`MONITORIX_ENTERPRISE_UNIFIED_MASTER_SPECIFICATION.md`](file:///opt/projects/monitorix/docs/MONITORIX_ENTERPRISE_UNIFIED_MASTER_SPECIFICATION.md)</li></ul>
+        </div>
+      </div>
+    
+    </div>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 16;
+
+    function showSlide(n) {
+      document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+      const active = document.getElementById('slide-' + n);
+      if (active) {
+        active.classList.add('active');
+        document.getElementById('indicator').innerText = n + ' / ' + totalSlides;
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        showSlide(currentSlide);
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        showSlide(currentSlide);
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevSlide();
+      }
+    });
+  </script>
+</body>
+</html>

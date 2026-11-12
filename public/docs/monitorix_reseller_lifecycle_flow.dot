@@ -1,0 +1,39 @@
+
+digraph ResellerLifecycle {
+    graph [rankdir=LR, bgcolor="#0f172a", fontname="Helvetica,Arial,sans-serif", nodesep=0.5, ranksep=0.7, pad=0.3];
+    node [shape=box, style="filled,rounded", fontname="Helvetica,Arial,sans-serif", fontsize=11, fontcolor="#ffffff", penwidth=1.5];
+    edge [color="#38bdf8", penwidth=1.5, fontname="Helvetica,Arial,sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    step1 [label="Phase 1: Partner Onboarding
+• Partner Profile Created
+• Tier: Reseller / MSSP
+• Commission: 20% Standard
+• API Key & Portal Access", fillcolor="#1e293b", color="#64748b"];
+    step2 [label="Phase 2: Customer Registration
+• Client Entity & Contact Info
+• Industry & Deployment Model
+• Database Tenant Assigned
+• Sovereign Cryptographic Enclave", fillcolor="#0369a1", color="#38bdf8"];
+    step3 [label="Phase 3: Quote & Proposal
+• Select Product Plan (XDR)
+• Set Endpoint Quotas (500-5000)
+• Apply Partner Discount
+• Auto-Compute Margin (20%)", fillcolor="#7e22ce", color="#c084fc"];
+    step4 [label="Phase 4: Order & Licensing
+• Customer Purchase Order (PO)
+• Order Approval in Portal
+• Ed25519 Cryptographic License
+• Binary Deployment Package", fillcolor="#047857", color="#34d399"];
+    step5 [label="Phase 5: Deployment & Telemetry
+• Install Rust Agents on Endpoints
+• Verify Control Plane Connection
+• Local Entitlement Enforced
+• SOC Multi-Tenant Monitoring", fillcolor="#b45309", color="#fbbf24"];
+    step6 [label="Phase 6: Commission & Payout
+• PartnerCommissionRecord Created
+• Status: PENDING -> APPROVED
+• Net-30 Settlement Engine
+• Direct Payout & Ledger Audit", fillcolor="#0e7490", color="#22d3ee"];
+
+    step1 -> step2 -> step3 -> step4 -> step5 -> step6;
+}

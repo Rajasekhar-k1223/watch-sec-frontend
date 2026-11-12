@@ -1,0 +1,33 @@
+
+digraph AuthHandshake {
+    graph [rankdir=LR, bgcolor="#0f172a", fontname="Helvetica,Arial,sans-serif", nodesep=0.5, ranksep=0.7, pad=0.3];
+    node [shape=box, style="filled,rounded", fontname="Helvetica,Arial,sans-serif", fontsize=11, fontcolor="#ffffff", penwidth=1.5];
+    edge [color="#38bdf8", penwidth=1.5, fontname="Helvetica,Arial,sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    step1 [label="1. Key Provisioning
+• Admin issues mk_key in UI
+• Name: e.g. ERP-Integrator
+• IP Whitelist: 198.51.100.25
+• Scopes: yara:scan, dlp:scan", fillcolor="#1e293b", color="#64748b"];
+    step2 [label="2. SDK Handshake Call
+• Client calls POST /sdk-handshake
+• Sends JSON: { sdk_key: mk_... }
+• Rate-limited (10 req/min)", fillcolor="#0369a1", color="#38bdf8"];
+    step3 [label="3. Cryptographic Validation
+• Verify SHA-256 token hash
+• Check Expiry timestamp
+• Match Client IP with Whitelist
+• Drop Raw Key from Memory", fillcolor="#7e22ce", color="#c084fc"];
+    step4 [label="4. Session JWT Issued
+• Claims: sub=sdk_Name, role,
+  tenantId, exp=15-60m
+• Refresh Token generated
+• Bearer token returned", fillcolor="#047857", color="#34d399"];
+    step5 [label="5. Calling Protected APIs
+• Header: Authorization: Bearer <jwt>
+• Injects TenantId context
+• Enforces Role-Based Access
+• 715+ Endpoints accessible!", fillcolor="#b45309", color="#fbbf24"];
+
+    step1 -> step2 -> step3 -> step4 -> step5;
+}

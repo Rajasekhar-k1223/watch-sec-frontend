@@ -1,0 +1,44 @@
+
+digraph WhiteLabelHierarchy {
+    graph [rankdir=TB, bgcolor="#0f172a", fontname="Helvetica,Arial,sans-serif", nodesep=0.6, ranksep=0.8, pad=0.3];
+    node [shape=box, style="filled,rounded", fontname="Helvetica,Arial,sans-serif", fontsize=11, fontcolor="#ffffff", penwidth=1.5];
+    edge [color="#94a3b8", penwidth=1.5, fontname="Helvetica,Arial,sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    subgraph cluster_parent {
+        label="CORE ENGINE / UNDERLYING INFRASTRUCTURE";
+        fontsize=12; fontcolor="#94a3b8"; color="#475569"; style="dashed,rounded"; bgcolor="#1e293b";
+        core_engine [label="Monitorix Core Engine
+FastAPI Backend + PostgreSQL + Rust Agent Fleet
+(Invisible to Sub-Tenant End Users)", fillcolor="#334155", color="#94a3b8"];
+    }
+
+    subgraph cluster_branding {
+        label="WHITE-LABEL REBRANDING INJECTION ENGINE";
+        fontsize=12; fontcolor="#c084fc"; color="#9333ea"; style="dashed,rounded"; bgcolor="#3b0764";
+        branding_config [label="White-Label Config Profile
+• Brand Name: CyberGuard Defense
+• Custom Logo: /assets/cyberguard-logo.svg
+• Domain: portal.cyberguard-defense.com
+• Support Email: soc@cyberguard-defense.com
+• Accent Colors: #00E5FF & #1E1B4B", fillcolor="#7e22ce", color="#c084fc"];
+    }
+
+    subgraph cluster_surfaces {
+        label="BRANDED OPERATIONAL SURFACES SEEN BY END CLIENTS";
+        fontsize=12; fontcolor="#34d399"; color="#059669"; style="dashed,rounded"; bgcolor="#064e3b";
+        portal_ui [label="Customer Security Portal (/portal)
+Branded Navigation, Logo, Header
+Reseller Help Desk Contacts", fillcolor="#047857", color="#34d399"];
+        reports_pdf [label="Automated PDF Reports
+Reseller Logo on Cover Page
+Executive Threat Summary & Compliance", fillcolor="#047857", color="#34d399"];
+        email_alerts [label="Email & Slack Notifications
+Sent from soc@cyberguard-defense.com
+Custom Signature & Disclaimers", fillcolor="#047857", color="#34d399"];
+    }
+
+    core_engine -> branding_config [label="Provides Telemetry & API"];
+    branding_config -> portal_ui [label="Renders Branded Web GUI"];
+    branding_config -> reports_pdf [label="Injects Branded Headers/Footers"];
+    branding_config -> email_alerts [label="Configures SMTP Sender & Footer"];
+}

@@ -1,0 +1,62 @@
+
+digraph DlpPrivacyPipeline {
+    graph [rankdir=TB, bgcolor="#0f172a", fontname="Helvetica,Arial,sans-serif", nodesep=0.6, ranksep=0.8, pad=0.3];
+    node [shape=box, style="filled,rounded", fontname="Helvetica,Arial,sans-serif", fontsize=11, fontcolor="#ffffff", penwidth=1.5];
+    edge [color="#94a3b8", penwidth=1.5, fontname="Helvetica,Arial,sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    subgraph cluster_sources {
+        label="DATA INGESTION SURFACES (POTENTIAL SENSITIVE TRANSACTION DATA)";
+        fontsize=12; fontcolor="#f59e0b"; color="#d97706"; style="dashed,rounded"; bgcolor="#451a03";
+        
+        in_screen [label="Screen Ingestion (OCR)
+User browser screen with
+online banking / checkout", fillcolor="#b45309", color="#fbbf24"];
+        in_keys [label="Keystroke & Input Buffer
+User typing card number,
+expiration date, or passwords", fillcolor="#b45309", color="#fbbf24"];
+        in_clip [label="Clipboard Buffer
+User copying IBAN, credit card,
+or AWS secret key", fillcolor="#b45309", color="#fbbf24"];
+        in_audio [label="Acoustic Speech
+Employee reading card numbers
+over recorded phone call", fillcolor="#b45309", color="#fbbf24"];
+    }
+
+    subgraph cluster_sanitizer {
+        label="BACKEND PRIVACY REDACTOR & DLP SANITIZATION ENGINE";
+        fontsize=12; fontcolor="#38bdf8"; color="#0284c7"; style="dashed,rounded"; bgcolor="#082f49";
+        
+        redactor [label="BackendPrivacyRedactor (app/core/privacy.py)
+• CREDIT_CARD_REGEX: r'(?:\d{4}[ -]?){3}\d{4}'
+• SSN_REGEX: r'\d{3}-\d{2}-\d{4}'
+• PASSWORD_FIELD_REGEX: r'((?:password|secret)[ :=])[^\s]+'
+• BEARER_TOKEN_REGEX: r'mk_[a-f0-9]{32}'", fillcolor="#0369a1", color="#38bdf8"];
+        
+        dlp_alert [label="DLP Violation Dispatcher
+• Flag PCI_DSS Violation Alert
+• Category: CREDIT_CARD_NUMBER
+• Audit Event recorded in SIEM", fillcolor="#7e22ce", color="#c084fc"];
+    }
+
+    subgraph cluster_storage {
+        label="ZERO-PLAINTEXT PERSISTENCE & ANALYST VIEW (PCI-DSS 3.4 CERTIFIED)";
+        fontsize=12; fontcolor="#10b981"; color="#059669"; style="dashed,rounded"; bgcolor="#064e3b";
+        
+        safe_db [label="PostgreSQL Encrypted Storage
+Card converted to: ••••-••••-••••-••••
+Passwords: [REDACTED]
+Tokens: [TOKEN_REDACTED]", fillcolor="#047857", color="#34d399"];
+        safe_ui [label="Tenant Analyst Dashboard (/portal, /security-logs)
+Analysts & Tenant Admins NEVER see plaintext card numbers
+Only masked audit snippets (e.g. 4532-••••-••••-8921)", fillcolor="#047857", color="#34d399"];
+    }
+
+    in_screen -> redactor [label="OCR text extracted"];
+    in_keys -> redactor [label="Keystrokes buffered"];
+    in_clip -> redactor [label="Clipboard inspected"];
+    in_audio -> redactor [label="Speech transcribed"];
+
+    redactor -> dlp_alert [label="Sensitivity detected"];
+    redactor -> safe_db [label="Scrubbed text persisted"];
+    safe_db -> safe_ui [label="Rendered in UI"];
+}

@@ -1,0 +1,87 @@
+
+digraph ResellerArch {
+    graph [rankdir=TB, bgcolor="#0f172a", fontname="Helvetica,Arial,sans-serif", nodesep=0.6, ranksep=0.8, pad=0.3];
+    node [shape=box, style="filled,rounded", fontname="Helvetica,Arial,sans-serif", fontsize=11, fontcolor="#ffffff", penwidth=1.5];
+    edge [color="#94a3b8", penwidth=1.5, fontname="Helvetica,Arial,sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    subgraph cluster_control_plane {
+        label="MONITORIX GLOBAL CONTROL PLANE (SUPER-ADMIN LEVEL)";
+        fontsize=13; fontcolor="#38bdf8"; color="#0284c7"; style="dashed,rounded"; bgcolor="#082f49";
+        admin_ops [label="Admin Commercial Ops
+(/admin/commercial)
+Tier & Commission Policy", fillcolor="#0369a1", color="#38bdf8"];
+        license_master [label="Global Licensing Engine
+Ed25519 Cryptographic Signer
+License Auth Server", fillcolor="#0284c7", color="#7dd3fc"];
+        payout_ledger [label="Global Financial Settlement
+Quarterly / Net-30 Commission Engine
+Audit & Compliance Vault", fillcolor="#075985", color="#38bdf8"];
+    }
+
+    subgraph cluster_reseller {
+        label="PARTNER & RESELLER HUB (/partner) [PARTNER OPERATOR DOMAIN]";
+        fontsize=13; fontcolor="#a855f7"; color="#9333ea"; style="dashed,rounded"; bgcolor="#3b0764";
+        partner_portal [label="Partner Portal Dashboard
+Key Metrics (MRR, Endpoints, Quotes)
+Commission Rate: 20% Standard", fillcolor="#7e22ce", color="#c084fc"];
+        client_mgmt [label="Sub-Tenant Provisioner
+Customer Organization Creation
+Data Isolation Tagging (TenantId)", fillcolor="#6b21a8", color="#a855f7"];
+        quote_builder [label="Quote & Pricing Engine
+Plan Selection (XDR-500, XDR-1000)
+Discount & Margin Calculation", fillcolor="#581c87", color="#c084fc"];
+        whitelabel_mgr [label="White-Label Rebranding
+Custom Domain & Company Logo
+Branded Notifications & PDF Reports", fillcolor="#7e22ce", color="#d8b4fe"];
+    }
+
+    subgraph cluster_subtenants {
+        label="CRYPTOGRAPHICALLY ISOLATED CUSTOMER ENCLAVES (CLIENT TENANTS)";
+        fontsize=13; fontcolor="#10b981"; color="#059669"; style="dashed,rounded"; bgcolor="#064e3b";
+        
+        tenant_a [label="Client A: Acme Banking Corp
+TenantId: 101 | On-Premises
+500 Agents | License: ACTIVE", fillcolor="#047857", color="#34d399"];
+        tenant_b [label="Client B: Horizon Health Group
+TenantId: 102 | Dedicated VPC
+1,200 Agents | License: ACTIVE", fillcolor="#047857", color="#34d399"];
+        tenant_c [label="Client C: Apex Logistics Ltd
+TenantId: 103 | Hybrid Cloud
+350 Agents | License: ACTIVE", fillcolor="#047857", color="#34d399"];
+    }
+
+    subgraph cluster_agents {
+        label="SECURE ENDPOINT AGENTS (CROSS-PLATFORM LINUX / WIN / MACOS)";
+        fontsize=12; fontcolor="#f59e0b"; color="#d97706"; style="dashed,rounded"; bgcolor="#451a03";
+        
+        agents_a [label="Acme Agent Fleet
+mTLS Endpoint Telemetry
+No Cross-Tenant Leakage", fillcolor="#b45309", color="#fbbf24"];
+        agents_b [label="Horizon Agent Fleet
+mTLS Endpoint Telemetry
+Zero-Knowledge Enclave", fillcolor="#b45309", color="#fbbf24"];
+        agents_c [label="Apex Agent Fleet
+mTLS Endpoint Telemetry
+Local SIEM / EDR Buffering", fillcolor="#b45309", color="#fbbf24"];
+    }
+
+    admin_ops -> partner_portal [label="Defines Tier & Margin (20%)"];
+    partner_portal -> client_mgmt [label="Manages Clients"];
+    partner_portal -> quote_builder [label="Generates Proposals"];
+    partner_portal -> whitelabel_mgr [label="Configures Brand"];
+    
+    quote_builder -> license_master [label="Issues PO / Generates License"];
+    license_master -> payout_ledger [label="Records Order & Commission"];
+    
+    client_mgmt -> tenant_a [label="Provisions Tenant 101"];
+    client_mgmt -> tenant_b [label="Provisions Tenant 102"];
+    client_mgmt -> tenant_c [label="Provisions Tenant 103"];
+    
+    whitelabel_mgr -> tenant_a [label="Applies Partner Logo & Brand"];
+    whitelabel_mgr -> tenant_b [label="Applies Partner Logo & Brand"];
+    whitelabel_mgr -> tenant_c [label="Applies Partner Logo & Brand"];
+
+    tenant_a -> agents_a [label="Enforces Limits & Policies"];
+    tenant_b -> agents_b [label="Enforces Limits & Policies"];
+    tenant_c -> agents_c [label="Enforces Limits & Policies"];
+}

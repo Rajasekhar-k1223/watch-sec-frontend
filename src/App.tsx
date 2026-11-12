@@ -378,7 +378,9 @@ function App() {
                 <Route path="/security/malware-analysis" element={<AdvancedMalwareLab />} />
                 <Route path="/malware-sandbox" element={<AdvancedMalwareLab />} />
 
-                {/* Attack-Path Validation & Automated Breach Emulation */}
+                {/* Continuous Threat Exposure Management (CTEM) & Attack-Path Validation */}
+                <Route path="/ctem" element={<AttackValidationCenter />} />
+                <Route path="/exposure-management" element={<AttackValidationCenter />} />
                 <Route path="/attack-validation" element={<AttackValidationCenter />} />
                 <Route path="/breach-emulation" element={<AttackValidationCenter />} />
                 <Route path="/security/validation" element={<AttackValidationCenter />} />

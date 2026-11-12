@@ -77,7 +77,7 @@ export default function DlpDashboard() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          agent_id: 'TEST-SIMULATOR',
+          agent_id: 'SOC-CONSOLE-LIVE',
           channel: testChannel,
           content: testContent
         })
@@ -86,24 +86,15 @@ export default function DlpDashboard() {
       if (res.ok) {
         const data = await res.json();
         setTestResult(data);
-        toast.success(`DLP Action: ${data.enforcement_action || 'Permitted'}`);
+        toast.success(`Live DataGuard Action: ${data.enforcement_action || 'Allow'}`);
+        // Refresh live violations immediately from backend
+        fetchData();
       } else {
-        // Fallback simulator for offline agent signature
-        const hasCard = /\b4[0-9]{12}/.test(testContent);
-        const hasSSN = /\d{3}-\d{2}-\d{4}/.test(testContent);
-        const hasKey = /AKIA[0-9A-Z]{16}/.test(testContent);
-        const violated = hasCard || hasSSN || hasKey;
-
-        setTestResult({
-          status: 'evaluated',
-          enforcement_action: violated ? 'BLOCK_AND_ISOLATE' : 'ALLOW',
-          violations_logged: violated ? 1 : 0,
-          matched_rules: violated ? ['PCI-DSS Card Pattern Match'] : []
-        });
-        toast.success(violated ? 'DLP Action: BLOCK_AND_ISOLATE' : 'Content Verified: ALLOW');
+        const err = await res.json().catch(() => ({}));
+        toast.error(`Evaluation failed: ${err.detail || res.statusText}`);
       }
     } catch (e) {
-      toast.error('Evaluation failed');
+      toast.error('Evaluation failed: Network error');
     } finally {
       setTesting(false);
     }

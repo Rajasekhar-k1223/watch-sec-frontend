@@ -16,6 +16,17 @@ interface Message {
 
 const promptCategories = [
     {
+        name: "Modular APIs & Reseller",
+        icon: "🧩",
+        prompts: [
+            "Can I integrate only YARA scanning or EDR into our product?",
+            "Are credit cards or online banking transactions visible during live streaming?",
+            "How does the Zero-Trust SDK key handshake authenticate?",
+            "Explain the 20% reseller wholesale margin and quote calculator",
+            "How does white-labeling and sub-tenant provisioning work?"
+        ]
+    },
+    {
         name: "Threat Hunting",
         icon: "🎯",
         prompts: [
@@ -222,12 +233,23 @@ export default function AiCopilot() {
     };
 
     const handleActionClick = (action: string) => {
+        const actLower = action.toLowerCase();
         toast.success(`Executing: ${action}`);
-        if (action.toLowerCase().includes("agent") || action.toLowerCase().includes("view")) {
-            navigate('/agents');
-        } else if (action.toLowerCase().includes("dlp") || action.toLowerCase().includes("policy")) {
+        if (actLower.includes("partner") || actLower.includes("reseller")) {
+            navigate('/partner');
+        } else if (actLower.includes("developer") || actLower.includes("api docs") || actLower.includes("swagger")) {
+            navigate('/developers');
+        } else if (actLower.includes("docs") || actLower.includes("documentation")) {
+            window.open('/docs', '_blank');
+        } else if (actLower.includes("architecture")) {
+            navigate('/architecture');
+        } else if (actLower.includes("compliance")) {
+            navigate('/compliance');
+        } else if (actLower.includes("dlp") || actLower.includes("policy")) {
             navigate('/policies');
-        } else if (action.toLowerCase().includes("threat") || action.toLowerCase().includes("vulnerabilit")) {
+        } else if (actLower.includes("agent") || actLower.includes("host") || actLower.includes("fleet")) {
+            navigate('/agents');
+        } else if (actLower.includes("threat") || actLower.includes("vulnerabilit") || actLower.includes("cve")) {
             navigate('/vulnerabilities');
         } else {
             handleSend(action);

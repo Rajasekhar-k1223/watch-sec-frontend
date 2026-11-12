@@ -18,6 +18,10 @@ interface ChatMessage {
 }
 
 const QUICK_PROMPTS = [
+    { label: '🧩 Modular APIs', query: 'Can I integrate individual modules like YARA, EDR, or DLP into our product?' },
+    { label: '💳 Transaction Privacy', query: 'Are credit cards or online banking transactions visible during live streaming?' },
+    { label: '💼 Reseller Hub', query: 'How does the reseller partner program and 20% margin quoting work?' },
+    { label: '🔑 SDK Handshake', query: 'How does the Zero-Trust SDK Key Handshake protocol work?' },
     { label: '🍯 Honeypot Grid', query: 'What honeypots and deception traps are active?' },
     { label: '🌐 Domain Watchdog', query: 'How does domain watching protect our websites from attacks?' },
     { label: '🛠️ Supported Tools', query: 'Which security tools does Monitorix replace or connect with?' },
@@ -55,9 +59,9 @@ export const GlobalAiChatbot: React.FC = () => {
             {
                 id: 'welcome-1',
                 sender: 'assistant',
-                text: "Hello! I am **Monitorix AI Security Assistant**.\n\nI monitor live fleet telemetry, security events, vulnerabilities, and regulatory compliance posture in real time. How can I assist your security operations today?",
+                text: "Hello! I am **Monitorix AI Security Assistant**.\n\nI monitor live fleet telemetry, security events, vulnerabilities, modular API integrations, and regulatory compliance posture in real time. How can I assist your security operations today?",
                 timestamp: new Date(),
-                suggestedActions: ['High-Risk Agents', 'Threat Summary', 'Compliance Status']
+                suggestedActions: ['🧩 Modular APIs', '💳 Transaction Privacy', '💼 Reseller Hub', '🎯 High-Risk Agents']
             }
         ];
     });
@@ -145,7 +149,15 @@ export const GlobalAiChatbot: React.FC = () => {
             actLower.endsWith(' center');
 
         if (isExplicitNavigation) {
-            if (actLower.includes('honeypot') || actLower.includes('deception')) {
+            if (actLower.includes('partner') || actLower.includes('reseller')) {
+                navigate('/partner');
+            } else if (actLower.includes('developer') || actLower.includes('api docs') || actLower.includes('swagger')) {
+                navigate('/developers');
+            } else if (actLower.includes('docs') || actLower.includes('documentation')) {
+                window.open('/docs', '_blank');
+            } else if (actLower.includes('dlp')) {
+                navigate('/dlp');
+            } else if (actLower.includes('honeypot') || actLower.includes('deception')) {
                 navigate('/deception');
             } else if (actLower.includes('easm') || actLower.includes('attack surface')) {
                 navigate('/easm');
@@ -171,6 +183,19 @@ export const GlobalAiChatbot: React.FC = () => {
 
         // 2. Map quick prompt labels to their explicit conversational queries inside the chat!
         const PROMPT_MAPPING: Record<string, string> = {
+            '🧩 modular apis': 'Can I integrate individual modules like YARA, EDR, or DLP into our product?',
+            'modular apis': 'Can I integrate individual modules like YARA, EDR, or DLP into our product?',
+            'explore modular apis': 'Can I integrate individual modules like YARA, EDR, or DLP into our product?',
+            '💳 transaction privacy': 'Are credit cards or online banking transactions visible during live streaming?',
+            'transaction privacy': 'Are credit cards or online banking transactions visible during live streaming?',
+            'credit card privacy': 'Are credit cards or online banking transactions visible during live streaming?',
+            '💼 reseller hub': 'How does the reseller partner program and 20% margin quoting work?',
+            'reseller hub': 'How does the reseller partner program and 20% margin quoting work?',
+            'generate partner quote': 'How does the reseller partner program and 20% margin quoting work?',
+            'open partner portal': 'How does the reseller partner program and 20% margin quoting work?',
+            '🔑 sdk handshake': 'How does the Zero-Trust SDK Key Handshake protocol work?',
+            'sdk handshake': 'How does the Zero-Trust SDK Key Handshake protocol work?',
+            'how does handshake work?': 'How does the Zero-Trust SDK Key Handshake protocol work?',
             '🎯 high-risk agents': 'Show me high-risk agents and current threat posture',
             'high-risk agents': 'Show me high-risk agents and current threat posture',
             'show me high-risk agents': 'Show me high-risk agents and current threat posture',

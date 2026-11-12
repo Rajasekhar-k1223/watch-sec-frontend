@@ -1,0 +1,69 @@
+
+digraph ModularMesh {
+    graph [rankdir=TB, bgcolor="#0f172a", fontname="Helvetica,Arial,sans-serif", nodesep=0.6, ranksep=0.8, pad=0.3];
+    node [shape=box, style="filled,rounded", fontname="Helvetica,Arial,sans-serif", fontsize=11, fontcolor="#ffffff", penwidth=1.5];
+    edge [color="#94a3b8", penwidth=1.5, fontname="Helvetica,Arial,sans-serif", fontsize=10, fontcolor="#cbd5e1"];
+
+    subgraph cluster_clients {
+        label="EXTERNAL CLIENT PLATFORMS & ENTERPRISE INTEGRATIONS";
+        fontsize=13; fontcolor="#38bdf8"; color="#0284c7"; style="dashed,rounded"; bgcolor="#082f49";
+        
+        c_saas [label="Client SaaS Application
+(Document Upload & Storage)", fillcolor="#0369a1", color="#38bdf8"];
+        c_helpdesk [label="Enterprise IT Helpdesk
+(Jira / ServiceNow / Slack)", fillcolor="#0369a1", color="#38bdf8"];
+        c_chat [label="Customer Support / CRM
+(Web Forms & Chatbots)", fillcolor="#0369a1", color="#38bdf8"];
+        c_gateway [label="Edge Gateway & Firewall
+(Palo Alto / Fortinet / WAF)", fillcolor="#0369a1", color="#38bdf8"];
+        c_identity [label="Corporate IdP / VPN
+(Okta / Entra ID / ZTNA)", fillcolor="#0369a1", color="#38bdf8"];
+        c_soc [label="External SIEM / Data Lake
+(Splunk / Sentinel / Kafka)", fillcolor="#0369a1", color="#38bdf8"];
+    }
+
+    subgraph cluster_core {
+        label="MONITORIX MODULAR CORE ENGINE (715+ REST APIs & WEBHOOKS)";
+        fontsize=13; fontcolor="#a855f7"; color="#9333ea"; style="dashed,rounded"; bgcolor="#3b0764";
+        
+        m_yara [label="Module 1: Malware Lab & YARA
+/api/v1/yara/scan
+Binary & Doc Heuristic Filter", fillcolor="#7e22ce", color="#c084fc"];
+        m_edr [label="Module 2: Cross-Platform EDR
+/api/v1/endpoints/{id}/isolate
+1-Sec Network Quarantine", fillcolor="#7e22ce", color="#c084fc"];
+        m_dlp [label="Module 3: Real-Time DLP Engine
+/api/v1/dlp/scan
+PCI-DSS & PII Masking Engine", fillcolor="#7e22ce", color="#c084fc"];
+        m_intel [label="Module 4: Global Threat Intel
+/api/v2/threat-intel/lookup
+IP / Hash / CVE Attribution", fillcolor="#7e22ce", color="#c084fc"];
+        m_ztna [label="Module 5: Identity & Zero Trust
+/api/v1/zero-trust/verify
+ITDR & Device Posture", fillcolor="#7e22ce", color="#c084fc"];
+        m_soar [label="Module 6: SOAR & Event Webhooks
+/api/v1/playbooks/run
+HMAC-SHA256 Alert Dispatch", fillcolor="#7e22ce", color="#c084fc"];
+    }
+
+    subgraph cluster_isolation {
+        label="CRYPTOGRAPHIC MULTI-TENANT ISOLATION LAYER";
+        fontsize=12; fontcolor="#10b981"; color="#059669"; style="dashed,rounded"; bgcolor="#064e3b";
+        enclave [label="Zero-Trust Tenant Boundary (TenantId Enforced)
+Redis Fast-Path Auth Cache (60s TTL) | AES-256 Encrypted Telemetry", fillcolor="#047857", color="#34d399"];
+    }
+
+    c_saas -> m_yara [label="Scans file uploads"];
+    c_helpdesk -> m_edr [label="Triggers host isolation"];
+    c_chat -> m_dlp [label="Scans text for CC / SSN"];
+    c_gateway -> m_intel [label="Queries malicious IPs"];
+    c_identity -> m_ztna [label="Validates device posture"];
+    m_soar -> c_soc [label="Dispatches signed webhooks"];
+
+    m_yara -> enclave;
+    m_edr -> enclave;
+    m_dlp -> enclave;
+    m_intel -> enclave;
+    m_ztna -> enclave;
+    m_soar -> enclave;
+}

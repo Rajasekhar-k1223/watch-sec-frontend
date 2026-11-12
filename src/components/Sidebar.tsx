@@ -219,6 +219,7 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
         },
         {
             title: 'PLATFORM',
+            superAdminOnly: true,
             categoryIcon: Cpu,
             iconColor: 'text-emerald-600',
             titleColor: 'text-emerald-600',
@@ -231,6 +232,7 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
         },
         {
             title: 'SAAS & GLOBAL ENTERPRISE',
+            superAdminOnly: true,
             categoryIcon: Globe,
             iconColor: 'text-indigo-600',
             titleColor: 'text-indigo-600',
@@ -247,6 +249,7 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
         },
         {
             title: 'ECOSYSTEM & MARKETPLACE',
+            superAdminOnly: true,
             categoryIcon: Package,
             iconColor: 'text-violet-500',
             titleColor: 'text-violet-500',
@@ -259,6 +262,7 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
         },
         {
             title: 'COMMERCIAL & LICENSING',
+            superAdminOnly: true,
             categoryIcon: ShieldCheck,
             iconColor: 'text-emerald-500',
             titleColor: 'text-emerald-500',
@@ -276,6 +280,7 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
 
         {
             title: 'CONTINUOUS EVOLUTION',
+            superAdminOnly: true,
             categoryIcon: GitBranch,
             iconColor: 'text-indigo-400',
             titleColor: 'text-indigo-400',
@@ -287,11 +292,19 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
         }
     ];
 
+    const isSuperAdmin = (user?.role || user?.Role || '').toLowerCase() === 'superadmin';
+
+    // Role-filtered navigation categories (Domains 9-13 reserved for SuperAdmin)
+    const visibleNavCategories = useMemo(() => {
+        if (isSuperAdmin) return navCategories;
+        return navCategories.filter(cat => !(cat as any).superAdminOnly);
+    }, [isSuperAdmin]);
+
     // Filter categories based on search query
     const filteredCategories = useMemo(() => {
-        if (!searchQuery.trim()) return navCategories;
+        if (!searchQuery.trim()) return visibleNavCategories;
         const q = searchQuery.toLowerCase().trim();
-        return navCategories
+        return visibleNavCategories
             .map(cat => ({
                 ...cat,
                 items: cat.items.filter(item => 
@@ -299,7 +312,7 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
                 )
             }))
             .filter(cat => cat.items.length > 0);
-    }, [searchQuery]);
+    }, [searchQuery, visibleNavCategories]);
 
     // Auto-expand category for current path or search
     useEffect(() => {
@@ -308,14 +321,14 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
             return;
         }
 
-        const activeCategory = navCategories.find(cat => 
+        const activeCategory = visibleNavCategories.find(cat => 
             cat.items.some(item => location.pathname === item.path || location.pathname.startsWith(item.path + '/'))
         );
         
         if (activeCategory && !openCategories.includes(activeCategory.title)) {
             setOpenCategories(prev => [...prev, activeCategory.title]);
         }
-    }, [location.pathname, searchQuery]);
+    }, [location.pathname, searchQuery, visibleNavCategories]);
     
     const toggleCategory = (title: string) => {
         setOpenCategories(prev => 
