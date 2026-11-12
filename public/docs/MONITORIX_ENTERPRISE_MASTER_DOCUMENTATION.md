@@ -2028,6 +2028,9 @@ Complete operational reference for all interactive Create (Insert), Read, Update
 
 ---
 ## 12. Master Multi-Tier & Domain Architectures
+* **Sovereign AI Agent & MCP Security Specification**: [MONITORIX_SOVEREIGN_AI_AGENT_AND_MCP_SECURITY_SPECIFICATION.md](file:///opt/projects/monitorix/docs/MONITORIX_SOVEREIGN_AI_AGENT_AND_MCP_SECURITY_SPECIFICATION.md) (Native on-premise replacement for Microsoft Azure AI Foundry & Wiz Runtime)
+* **Master Enterprise Comparison Workbook V2**: [MONITORIX_ENTERPRISE_VS_WIZ_MASTER_COMPARISON_V2.xlsx](file:///opt/projects/monitorix/docs/MONITORIX_ENTERPRISE_VS_WIZ_MASTER_COMPARISON_V2.xlsx)
+* **Interactive Client Proof-of-Concept Script**: [run_client_poc_demo.sh](file:///opt/projects/monitorix/run_client_poc_demo.sh)
 * **Platform Master Blueprint**: [`platform_master_architecture.jpg`](file:///opt/projects/monitorix/docs/architecture_assets/platform_master_architecture.jpg)
 * **Multi-Level 6-Tier Architecture**: [`multilevel_system_architecture.jpg`](file:///opt/projects/monitorix/docs/architecture_assets/multilevel_system_architecture.jpg)
 * **Domain Protection Lifecycle**: [`domain_protection_lifecycle_architecture.jpg`](file:///opt/projects/monitorix/docs/architecture_assets/domain_protection_lifecycle_architecture.jpg)
