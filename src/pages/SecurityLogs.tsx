@@ -26,6 +26,12 @@ interface AgentOption {
     Platform?: string;
 }
 
+const normalizeTimestamp = (str?: string) => {
+    if (!str) return '';
+    const hasTimezone = str.endsWith('Z') || /[+-]\d{2}(:?\d{2})?$/.test(str);
+    return hasTimezone ? str : str + 'Z';
+};
+
 export default function SecurityLogs() {
     const { token } = useAuth();
     const [logs, setLogs] = useState<SecurityLogItem[]>([]);
@@ -432,9 +438,9 @@ export default function SecurityLogs() {
                                         className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
                                     >
                                         <td className="py-3 px-5 text-slate-500 whitespace-nowrap">
-                                            {log.Timestamp ? new Date(log.Timestamp).toLocaleTimeString() : '-'}
+                                            {log.Timestamp ? new Date(normalizeTimestamp(log.Timestamp)).toLocaleTimeString() : '-'}
                                             <span className="text-slate-400 block text-[10px]">
-                                                {log.Timestamp ? new Date(log.Timestamp).toLocaleDateString() : ''}
+                                                {log.Timestamp ? new Date(normalizeTimestamp(log.Timestamp)).toLocaleDateString() : ''}
                                             </span>
                                         </td>
                                         <td className="py-3 px-5 whitespace-nowrap font-sans">
@@ -513,7 +519,7 @@ export default function SecurityLogs() {
                                 </div>
                                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                                     <span className="text-slate-500 block mb-1">TIMESTAMP</span>
-                                    <span className="text-slate-700">{new Date(activeLog.Timestamp).toLocaleString()}</span>
+                                    <span className="text-slate-700">{new Date(normalizeTimestamp(activeLog.Timestamp)).toLocaleString()}</span>
                                 </div>
                             </div>
 
