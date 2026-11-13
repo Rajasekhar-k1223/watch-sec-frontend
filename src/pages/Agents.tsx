@@ -149,7 +149,11 @@ const PLAN_LEVELS: Record<string, number> = {
     "professional": 2,
     "pro": 2, // Alias
     "enterprise": 3,
-    "unlimited": 100
+    "unlimited": 100,
+    "sovereign": 100,
+    "mdr-premier": 3,
+    "enterprise_soc": 3,
+    "enterprise xdr": 3
 };
 
 const FEATURE_TIERS: Record<string, number> = {
@@ -311,14 +315,25 @@ export default function Agents() {
 
     useEffect(() => {
         // [NEW] Fetch Tenant Plan
-        if (token && user?.tenantId) {
-            fetch(`${API_URL}/billing/?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } })
-                .then(res => res.json())
-                .then(data => {
-                    const p = data.Plan || data.plan || "Starter";
-                    setPlanLevel(PLAN_LEVELS[p.toLowerCase()] || 1);
-                })
-                .catch(e => console.error("Failed to fetch plan", e));
+        if (token) {
+            if (user?.role === 'SuperAdmin') {
+                setPlanLevel(100);
+            } else {
+                fetch(`${API_URL}/billing/?t=${Date.now()}`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    .then(res => res.json())
+                    .then(data => {
+                        const p = (data.Plan || data.plan || "Starter").toLowerCase();
+                        let lvl = PLAN_LEVELS[p];
+                        if (!lvl) {
+                            if (p.includes("sovereign") || p.includes("unlimited")) lvl = 100;
+                            else if (p.includes("enterprise") || p.includes("mdr") || p.includes("premier") || p.includes("xdr")) lvl = 3;
+                            else if (p.includes("pro")) lvl = 2;
+                            else lvl = 1;
+                        }
+                        setPlanLevel(lvl);
+                    })
+                    .catch(e => console.error("Failed to fetch plan", e));
+            }
         }
 
         fetchAgents();

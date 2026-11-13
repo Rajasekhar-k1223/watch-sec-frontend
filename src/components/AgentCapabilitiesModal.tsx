@@ -96,7 +96,7 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
         setEnabledFeatures(newstate);
 
         try {
-            const token = localStorage.getItem('token');
+            const token = sessionStorage.getItem('token') || localStorage.getItem('token');
             const res = await fetch(`${API_URL}/billing/update-plan`, {
                 method: 'POST',
                 headers: {
@@ -106,7 +106,10 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
                 body: JSON.stringify({ PlanName: selectedPlan })
             });
             if (res.ok) {
-                toast.success(`Subscription Plan successfully updated to ${selectedPlan}!`);
+                toast.success(`Subscription Plan successfully updated to ${selectedPlan}! Refreshing...`);
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
             } else {
                 const err = await res.json().catch(() => ({}));
                 toast.error(`Plan update failed: ${err.detail || 'Not authorized'}`);
