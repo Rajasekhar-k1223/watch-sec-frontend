@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, CheckCircle, Activity, Key, Clipboard, ShieldAlert, Globe, Printer, Ghost, Video, Terminal, Mail, Camera, MapPin, Usb, Wifi, FileText, Lock } from 'lucide-react';
 import { API_URL } from '../config';
+import toast from 'react-hot-toast';
 
 interface AgentCapabilitiesModalProps {
     isOpen: boolean;
@@ -84,7 +85,7 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
         setEnabledFeatures(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    const applyPlanDefaults = () => {
+    const applyPlanDefaults = async () => {
         const newstate = { ...enabledFeatures };
         const planLevel = getTierLevel(selectedPlan);
         features.forEach(feat => {
@@ -93,6 +94,26 @@ export default function AgentCapabilitiesModal({ isOpen, onClose }: AgentCapabil
             newstate[feat.id] = featLevel <= planLevel;
         });
         setEnabledFeatures(newstate);
+
+        try {
+            const token = localStorage.getItem('token');
+            const res = await fetch(`${API_URL}/billing/update-plan`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ PlanName: selectedPlan })
+            });
+            if (res.ok) {
+                toast.success(`Subscription Plan successfully updated to ${selectedPlan}!`);
+            } else {
+                const err = await res.json().catch(() => ({}));
+                toast.error(`Plan update failed: ${err.detail || 'Not authorized'}`);
+            }
+        } catch (e) {
+            console.error("Plan upgrade error:", e);
+        }
     };
 
     return createPortal(
