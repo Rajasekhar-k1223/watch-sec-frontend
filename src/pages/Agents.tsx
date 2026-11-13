@@ -1369,18 +1369,20 @@ export default function Agents() {
         const socket = socketRef.current;
         if (!socket) return;
 
+        socket.emit("join_room", { room: selectedAgentId });
         socket.emit("client_debug", { component: 'ActivityLogViewer', user: user, agentId: selectedAgentId });
 
         const handleFrame = (agentId: any, base64?: any) => {
             let actualAgentId = agentId;
             let actualBase64 = base64;
 
-            if (agentId && typeof agentId === 'object' && agentId.agentId) {
-                actualAgentId = agentId.agentId;
-                actualBase64 = agentId.image || agentId.base64;
+            if (agentId && typeof agentId === 'object') {
+                actualAgentId = agentId.agentId || agentId.AgentId;
+                actualBase64 = agentId.image || agentId.base64 || agentId.Image;
             }
 
-            if (isStreamingRef.current && selectedAgentId && actualAgentId && (typeof actualAgentId === 'string') && (actualAgentId.toLowerCase() === selectedAgentId.toLowerCase()) && actualBase64) {
+            if (selectedAgentId && actualAgentId && (typeof actualAgentId === 'string') && (actualAgentId.toLowerCase() === selectedAgentId.toLowerCase()) && actualBase64) {
+                setIsStreaming(true);
                 const prefix = actualBase64.startsWith('data:image') ? '' : 'data:image/jpeg;base64,';
                 const fullBase64 = prefix + actualBase64;
 
@@ -1527,6 +1529,7 @@ export default function Agents() {
 
     const handleStartStream = () => {
         if (socketRef.current && selectedAgentId) {
+            socketRef.current.emit("join_room", { room: selectedAgentId });
             const qualityMap: any = {
                 fluid: { width: 800, quality: 50 },
                 moderate: { width: 1280, quality: 80 },
@@ -1541,6 +1544,12 @@ export default function Agents() {
             setIsStreaming(true);
         }
     };
+
+    useEffect(() => {
+        if (viewMode === 'monitor' && selectedAgentId && socketRef.current) {
+            handleStartStream();
+        }
+    }, [viewMode, selectedAgentId]);
 
     useEffect(() => {
         if (isStreaming && socketRef.current) {
