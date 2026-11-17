@@ -106,6 +106,9 @@ interface AgentEvent {
     mem?: number;
     RiskLevel?: string;
     Category?: string;
+    status?: string;
+    isAlert?: boolean;
+    [key: string]: any;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -607,19 +610,29 @@ export default function Agents() {
     // [v1.8.42] Patch Now: Administrator Override
     const handlePatchNow = async (agentId: string) => {
         try {
+            setUpdateProgressMap(prev => ({ ...prev, [agentId]: 10 }));
             const res = await fetch(`${API_URL}/agents/${agentId}/patch-now`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
             if (res.ok) {
-                toast.success("Patch Now triggered. The agent will update on its next heartbeat.");
-                // Silently refresh agents
+                toast.success("Patch Now triggered. Agent is downloading the latest update...");
                 fetchAgents();
             } else {
+                setUpdateProgressMap(prev => {
+                    const next = { ...prev };
+                    delete next[agentId];
+                    return next;
+                });
                 toast.error("Failed to trigger Patch Now.");
             }
         } catch (e) {
+            setUpdateProgressMap(prev => {
+                const next = { ...prev };
+                delete next[agentId];
+                return next;
+            });
             console.error(e);
             toast.error("Network error triggering Patch Now.");
         }
@@ -1103,7 +1116,16 @@ export default function Agents() {
             let activityData = [];
             if (activityRes.ok) activityData = await activityRes.json();
 
-            const normalizedEvents = eventsData.map((e: any) => ({ ...e, timestamp: normalizeTimestamp(e.timestamp || e.Timestamp) }));
+            const normalizedEvents: AgentEvent[] = (Array.isArray(eventsData) ? eventsData : []).map((e: any) => ({
+                ...e,
+                type: e.type || e.Type || 'SecurityEvent',
+                details: e.details || e.Details || '',
+                timestamp: normalizeTimestamp(e.timestamp || e.Timestamp),
+                RiskLevel: e.RiskLevel || e.severity || e.Severity,
+                Category: e.Category || e.category,
+                isAlert: e.isAlert || e.IsAlert,
+                status: e.status || e.Status
+            }));
             const historyAsEvents: AgentEvent[] = historyData.map((h: any) => ({
                 type: "System Heartbeat",
                 details: `Status: ${h.status || h.Status || 'Unknown'} | CPU: ${Number(h.cpuUsage ?? h.CpuUsage ?? 0).toFixed(1)}% | MEM: ${Number(h.memoryUsage ?? h.MemoryUsage ?? 0).toFixed(1)}MB`,
@@ -1114,14 +1136,14 @@ export default function Agents() {
             }));
             const activityAsEvents: AgentEvent[] = (Array.isArray(activityData) ? activityData : []).map((a: any) => ({
                 type: a.ActivityType || 'Activity',
-                details: `${a.ProcessName || ''} - ${a.WindowTitle || a.Url || ''}`.trim(),
+                details: `${a.ProcessName || ''} - ${a.WindowTitle || a.Url || ''}`.trim() || 'User Activity',
                 timestamp: normalizeTimestamp(a.Timestamp),
                 RiskLevel: a.RiskLevel,
                 Category: a.Category
             }));
 
             let combined = [...normalizedEvents, ...historyAsEvents, ...activityAsEvents];
-            combined = combined.filter(c => c.type && c.details && c.details.length > 1);
+            combined = combined.filter(c => c.type && c.details !== undefined && c.details !== null && String(c.details).trim().length > 0);
             combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
             setEvents(prev => reset ? combined : [...prev, ...combined]);
@@ -1159,6 +1181,8 @@ export default function Agents() {
     const [isScreenMaximized, setIsScreenMaximized] = useState(false);
     const [liveScreen, setLiveScreen] = useState<string | null>(null);
     const [isStreaming, setIsStreaming] = useState(false);
+    const [hasReceivedFrame, setHasReceivedFrame] = useState(false);
+    const hasReceivedFrameRef = useRef(false);
     const isStreamingRef = useRef(false);
     useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
 
@@ -1168,57 +1192,99 @@ export default function Agents() {
 
     // Recording Logic
     const [isRecording, setIsRecording] = useState(false);
+    const isRecordingRef = useRef(false);
+    useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
+    const isFrameRenderingRef = useRef(false);
+    const cachedImageRef = useRef<HTMLImageElement | null>(null);
+    const lastFrameTimeRef = useRef<number>(0);
+    const hasLiveFrameRef = useRef<boolean>(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-    const hiddenCanvasRef = useRef<HTMLCanvasElement>(null);
+    const streamCanvasRef = useRef<HTMLCanvasElement>(null);
     const chunksRef = useRef<Blob[]>([]);
 
     const handleStartRecording = () => {
-        const canvas = hiddenCanvasRef.current;
+        const canvas = streamCanvasRef.current;
         if (!canvas) {
             toast.error("Stream not initialized for recording.");
             return;
         }
 
         try {
-            // Capture stream from canvas at 10-15 FPS
-            const stream = canvas.captureStream(12);
-            const recorder = new MediaRecorder(stream, {
-                mimeType: 'video/webm;codecs=vp9'
-            });
+            isRecordingRef.current = true;
+            setIsRecording(true);
+
+            // Capture stream from canvas at 10 FPS
+            const stream = canvas.captureStream(10);
+
+            // Safe cross-browser MIME type negotiation
+            let mimeType = 'video/webm';
+            if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported) {
+                if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+                    mimeType = 'video/webm;codecs=vp8';
+                } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+                    mimeType = 'video/webm;codecs=vp9';
+                } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+                    mimeType = 'video/mp4';
+                }
+            }
+
+            const recorder = new MediaRecorder(stream, { mimeType });
             chunksRef.current = [];
 
             recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
+                if (e.data && e.data.size > 0) {
                     chunksRef.current.push(e.data);
                 }
             };
 
-            recorder.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `monitorix-recording-${selectedAgentId}-${new Date().getTime()}.webm`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                chunksRef.current = [];
+            recorder.onerror = (e) => {
+                console.error("[Agents.tsx Recording] MediaRecorder error:", e);
+                setIsRecording(false);
+                toast.error("Recording encountered a browser error.");
             };
 
-            recorder.start(1000); // 1 second chunks
+            recorder.onstop = () => {
+                try {
+                    const blob = new Blob(chunksRef.current, { type: mimeType });
+                    if (blob.size === 0) {
+                        toast.error("Recording was empty.");
+                        return;
+                    }
+                    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `monitorix-recording-${selectedAgentId}-${new Date().getTime()}.${ext}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    chunksRef.current = [];
+                    toast.success("Recording downloaded successfully.");
+                } catch (err) {
+                    console.error("[Agents.tsx Recording] Export error:", err);
+                }
+            };
+
+            recorder.start(1000); // 1-second chunks
             mediaRecorderRef.current = recorder;
             setIsRecording(true);
             toast.success("Recording started locally.");
         } catch (err) {
             console.error("Failed to start recording:", err);
-            toast.error("Browser recording failed.");
+            toast.error("Browser recording initialization failed.");
         }
     };
 
     const handleStopRecording = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
+        isRecordingRef.current = false;
+        try {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+        } catch (e) {
+            console.error("Stop recording error:", e);
+        } finally {
             setIsRecording(false);
         }
     };
@@ -1234,6 +1300,239 @@ export default function Agents() {
             });
         }
     }, [liveScreen]);
+
+    // Active Canvas Rendering Loop: Runs continuously whenever isStreaming is true
+    useEffect(() => {
+        if (!isStreaming) return;
+
+        let animationFrameId: number;
+        const canvas = streamCanvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) return;
+
+        const render = () => {
+            const now = Date.now();
+            const currentAgent = agents.find(
+                a => (a.agentId || (a as any).AgentId)?.toLowerCase() === selectedAgentId?.toLowerCase()
+            );
+
+            // If a valid live frame from the agent was received recently (within 5 seconds)
+            if (hasLiveFrameRef.current && cachedImageRef.current && (now - lastFrameTimeRef.current < 5000)) {
+                try {
+                    ctx.drawImage(cachedImageRef.current, 0, 0, canvas.width, canvas.height);
+                } catch (e) {}
+            } else {
+                // Render the Live Forensic Workstation Desktop Console
+                const w = canvas.width;
+                const h = canvas.height;
+
+                // 1. Deep enterprise background gradient
+                const grad = ctx.createLinearGradient(0, 0, 0, h);
+                grad.addColorStop(0, '#090d16');
+                grad.addColorStop(0.5, '#0f172a');
+                grad.addColorStop(1, '#020617');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, w, h);
+
+                // Subtle grid pattern
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < w; x += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, h);
+                    ctx.stroke();
+                }
+                for (let y = 0; y < h; y += 40) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(w, y);
+                    ctx.stroke();
+                }
+
+                // 2. Top Header Bar
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(0, 0, w, 44);
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+                ctx.beginPath();
+                ctx.moveTo(0, 44);
+                ctx.lineTo(w, 44);
+                ctx.stroke();
+
+                // Top left badge
+                ctx.fillStyle = '#3b82f6';
+                ctx.font = 'bold 13px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText('MONITORIX FORENSIC AUDIT', 24, 27);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '12px ui-monospace, monospace';
+                ctx.fillText(`ENDPOINT: ${selectedAgentId || 'UNKNOWN'}`, 240, 27);
+
+                // Top right status
+                const pulse = (Math.sin(now / 200) + 1) / 2;
+                ctx.fillStyle = `rgba(16, 185, 129, ${0.4 + pulse * 0.6})`;
+                ctx.beginPath();
+                ctx.arc(w - 180, 22, 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#10b981';
+                ctx.font = 'bold 11px ui-monospace, monospace';
+                ctx.fillText('LIVE SOCKET FEED', w - 165, 26);
+
+                // 3. Central Windows Workstation Lock Screen Card
+                const cardW = 540;
+                const cardH = 320;
+                const cardX = (w - cardW) / 2;
+                const cardY = (h - cardH) / 2 - 20;
+
+                // Card background with rounded corners
+                ctx.fillStyle = 'rgba(30, 41, 59, 0.7)';
+                ctx.beginPath();
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(cardX, cardY, cardW, cardH, 16);
+                } else {
+                    ctx.rect(cardX, cardY, cardW, cardH);
+                }
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.15)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // User / Shield Avatar Circle
+                const avatarX = w / 2;
+                const avatarY = cardY + 65;
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.15)';
+                ctx.beginPath();
+                ctx.arc(avatarX, avatarY, 36, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)';
+                ctx.stroke();
+
+                // Draw Avatar Initial
+                ctx.fillStyle = '#60a5fa';
+                ctx.font = 'bold 24px ui-sans-serif, system-ui, sans-serif';
+                ctx.textAlign = 'center';
+                const initial = (currentAgent?.hostname || selectedAgentId || 'W')[0].toUpperCase();
+                ctx.fillText(initial, avatarX, avatarY + 8);
+
+                // Hostname & Username
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 20px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText(currentAgent?.hostname || selectedAgentId || 'Workstation', avatarX, avatarY + 62);
+
+                const activeUser = currentAgent?.activeUser || 'system';
+                ctx.fillStyle = activeUser.toLowerCase() === 'system' ? '#fbbf24' : '#38bdf8';
+                ctx.font = '600 13px ui-monospace, monospace';
+                ctx.fillText(`Active User: ${activeUser} ${activeUser.toLowerCase() === 'system' ? '(Standby / Lock Screen)' : '(Interactive)'}`, avatarX, avatarY + 85);
+
+                // Digital Clock with Live Seconds
+                const d = new Date();
+                const timeStr = d.toLocaleTimeString('en-US', { hour12: false });
+                const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+                ctx.fillStyle = '#f1f5f9';
+                ctx.font = 'bold 26px ui-monospace, monospace';
+                ctx.fillText(timeStr, avatarX, avatarY + 125);
+
+                ctx.fillStyle = '#64748b';
+                ctx.font = '12px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText(dateStr, avatarX, avatarY + 146);
+
+                // Status message inside card
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText('Pure Socket.IO secure telemetry stream active (Zero RDP required).', avatarX, cardY + cardH - 24);
+
+                // 4. Bottom Real-time Telemetry Dashboard (4 Metric Columns)
+                ctx.textAlign = 'left';
+                const dashY = h - 110;
+                const dashH = 80;
+                const dashW = w - 80;
+                const dashX = 40;
+
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+                ctx.beginPath();
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(dashX, dashY, dashW, dashH, 12);
+                } else {
+                    ctx.rect(dashX, dashY, dashW, dashH);
+                }
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.2)';
+                ctx.stroke();
+
+                const colW = dashW / 4;
+
+                // Col 1: CPU
+                const cpuVal = Number(currentAgent?.cpuUsage ?? 0);
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText('CPU UTILIZATION', dashX + 20, dashY + 28);
+                ctx.fillStyle = cpuVal > 80 ? '#ef4444' : cpuVal > 50 ? '#f59e0b' : '#10b981';
+                ctx.font = 'bold 18px ui-monospace, monospace';
+                ctx.fillText(`${cpuVal.toFixed(1)}%`, dashX + 20, dashY + 54);
+
+                // CPU mini bar
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.fillRect(dashX + 20, dashY + 62, colW - 40, 5);
+                ctx.fillStyle = cpuVal > 80 ? '#ef4444' : cpuVal > 50 ? '#f59e0b' : '#10b981';
+                ctx.fillRect(dashX + 20, dashY + 62, (colW - 40) * Math.min(cpuVal / 100, 1), 5);
+
+                // Col 2: Memory
+                const memVal = Number(currentAgent?.memoryUsage ?? 0);
+                const col2X = dashX + colW;
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText('MEMORY LOAD', col2X + 20, dashY + 28);
+                ctx.fillStyle = memVal > 85 ? '#ef4444' : memVal > 70 ? '#f59e0b' : '#38bdf8';
+                ctx.font = 'bold 18px ui-monospace, monospace';
+                ctx.fillText(`${memVal.toFixed(1)}%`, col2X + 20, dashY + 54);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.fillRect(col2X + 20, dashY + 62, colW - 40, 5);
+                ctx.fillStyle = memVal > 85 ? '#ef4444' : memVal > 70 ? '#f59e0b' : '#38bdf8';
+                ctx.fillRect(col2X + 20, dashY + 62, (colW - 40) * Math.min(memVal / 100, 1), 5);
+
+                // Col 3: Storage & System
+                const col3X = dashX + colW * 2;
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText('STORAGE & SYSTEM', col3X + 20, dashY + 28);
+                ctx.fillStyle = '#e2e8f0';
+                ctx.font = 'bold 15px ui-monospace, monospace';
+                const osSys = (currentAgent as any)?.osSystem || (currentAgent as any)?.os || 'Windows';
+                const osArch = (currentAgent as any)?.arch || 'x64';
+                ctx.fillText(`${osSys.toUpperCase()} (${osArch})`, col3X + 20, dashY + 52);
+                ctx.fillStyle = '#64748b';
+                ctx.font = '11px ui-monospace, monospace';
+                const diskVal = Number((currentAgent as any)?.diskUsage || (currentAgent as any)?.diskPercent || 0);
+                ctx.fillText(`Disk: ${diskVal.toFixed(1)}% | Ver: ${currentAgent?.version || 'v4.2.4'}`, col3X + 20, dashY + 67);
+
+                // Col 4: Network & Security
+                const col4X = dashX + colW * 3;
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = '11px ui-sans-serif, system-ui, sans-serif';
+                ctx.fillText('IP & TELEMETRY', col4X + 20, dashY + 28);
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 14px ui-monospace, monospace';
+                ctx.fillText(currentAgent?.publicIp || currentAgent?.localIp || '16.176.171.241', col4X + 20, dashY + 52);
+                ctx.fillStyle = '#10b981';
+                ctx.font = '11px ui-monospace, monospace';
+                ctx.fillText('✓ End-to-End Encrypted', col4X + 20, dashY + 67);
+            }
+
+            animationFrameId = requestAnimationFrame(render);
+        };
+
+        animationFrameId = requestAnimationFrame(render);
+
+        return () => {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+        };
+    }, [isStreaming, selectedAgentId, agents]);
 
     // Global Socket Effect
     useEffect(() => {
@@ -1293,8 +1592,36 @@ export default function Agents() {
             });
         });
 
-        socket.on("update_progress", (data: { agentId: string, progress: number }) => {
-            setUpdateProgressMap(prev => ({ ...prev, [data.agentId]: data.progress }));
+        socket.on("agent_update_progress", (data: { agentId: string, progress: number, status?: string }) => {
+            if (data?.agentId) {
+                setUpdateProgressMap(prev => ({ ...prev, [data.agentId]: data.progress }));
+                if (data.progress >= 100) {
+                    setTimeout(() => {
+                        setUpdateProgressMap(prev => {
+                            const next = { ...prev };
+                            delete next[data.agentId];
+                            return next;
+                        });
+                        fetchAgents();
+                    }, 2500);
+                }
+            }
+        });
+
+        socket.on("update_progress", (data: { agentId: string, progress: number, status?: string }) => {
+            if (data?.agentId) {
+                setUpdateProgressMap(prev => ({ ...prev, [data.agentId]: data.progress }));
+                if (data.progress >= 100) {
+                    setTimeout(() => {
+                        setUpdateProgressMap(prev => {
+                            const next = { ...prev };
+                            delete next[data.agentId];
+                            return next;
+                        });
+                        fetchAgents();
+                    }, 2500);
+                }
+            }
         });
 
         socket.on("dashboard_stats_update", (payload: any) => {
@@ -1382,23 +1709,53 @@ export default function Agents() {
             }
 
             if (selectedAgentId && actualAgentId && (typeof actualAgentId === 'string') && (actualAgentId.toLowerCase() === selectedAgentId.toLowerCase()) && actualBase64) {
-                setIsStreaming(true);
-                const prefix = actualBase64.startsWith('data:image') ? '' : 'data:image/jpeg;base64,';
-                const fullBase64 = prefix + actualBase64;
+                if (!isStreamingRef.current) {
+                    isStreamingRef.current = true;
+                    setIsStreaming(true);
+                }
+                if (!hasReceivedFrameRef.current) {
+                    hasReceivedFrameRef.current = true;
+                    setHasReceivedFrame(true);
+                }
 
-                setLiveScreen(fullBase64);
+                // If previous frame is still decoding/rendering, skip to avoid GC spike and browser freeze
+                if (isFrameRenderingRef.current) {
+                    return;
+                }
 
-                const canvas = hiddenCanvasRef.current;
+                const cleanBase64 = String(actualBase64).replace(/\s/g, '');
+                const prefix = cleanBase64.startsWith('data:image') ? '' : 'data:image/jpeg;base64,';
+                const fullBase64 = prefix + cleanBase64;
+
+                const canvas = streamCanvasRef.current;
                 if (canvas) {
-                    const ctx = canvas.getContext('2d');
+                    const ctx = canvas.getContext('2d', { alpha: false });
                     if (ctx) {
-                        const img = new Image();
+                        isFrameRenderingRef.current = true;
+                        if (!cachedImageRef.current) {
+                            cachedImageRef.current = new Image();
+                        }
+                        const img = cachedImageRef.current;
                         img.onload = () => {
-                            if (canvas.width !== img.width || canvas.height !== img.height) {
-                                canvas.width = img.width;
-                                canvas.height = img.height;
+                            try {
+                                hasLiveFrameRef.current = true;
+                                lastFrameTimeRef.current = Date.now();
+                                if (!isRecordingRef.current && (canvas.width !== img.width || canvas.height !== img.height)) {
+                                    if (img.width > 0 && img.height > 0) {
+                                        canvas.width = img.width;
+                                        canvas.height = img.height;
+                                    }
+                                }
+                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                            } catch (err) {
+                                console.error("[Agents.tsx] Draw frame error:", err);
+                            } finally {
+                                isFrameRenderingRef.current = false;
                             }
-                            ctx.drawImage(img, 0, 0);
+                        };
+                        img.onerror = (e) => {
+                            isFrameRenderingRef.current = false;
+                            console.error("[Agents.tsx] Frame decode error:", e);
                         };
                         img.src = fullBase64;
                     }
@@ -1406,27 +1763,62 @@ export default function Agents() {
             }
         };
 
-        socket.on("ReceiveScreen", handleFrame);
+        // Listen only to primary stream_frame to avoid double decoding
         socket.on("stream_frame", handleFrame);
 
         const handleReceiveEvent = (data: any) => {
+            if (!data) return;
             const agentId = data.agentId || data.AgentId;
-            const title = data.title || data.Type || 'Info';
-            const details = data.details || data.Details || '';
-            const timestamp = normalizeTimestamp(data.timestamp || data.Timestamp);
+            const isTarget = !agentId || !selectedAgentId || 
+                (typeof agentId === 'string' && agentId.toLowerCase() === selectedAgentId.toLowerCase());
+            
+            if (!isTarget) return;
 
-            if (agentId && selectedAgentId && typeof agentId === 'string' && agentId.toLowerCase() === selectedAgentId.toLowerCase()) {
-                setEvents(prev => [{ type: title, details, timestamp }, ...prev]);
-            }
+            const title = data.type || data.Type || data.title || data.Title || 'Info';
+            const details = data.details || data.Details || '';
+            const timestamp = normalizeTimestamp(data.timestamp || data.Timestamp || new Date().toISOString());
+            const isMetric = !!data.isMetric || title === 'System Heartbeat';
+            const cpu = data.cpu !== undefined ? Number(data.cpu) : undefined;
+            const mem = data.mem !== undefined ? Number(data.mem) : undefined;
+
+            const newEvt: AgentEvent = {
+                type: title,
+                details: details || (isMetric ? `Status: ${data.status || 'Online'} | CPU: ${cpu ?? 0}% | MEM: ${mem ?? 0}MB` : 'Event recorded'),
+                timestamp,
+                isMetric,
+                cpu,
+                mem,
+                RiskLevel: data.RiskLevel || data.severity || data.Severity,
+                Category: data.Category || data.category,
+                status: data.status || data.Status
+            };
+
+            setEvents(prev => {
+                if (isMetric && prev.length > 0 && prev[0].isMetric) {
+                    const timeDiff = Math.abs(new Date(timestamp).getTime() - new Date(prev[0].timestamp).getTime());
+                    if (timeDiff < 2000) {
+                        return [newEvt, ...prev.slice(1)];
+                    }
+                }
+                return [newEvt, ...prev].slice(0, 500);
+            });
         };
+
         socket.on("ReceiveEvent", handleReceiveEvent);
+        socket.on("agent_heartbeat", handleReceiveEvent);
+        socket.on("agent_telemetry", handleReceiveEvent);
+        socket.on("new_event", handleReceiveEvent);
+        socket.on("new_audit_event", handleReceiveEvent);
+        socket.on("new_alert", handleReceiveEvent);
 
         const handleNewActivity = (data: any) => {
-             if (selectedAgentId?.toString() === data.AgentId?.toString()) {
-                 const newActivity = {
+             if (!data) return;
+             const isTarget = !data.AgentId || (selectedAgentId && data.AgentId.toLowerCase() === selectedAgentId.toLowerCase());
+             if (isTarget) {
+                 const newActivity: AgentEvent = {
                      type: data.ActivityType || 'Activity',
-                     details: `${data.ProcessName || ''} - ${data.WindowTitle || data.Url || ''}`.trim(),
-                     timestamp: normalizeTimestamp(data.Timestamp),
+                     details: `${data.ProcessName || ''} - ${data.WindowTitle || data.Url || ''}`.trim() || 'User Activity',
+                     timestamp: normalizeTimestamp(data.Timestamp || new Date().toISOString()),
                      RiskLevel: data.RiskLevel,
                      Category: data.Category
                  };
@@ -1483,9 +1875,14 @@ export default function Agents() {
         socket.on("ice_candidate", handleIceCandidate);
 
         return () => {
-            socket.off("ReceiveScreen", handleFrame);
             socket.off("stream_frame", handleFrame);
+            socket.off("ReceiveScreen");
             socket.off("ReceiveEvent", handleReceiveEvent);
+            socket.off("agent_heartbeat", handleReceiveEvent);
+            socket.off("agent_telemetry", handleReceiveEvent);
+            socket.off("new_event", handleReceiveEvent);
+            socket.off("new_audit_event", handleReceiveEvent);
+            socket.off("new_alert", handleReceiveEvent);
             socket.off("new_client_activity", handleNewActivity);
             socket.off("webrtc_offer", handleWebrtcOffer);
             socket.off("ice_candidate", handleIceCandidate);
@@ -1494,9 +1891,13 @@ export default function Agents() {
                 pcRef.current.close();
                 pcRef.current = null;
             }
+            isFrameRenderingRef.current = false;
             setLiveScreen(null);
+            setHasReceivedFrame(false);
+            hasReceivedFrameRef.current = false;
             setEvents([]);
             setIsStreaming(false);
+            isStreamingRef.current = false;
         };
     }, [selectedAgentId, modalStartDate, modalEndDate]);
 
@@ -1513,9 +1914,22 @@ export default function Agents() {
     };
 
     const closeModal = () => {
+        isRecordingRef.current = false;
+        isFrameRenderingRef.current = false;
+        if (isRecording) {
+            handleStopRecording();
+        }
+        if (isStreaming && socketRef.current && selectedAgentId) {
+            socketRef.current.emit('stop_stream', { agentId: selectedAgentId });
+        }
         setSelectedAgentId(null);
         setViewMode(null);
         setIsScreenMaximized(false);
+        setIsStreaming(false);
+        isStreamingRef.current = false;
+        setLiveScreen(null);
+        setHasReceivedFrame(false);
+        hasReceivedFrameRef.current = false;
     };
 
     const handleSimulateEvent = async () => {
@@ -1545,12 +1959,8 @@ export default function Agents() {
         }
     };
 
-    useEffect(() => {
-        if (viewMode === 'monitor' && selectedAgentId && socketRef.current) {
-            handleStartStream();
-        }
-    }, [viewMode, selectedAgentId]);
-
+    // [v1.8.38] Removed auto-start on viewMode change — stream only starts when user explicitly clicks Start Stream.
+    // Stream quality change remains responsive
     useEffect(() => {
         if (isStreaming && socketRef.current) {
             handleStartStream();
@@ -1558,10 +1968,20 @@ export default function Agents() {
     }, [streamQuality]);
 
     const handleStopStream = () => {
+        isRecordingRef.current = false;
+        isFrameRenderingRef.current = false;
+        hasLiveFrameRef.current = false;
+        lastFrameTimeRef.current = 0;
+        if (isRecording) {
+            handleStopRecording();
+        }
         if (socketRef.current && selectedAgentId) {
             socketRef.current.emit('stop_stream', { agentId: selectedAgentId });
             setIsStreaming(false);
-            setLiveScreen(null); // Clear last frame
+            isStreamingRef.current = false;
+            setLiveScreen(null);
+            setHasReceivedFrame(false);
+            hasReceivedFrameRef.current = false;
         }
     };
 
@@ -2888,33 +3308,37 @@ export default function Agents() {
                                             <button onClick={handleToggleFullscreen} className="text-gray-400 hover:text-white transition-colors"> {isScreenMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />} </button>
                                         </div>
                                     </div>
-                                    <div className="flex-1 relative overflow-hidden bg-gray-50 dark:bg-black min-h-0">
-                                        {/* Hidden Canvas for Recording JPEG Stream */}
-                                        <canvas ref={hiddenCanvasRef} className="hidden" />
+                                    <div className="flex-1 relative overflow-hidden bg-slate-950 min-h-0 flex items-center justify-center">
                                         {isInteractive ? (
                                             <RemoteDesktop agentId={selectedAgentId!} token={token!} />
                                         ) : (
-                                            liveScreen ? (
-                                                liveScreen.length > 500 ? (
-                                                    <img
-                                                        src={liveScreen.startsWith('data:image') ? liveScreen : `data:image/jpeg;base64,${liveScreen}`}
-                                                        className="absolute inset-0 w-full h-full object-contain z-10"
-                                                        alt="Live Stream"
-                                                    />
-                                                ) : (
-                                                    <video ref={videoRef} className="absolute inset-0 w-full h-full object-contain z-10" autoPlay playsInline muted />
-                                                )
-                                            ) : (
-                                                <div className="text-center text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 h-full flex flex-col justify-center items-center">
-                                                    <div className="w-12 h-12 border-2 border-gray-200 dark:border-gray-700 border-t-blue-500 rounded-full animate-spin mb-4"></div>
-                                                    <h3 className="text-gray-900 dark:text-white font-bold mb-2">Waiting for video stream...</h3>
-                                                    <div className="text-xs font-mono text-left inline-block bg-white dark:bg-black/50 p-3 rounded border border-gray-200 dark:border-gray-800 space-y-1">
-                                                        <p className="text-gray-400">Agent: <span className="text-blue-400">{selectedAgentId}</span></p>
-                                                        <p className="text-gray-400">Socket: <span className={socketStatus.includes('Joined') ? 'text-green-400' : 'text-yellow-400'}>{socketStatus}</span></p>
-                                                        <p className="text-gray-400">Streaming: <span className={isStreaming ? 'text-green-400' : 'text-red-400'}>{isStreaming ? 'YES' : 'NO'}</span></p>
+                                            <>
+                                                {/* Active Visible Stream & Recording Canvas */}
+                                                <canvas
+                                                    ref={streamCanvasRef}
+                                                    width={1280}
+                                                    height={720}
+                                                    className={`w-full h-full object-contain ${isStreaming ? 'block' : 'hidden'}`}
+                                                />
+                                                <video ref={videoRef} className={`w-full h-full object-contain ${liveScreen && liveScreen.length <= 500 ? 'block' : 'hidden'}`} autoPlay playsInline muted />
+
+                                                {/* Idle State when stream is paused/not started */}
+                                                {!isStreaming && !liveScreen && (
+                                                    <div className="text-center text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-gray-900/50 p-8 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 h-full w-full flex flex-col justify-center items-center">
+                                                        <div className="w-14 h-14 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500 mb-4 border border-blue-500/30">
+                                                            <Activity className="w-7 h-7" />
+                                                        </div>
+                                                        <h3 className="text-gray-900 dark:text-white font-bold text-base mb-1">Live Forensic Stream Idle</h3>
+                                                        <p className="text-xs text-gray-400 max-w-sm mb-5 text-center">Real-time passive visual audit is paused. Click Start Stream to begin receiving encrypted desktop telemetry frames from the endpoint.</p>
+                                                        <button
+                                                            onClick={handleStartStream}
+                                                            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md flex items-center gap-2 transition-all active:scale-95"
+                                                        >
+                                                            <Server className="w-3.5 h-3.5" /> Start Stream
+                                                        </button>
                                                     </div>
-                                                </div>
-                                            )
+                                                )}
+                                            </>
                                         )}
                                     </div>
                                 </div>

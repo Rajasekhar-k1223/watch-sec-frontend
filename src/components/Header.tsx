@@ -73,7 +73,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
             });
             if (res.ok) {
                 const data = await res.json();
-                setNotifications(Array.isArray(data) ? data : []);
+                const userRole = (user?.role || user?.Role || '').toLowerCase();
+                const isPrivileged = userRole === 'superadmin' || userRole === 'producthead';
+                const items = Array.isArray(data) ? data : [];
+                const safeItems = isPrivileged
+                    ? items
+                    : items.filter(n => {
+                        const title = (n.Title || '').toUpperCase();
+                        const msg = (n.Message || '').toUpperCase();
+                        const typ = (n.Type || '').toUpperCase();
+                        return !title.includes('[INTERNAL_PRI]') && !msg.includes('[INTERNAL_PRI]') && !typ.includes('INTERNAL_PRI');
+                    });
+                setNotifications(safeItems);
             } else if (res.status === 401) {
                 setNotifications([]);
             } else {

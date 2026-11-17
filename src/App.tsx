@@ -98,6 +98,8 @@ import AdminCommercialPortal from './pages/AdminCommercialPortal';
 import FirstRunSetupWizard from './pages/FirstRunSetupWizard';
 import ComplianceCenter from './pages/ComplianceCenter';
 import HoneypotDeception from './pages/HoneypotDeception';
+import PredictiveReliabilityCenter from './pages/PredictiveReliabilityCenter';
+import CustomerServiceHealth from './pages/CustomerServiceHealth';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 
@@ -401,6 +403,12 @@ function App() {
                 <Route path="/honeypots" element={<HoneypotDeception />} />
                 <Route path="/honeypot" element={<HoneypotDeception />} />
                 <Route path="/security/deception" element={<HoneypotDeception />} />
+
+                {/* Predictive Reliability Intelligence (PI-01..PI-18) — Strictly Separated Internal vs Customer */}
+                <Route path="/predictive-reliability" element={<PredictiveReliabilityCenter />} />
+                <Route path="/admin/predictive-reliability" element={<PredictiveReliabilityCenter />} />
+                <Route path="/service-health" element={<CustomerServiceHealth />} />
+                <Route path="/customer/service-health" element={<CustomerServiceHealth />} />
               </Route>
             </Route>
 

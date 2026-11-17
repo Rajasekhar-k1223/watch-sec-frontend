@@ -223,8 +223,9 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
             categoryIcon: Cpu,
             iconColor: 'text-emerald-600',
             titleColor: 'text-emerald-600',
-            count: 3,
+            count: 4,
             items: [
+                { name: 'Predictive Reliability (PRI)', path: '/admin/predictive-reliability', icon: Activity, badge: 'PRI-18', badgeColor: 'bg-rose-600' },
                 { name: 'Release Gate', path: '/release-gate', icon: ShieldCheck, badge: '100%', badgeColor: 'bg-emerald-600' },
                 { name: 'Runtime Scope', path: '/runtime-scope', icon: Cpu },
                 { name: 'Platform Status', path: '/platform-status', icon: Activity },
@@ -292,13 +293,18 @@ export default function Sidebar({ isOpen = false, onClose, isCollapsed = false, 
         }
     ];
 
-    const isSuperAdmin = (user?.role || user?.Role || '').toLowerCase() === 'superadmin';
+    const roleLower = (user?.role || user?.Role || '').toLowerCase();
+    const isSuperAdmin = roleLower === 'superadmin';
+    const isProductHead = roleLower === 'producthead';
 
-    // Role-filtered navigation categories (Domains 9-13 reserved for SuperAdmin)
+    // Role-filtered navigation categories (Domains 9-13 reserved for SuperAdmin / ProductHead)
     const visibleNavCategories = useMemo(() => {
         if (isSuperAdmin) return navCategories;
+        if (isProductHead) {
+            return navCategories.filter(cat => !(cat as any).superAdminOnly || cat.title === 'PLATFORM');
+        }
         return navCategories.filter(cat => !(cat as any).superAdminOnly);
-    }, [isSuperAdmin]);
+    }, [isSuperAdmin, isProductHead, navCategories]);
 
     // Filter categories based on search query
     const filteredCategories = useMemo(() => {
